@@ -1,0 +1,40 @@
+{
+  "name": "escritorio-noleto-e-macedo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.700.0",
+    "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.39.0",
+    "@tanstack/react-query": "^5.90.19",
+    "@tanstack/react-query-devtools": "^5.91.2",
+    "@wppconnect-team/wppconnect": "^1.36.0",
+    "dotenv": "^17.2.3",
+    "framer-motion": "latest",
+    "jimp": "^0.22.12",
+    "jsqr": "^1.4.0",
+    "lucide-react": "latest",
+    "node-cron": "^3.0.3",
+    "pdfjs-dist": "^4.5.136",
+    "playwright": "^1.49.1",
+    "playwright-extra": "^3.1.20",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "react": "latest",
+    "react-dom": "latest",
+    "recharts": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
+    "typescript": "latest",
+    "vite": "latest"
+  }
+}
