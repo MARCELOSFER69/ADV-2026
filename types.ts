@@ -67,6 +67,7 @@ export interface Client {
   data_cadastro: string;
   status?: 'ativo' | 'arquivado';
   senha_gov?: string;
+  senha_inss?: string;
   motivo_arquivamento?: string;
   data_nascimento?: string;
   sexo?: 'Masculino' | 'Feminino';
@@ -377,7 +378,8 @@ export type ViewState =
   | 'robots'
   | 'permissions'
   | 'whatsapp'
-  | 'personal';
+  | 'personal'
+  | 'download';
 
 export interface BrasilApiCompany {
   cnpj: string;

@@ -67,7 +67,7 @@ const CaseKanbanCard: React.FC<CaseKanbanCardProps> = ({ caseItem, client, onCli
             className={`kanban-card group relative flex flex-col bg-[#0f1014] border border-zinc-800 hover:border-zinc-600 rounded-xl p-4 transition-all duration-300 shadow-md hover:shadow-xl cursor-pointer overflow-hidden ${borderClass}`}
         >
             <div className="flex justify-between items-center mb-3">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded truncate max-w-[140px] ${getCaseTypeColor(caseItem.tipo)}`}>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded truncate max-w-[140px] ${getCaseTypeColor(caseItem.tipo as any)}`}>
                     {caseItem.tipo}{caseItem.modalidade ? ` (${caseItem.modalidade})` : ''}
                 </span>
                 <span className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">

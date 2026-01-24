@@ -169,7 +169,36 @@ async function startWorkers() {
         });
     }, 10000);
 
-    // Escutar Tasks
+    // Verificação de Tarefas Pendentes ao Iniciar (Persistência Offline)
+    async function checkPendingTasks() {
+        console.log("🔍 Verificando tarefas pendentes no banco...");
+        const { data: pendingTask } = await supabase.from('system_settings').select('*').eq('key', 'rgp_sync_task').single();
+
+        if (pendingTask && pendingTask.value && pendingTask.value.clients) {
+            console.log(`📥 [RECOVERY] Encontrada tarefa pendente com ${pendingTask.value.clients.length} clientes.`);
+            const task = pendingTask.value;
+
+            for (const item of task.clients) {
+                try {
+                    await runRgpConsultation(item.id, item.cpf, botConfig.headless);
+                    await new Promise(r => setTimeout(r, 2000));
+                } catch (err) {
+                    console.error(`❌ Erro no cliente ${item.cpf}:`, err);
+                }
+            }
+
+            // Limpa a task
+            await supabase.from('system_settings').delete().eq('key', 'rgp_sync_task');
+            console.log("✅ Tarefa pendente processada e removida.");
+        } else {
+            console.log("✅ Nenhuma tarefa pendente.");
+        }
+    }
+
+    // Executa verificação inicial
+    checkPendingTasks();
+
+    // Escutar Novas Tasks
     supabase.channel('rgp-tasks')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'system_settings' }, async payload => {
             const { new: newRecord } = payload;
@@ -200,7 +229,8 @@ async function startWorkers() {
                 }
 
                 // Limpa a task
-                await supabase.from('system_settings').delete().eq('id', newRecord.id);
+                // Usa key em vez de ID para garantir
+                await supabase.from('system_settings').delete().eq('key', 'rgp_sync_task');
             }
         })
         .subscribe();

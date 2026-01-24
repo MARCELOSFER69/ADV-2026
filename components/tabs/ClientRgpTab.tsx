@@ -16,7 +16,7 @@ interface ClientRgpTabProps {
 }
 
 const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEditedClient }) => {
-    const { showToast } = useApp();
+    const { showToast, triggerRgpSync } = useApp();
     const [isHeadless, setIsHeadless] = useState<boolean>(true);
     const [isRunning, setIsRunning] = useState(false);
 
@@ -66,36 +66,44 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
         }
     };
 
-    const handleConsultation = () => {
+    const handleConsultation = async () => {
         if (!client.cpf_cnpj) {
             showToast('error', 'Cliente sem CPF cadastrado.');
             return;
         }
 
         setIsRunning(true);
-        showToast('success', 'Iniciando consulta ao robô... Aguarde.');
+        showToast('success', 'Iniciando consulta ao robô...');
 
         const cpf = client.cpf_cnpj.replace(/\D/g, '');
-        // Adiciona timestamp para evitar cache
-        const url = `http://localhost:3001/api/stream-rgp?id=${client.id}&cpf=${cpf}&headless=${isHeadless}&t=${new Date().getTime()}`;
+        const id = client.id;
 
-        const es = new EventSource(url);
+        // TENTATIVA 1: Conexão Direta (Localhost)
+        // Ideal para quando o usuário está no mesmo PC do robô (Zero Latência)
+        try {
+            // Teste rápido de conexão
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-        es.onmessage = async (event) => {
-            try {
+            // Só tenta conectar se estivermos em HTTP ou Localhost (evita erro Mixed Content imediato)
+            const isSecure = window.location.protocol === 'https:';
+            // Se estiver em HTTPS (Vercel), pular direto para o fallback para evitar bloqueio do navegador
+            if (isSecure && window.location.hostname !== 'localhost') {
+                throw new Error("HTTPS bloqueia Localhost (Mixed Content)");
+            }
+
+            const url = `http://localhost:3001/api/stream-rgp?id=${id}&cpf=${cpf}&headless=${isHeadless}&t=${new Date().getTime()}`;
+            const es = new EventSource(url);
+
+            es.onmessage = async (event) => {
                 const data = JSON.parse(event.data);
-
                 if (data.type === 'success') {
                     es.close();
                     setIsRunning(false);
-
-                    // Recarrega dados do cliente
-                    const { data: updated, error } = await supabase.from('clients').select('*').eq('id', client.id).single();
+                    const { data: updated } = await supabase.from('clients').select('*').eq('id', id).single();
                     if (updated) {
                         if (onUpdate) await onUpdate(updated);
-                        if (setEditedClient) {
-                            setEditedClient(prev => ({ ...prev, ...updated }));
-                        }
+                        if (setEditedClient) setEditedClient(prev => ({ ...prev, ...updated }));
                         showToast('success', 'Consulta Finalizada! Dados atualizados.');
                     }
                 } else if (data.type === 'error') {
@@ -103,19 +111,79 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
                     setIsRunning(false);
                     showToast('error', `Erro no robô: ${data.message}`);
                 }
-            } catch (e) {
-                console.error("Erro ao processar evento SSE:", e);
-            }
-        };
+            };
 
-        es.onerror = (err) => {
-            console.error("Erro na conexão SSE:", err);
-            if (es.readyState !== 2) {
-                es.close();
-                setIsRunning(false);
-                showToast('error', 'Conexão perdida com o robô.');
-            }
-        };
+            es.onerror = (err) => {
+                if (es.readyState === 0) {
+                    // Conexão recusada ou fechada. Forçar erro para ir pro fallback.
+                    es.close();
+                    console.log("⚠️ Conexão Localhost falhou, indo para Fallback (Nuvem -> Local)...");
+                    handleQueueFallback(id, cpf);
+                }
+            };
+
+            // Se conectar com sucesso, limpamos o timeout
+            es.onopen = () => clearTimeout(timeoutId);
+
+        } catch (e) {
+            console.log("⚠️ Erro ao tentar Localhost, usando modo fila...", e);
+            handleQueueFallback(id, cpf);
+        }
+    };
+
+    // MODO FILA: Envia comando pro banco e escuta logs via Realtime (Funciona na Nuvem)
+    const handleQueueFallback = async (id: string, cpf: string) => {
+        // triggerRgpSync vem do closure agora
+
+        // 1. Enviar para Fila
+        try {
+            const task = {
+                clients: [{ id, cpf }],
+                timestamp: new Date().toISOString()
+            };
+
+            const { error } = await supabase.from('system_settings').upsert({
+                key: 'rgp_sync_task',
+                value: task
+            }, { onConflict: 'key' });
+
+            if (error) throw error;
+            showToast('success', 'Comando enviado para o Robô (Via Nuvem). Aguardando execução...');
+
+            // 2. Escutar Logs do Robô via Supabase
+            const channel = supabase.channel(`rgp-${id}`)
+                .on('broadcast', { event: 'log' }, (payload) => {
+                    // O terminal do robô manda broadcast geral, precisamos filtrar?
+                    // O setupRealtimeTerminal no server manda tudo. 
+                    // Vamos assumir que logs importantes aparecerão aqui.
+                    // Mas para saber que TERMINOU, precisamos monitorar o cliente.
+                })
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'clients', filter: `id=eq.${id}` }, async (payload) => {
+                    const status = payload.new.rgp_status;
+                    // Se o status mudou para algo final, paramos o loading
+                    if (status && ['Ativo', 'Cancelado', 'Suspenso', 'Não Encontrado'].some(s => status.includes(s))) {
+                        setIsRunning(false);
+                        const updated = payload.new as Client;
+                        if (onUpdate) await onUpdate(updated);
+                        if (setEditedClient) setEditedClient(prev => ({ ...prev, ...updated }));
+                        showToast('success', 'Robô finalizou a tarefa!');
+                        channel.unsubscribe();
+                    }
+                })
+                .subscribe();
+
+            // Timeout de segurança para o loading (30s)
+            setTimeout(() => {
+                if (isRunning) {
+                    // setIsRunning(false); 
+                    // showToast('info', 'A tarefa está demorando, mas o robô continua rodando em segundo plano.');
+                }
+            }, 30000);
+
+        } catch (err) {
+            setIsRunning(false);
+            showToast('error', "Não foi possível contactar o robô (Nem local, nem nuvem). Verifique se o 'runner.cjs' está rodando no PC.");
+        }
     };
 
     const getStatusColor = (status?: string) => {

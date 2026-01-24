@@ -1,13 +1,50 @@
 {
   "name": "escritorio-noleto-e-macedo",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.2",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "site": "vite",
     "dev": "concurrently \"npm:site\" \"node runner.cjs\" --names \"SITE,SISTEMA\" --prefix-colors \"blue,magenta\" --kill-others",
-    "build": "vite build",
+    "electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
+    "electron:dev": "concurrently -k \"cross-env BROWSER=none npm run site\" \"npm run electron\"",
+    "build": "tsc && vite build",
+    "build:win": "npm run build && electron-builder --win --publish always",
     "preview": "vite preview"
+  },
+  "build": {
+    "appId": "com.advogados.desktop",
+    "productName": "Escritorio Noleto & Macedo",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "MARCELOSFER69",
+        "repo": "ADV-2026"
+      }
+    ],
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json",
+      "runner.cjs",
+      "rgp_server.cjs",
+      "services/**/*",
+      "robos/**/*",
+      "public/icon.png"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "public/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.700.0",
@@ -16,16 +53,14 @@
     "@wppconnect-team/wppconnect": "^1.36.0",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
+    "electron-is-dev": "^3.0.1",
+    "electron-updater": "^6.7.3",
     "express": "^5.2.1",
     "framer-motion": "^12.29.0",
     "jimp": "^0.22.12",
     "jsqr": "^1.4.0",
     "lucide-react": "latest",
     "node-cron": "^3.0.3",
-    "pdfjs-dist": "^4.5.136",
-    "playwright": "^1.49.1",
-    "playwright-extra": "^3.1.20",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "react": "latest",
     "react-dom": "latest",
     "recharts": "^3.5.0"
@@ -36,7 +71,15 @@
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "latest",
     "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^40.0.0",
+    "electron-builder": "^26.4.0",
+    "pdfjs-dist": "^4.5.136",
+    "playwright": "^1.49.1",
+    "playwright-extra": "^3.1.20",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "typescript": "latest",
-    "vite": "latest"
+    "vite": "latest",
+    "wait-on": "^9.0.3"
   }
 }

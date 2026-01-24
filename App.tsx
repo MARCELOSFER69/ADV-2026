@@ -23,6 +23,7 @@ const CnisReader = React.lazy(() => import('./views/Tools/CnisReader'));
 const GpsCalculator = React.lazy(() => import('./views/Tools/GpsCalculator'));
 const DocumentBuilder = React.lazy(() => import('./views/Tools/DocumentBuilder'));
 const Robots = React.lazy(() => import('./views/Tools/Robots'));
+const DownloadPage = React.lazy(() => import('./views/DownloadPage'));
 const Permissions = React.lazy(() => import('./views/Permissions'));
 
 // Importação adaptada para Named Export (pois criamos export function Personal)
@@ -184,6 +185,10 @@ const AppContent: React.FC = () => {
 
       <View id="permissions" activeView={currentView}>
         <Permissions />
+      </View>
+
+      <View id="download" activeView={currentView}>
+        <DownloadPage />
       </View>
 
       <NewCaseModal isOpen={isNewCaseModalOpen} onClose={() => setIsNewCaseModalOpen(false)} forcedType={getForcedType()} />

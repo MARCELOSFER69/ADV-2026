@@ -138,7 +138,7 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
             const addressData = await fetchAddressByCep(formattedCep);
             setIsLoadingCep(false);
             if (addressData) {
-                setEditedClient(prev => ({ ...prev, endereco: addressData.logradouro, bairro: addressData.bairro, cidade: addressData.localidade, uf: addressData.uf }));
+                setEditedClient({ ...editedClient, endereco: addressData.logradouro, bairro: addressData.bairro, cidade: addressData.localidade, uf: addressData.uf });
                 showToast('success', 'Endereço encontrado!');
             }
         }
@@ -155,21 +155,21 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
     const handleSaveGpsValue = async (caseId: string, gpsId: string) => {
         if (!editingGpsValue) return;
 
-        const caseItem = cases.find(c => c.id === caseId);
-        if (!caseItem || !caseItem.gps_lista) return;
+        const caseItemToUpdate = cases.find(c => c.id === caseId);
+        if (!caseItemToUpdate || !caseItemToUpdate.gps_lista) return;
 
-        const updatedGpsList = caseItem.gps_lista.map(g => {
+        const updatedGpsList = caseItemToUpdate.gps_lista.map(g => {
             if (g.id === gpsId) {
                 return { ...g, valor: parseCurrencyToNumber(editingGpsValue) };
             }
             return g;
         });
 
-        const success = await updateCase(caseId, { gps_lista: updatedGpsList });
-        if (success) {
-            setEditingGpsId(null);
-            showToast('success', 'Valor atualizado');
-        }
+        const updatedCase = { ...caseItemToUpdate, gps_lista: updatedGpsList };
+        await updateCase(updatedCase);
+
+        setEditingGpsId(null);
+        showToast('success', 'Valor atualizado');
     };
 
     // Helper for number parsing, locally defined or imported?

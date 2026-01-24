@@ -15,7 +15,7 @@ export const mockClients: Client[] = [
     observacao: 'Pescadora artesanal, precisa renovar carteira.',
     foto: '',
     documentos: [
-        { id: 'd1', nome: 'RGP.pdf', tipo: 'PDF', data_upload: '2023-01-15T10:05:00Z' }
+      { id: 'd1', nome: 'RGP.pdf', tipo: 'PDF', data_upload: '2023-01-15T10:05:00Z', url: '', path: '' }
     ]
   },
   {
@@ -184,34 +184,34 @@ export const mockEvents: Event[] = [
     id: 'e3',
     case_id: 'p4',
     titulo: 'Perícia Médica INSS',
-    data_hora: new Date(Date.now() + 86400000 * 10).toISOString(), 
+    data_hora: new Date(Date.now() + 86400000 * 10).toISOString(),
     tipo: EventType.PERICIA,
   },
 ];
 
 export const mockHistory: CaseHistory[] = [
-    {
-        id: 'h1',
-        case_id: 'p1',
-        action: 'Criação',
-        details: 'Processo cadastrado no sistema.',
-        user_name: 'Dr. Jayrton Noleto',
-        timestamp: '2023-11-01T11:00:00Z'
-    },
-    {
-        id: 'h2',
-        case_id: 'p1',
-        action: 'Mudança de Status',
-        details: 'Alterado de "Inicial" para "Análise"',
-        user_name: 'Dr. Jayrton Noleto',
-        timestamp: '2023-11-05T14:30:00Z'
-    },
-    {
-        id: 'h3',
-        case_id: 'p4',
-        action: 'Financeiro',
-        details: 'Honorários definidos como "Pago" (R$ 420,00)',
-        user_name: 'Dr. Jayrton Noleto',
-        timestamp: '2024-02-15T10:00:00Z'
-    }
+  {
+    id: 'h1',
+    case_id: 'p1',
+    action: 'Criação',
+    details: 'Processo cadastrado no sistema.',
+    user_name: 'Dr. Jayrton Noleto',
+    timestamp: '2023-11-01T11:00:00Z'
+  },
+  {
+    id: 'h2',
+    case_id: 'p1',
+    action: 'Mudança de Status',
+    details: 'Alterado de "Inicial" para "Análise"',
+    user_name: 'Dr. Jayrton Noleto',
+    timestamp: '2023-11-05T14:30:00Z'
+  },
+  {
+    id: 'h3',
+    case_id: 'p4',
+    action: 'Financeiro',
+    details: 'Honorários definidos como "Pago" (R$ 420,00)',
+    user_name: 'Dr. Jayrton Noleto',
+    timestamp: '2024-02-15T10:00:00Z'
+  }
 ];

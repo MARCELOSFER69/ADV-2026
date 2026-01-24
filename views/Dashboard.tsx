@@ -430,12 +430,12 @@ const Dashboard: React.FC = () => {
                     if (procTypeFilter === 'Total') return true;
                     if (procTypeFilter === 'Seguro Defeso') return c.tipo === CaseType.SEGURO_DEFESO;
                     if (procTypeFilter === 'Judicial') {
-                        const isJudicialType = [CaseType.TRABALHISTA, CaseType.CIVIL].includes(c.tipo);
+                        const isJudicialType = [CaseType.TRABALHISTA, CaseType.CIVIL].includes(c.tipo as any);
                         const isJudicialized = c.tribunal && c.tribunal.toUpperCase() !== 'INSS' && c.tribunal.trim() !== '';
                         return isJudicialType || isJudicialized;
                     }
                     if (procTypeFilter === 'Administrativo') {
-                        const isAdminType = [CaseType.APOSENTADORIA, CaseType.BPC_LOAS, CaseType.SALARIO_MATERNIDADE, CaseType.AUXILIO_DOENCA].includes(c.tipo);
+                        const isAdminType = [CaseType.APOSENTADORIA, CaseType.BPC_LOAS, CaseType.SALARIO_MATERNIDADE, CaseType.AUXILIO_DOENCA].includes(c.tipo as any);
                         const isJudicialized = c.tribunal && c.tribunal.toUpperCase() !== 'INSS' && c.tribunal.trim() !== '';
                         return isAdminType && !isJudicialized;
                     }
@@ -485,7 +485,7 @@ const Dashboard: React.FC = () => {
                         const clientCases = cases.filter(c => c.client_id === client.id && c.status !== CaseStatus.ARQUIVADO);
                         clientCases.forEach(c => {
                             if (c.tipo === CaseType.SEGURO_DEFESO) insuranceCount++;
-                            else if ([CaseType.TRABALHISTA, CaseType.CIVIL].includes(c.tipo)) judicialCount++;
+                            else if ([CaseType.TRABALHISTA, CaseType.CIVIL].includes(c.tipo as any)) judicialCount++;
                             else adminCount++;
                         });
                     });

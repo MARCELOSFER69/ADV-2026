@@ -4,7 +4,7 @@ import {
     LayoutDashboard, Users, Scale, DollarSign, LogOut, Hourglass, Camera, X,
     Save, Trash2, Loader2, FileScan, Briefcase, ChevronDown, Calculator,
     Shield, Gavel, FileText, Building, HandCoins, CalendarCheck, Bell,
-    UserCog, User, Stethoscope, MessageSquare, Cpu
+    UserCog, User, Stethoscope, MessageSquare, Cpu, Download
 } from 'lucide-react';
 import { BRAND_CONFIG } from '../../logoData';
 import NotificationsPanel from '../ui/NotificationsPanel';
@@ -372,6 +372,24 @@ const Sidebar: React.FC = () => {
                         </button>
                     )}
                     {/* ------------------------- */}
+
+                    {/* --- BOTÃO DOWNLOAD DO APP (Aparece se não for Desktop) --- */}
+                    {!(window as any).electronAPI?.isDesktop && (
+                        <button
+                            onClick={() => handleNavigation('download')}
+                            className="w-full flex items-center h-14 group/dl relative mt-4"
+                        >
+                            {currentView === 'download' && <div className="absolute left-0 h-8 w-1 bg-emerald-500 rounded-r opacity-0 group-hover:opacity-100 transition-opacity" />}
+                            <div className="min-w-[70px] flex items-center justify-center">
+                                <div className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 ${currentView === 'download' ? 'bg-emerald-900/50 text-emerald-500' : 'text-slate-400 group-hover/dl:text-emerald-500'}`}>
+                                    <Download size={20} />
+                                </div>
+                            </div>
+                            <span className={`whitespace-nowrap overflow-hidden text-sm font-medium transition-all duration-300 ${currentView === 'download' ? 'text-white' : 'text-slate-400 group-hover/dl:text-white'} w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 group-hover:ml-1`}>
+                                Baixar App
+                            </span>
+                        </button>
+                    )}
                     {/* ------------------------- */}
 
                     {isAdmin && (
