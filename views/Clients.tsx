@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchClientsData } from '../services/clientsService';
 import { useApp } from '../context/AppContext';
 import { Search, Plus, Phone, Mail, FileText, X, MapPin, Eye, Calendar, User, ChevronRight, Filter, Edit2, Camera, Save, Building2, Loader2, MessageCircle, Clock, LayoutGrid, LayoutList, Settings, ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, CheckSquare, Copy, ArrowRight, CreditCard, Heart, Briefcase, Globe, Share2, AlertTriangle, CheckCircle2, Trash2, Archive, RefreshCw, Check, Lock, ChevronLeft } from 'lucide-react';
 import { Client, Case, Branch, CaseStatus, ColumnConfig, Captador } from '../types';
@@ -61,7 +59,7 @@ const Clients: React.FC = () => {
         clients // Mantemos clients para verificação de duplicidade
     } = useApp();
 
-    const queryClient = useQueryClient();
+
 
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -100,12 +98,23 @@ const Clients: React.FC = () => {
 
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
-    // Sincroniza o selectedClient com a lista global quando houver mudanças (ex: após sync de documentos)
+    // Sincroniza o selectedClient com a lista global quando houver mudanças (ex: após sync de documentos ou RGP)
     useEffect(() => {
         if (selectedClient) {
             const updated = clients.find(c => c.id === selectedClient.id);
-            if (updated && JSON.stringify(updated.documentos) !== JSON.stringify(selectedClient.documentos)) {
-                setSelectedClient(updated);
+            if (updated) {
+                const docsChanged = JSON.stringify(updated.documentos) !== JSON.stringify(selectedClient.documentos);
+
+                // Verifica mudanças no RGP (para atualizar o modal automaticamente)
+                const rgpChanged =
+                    updated.rgp_status !== selectedClient.rgp_status ||
+                    updated.rgp_numero !== selectedClient.rgp_numero ||
+                    updated.rgp_localidade !== selectedClient.rgp_localidade;
+
+                if (docsChanged || rgpChanged) {
+                    // Preserva os 'cases' do selectedClient atual, pois o 'updated' (da lista global) pode não ter os cases carregados
+                    setSelectedClient(prev => prev ? { ...updated, cases: prev.cases } : updated as Client);
+                }
             }
         }
     }, [clients, selectedClient]);
@@ -115,23 +124,65 @@ const Clients: React.FC = () => {
     const [selectedCase, setSelectedCase] = useState<Case | null>(null);
     const [isEditMode, setIsEditMode] = useState(false);
 
+    const [sortConfig, setSortConfig] = useState<{ key: keyof Client | 'status', direction: 'asc' | 'desc' }>({ key: 'nome_completo', direction: 'asc' });
+    const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_CLIENT_COLUMNS);
+    const [showColumnConfig, setShowColumnConfig] = useState(false);
+
     const [showFilters, setShowFilters] = useState(false);
     const [activeFilters, setActiveFilters] = useState({
         city: '', captador: '', status: 'all', filial: 'all', sexo: 'all',
         dateStart: '', dateEnd: '', pendencia: 'all', gps: 'all'
     });
 
-    // REACT QUERY
-    const { data: qData, isLoading: isFetching } = useQuery({
-        queryKey: ['clients', currentPage, debouncedSearch, activeFilters, showArchived],
-        queryFn: () => fetchClientsData(currentPage, ITEMS_PER_PAGE, debouncedSearch, {
-            ...activeFilters,
-            status: showArchived ? 'arquivado' : activeFilters.status
-        }),
-    });
+    // --- DATA LOGIC (REVERTED TO LOCAL & FIXED) ---
+    const sortedAndFilteredClients = useMemo(() => {
+        // 1. Filter
+        const filtered = clients.filter(c => {
+            const isArchived = c.status === 'arquivado';
+            if (showArchived && !isArchived) return false;
+            if (!showArchived && isArchived) return false;
 
-    const paginatedClients = qData?.data || [];
-    const totalClients = qData?.count || 0;
+            const searchMatch = c.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                c.cpf_cnpj?.includes(searchTerm) ||
+                c.telefone?.includes(searchTerm);
+            if (!searchMatch) return false;
+
+            if (activeFilters.city && c.cidade !== activeFilters.city) return false;
+            if (activeFilters.captador && c.captador !== activeFilters.captador) return false;
+            if (activeFilters.filial !== 'all' && c.filial !== activeFilters.filial) return false;
+            if (activeFilters.sexo !== 'all' && c.sexo !== activeFilters.sexo) return false;
+            if (activeFilters.pendencia !== 'all' && !c.pendencias?.includes(activeFilters.pendencia)) return false;
+
+            return true;
+        });
+
+        // 2. Sort (GLOBAL)
+        return [...filtered].sort((a, b) => {
+            const aValue = sortConfig.key === 'status' ? getClientActiveCases(a.id) : (a[sortConfig.key] || '');
+            const bValue = sortConfig.key === 'status' ? getClientActiveCases(b.id) : (b[sortConfig.key] || '');
+
+            if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [clients, searchTerm, activeFilters, showArchived, sortConfig]);
+
+    const totalClients = sortedAndFilteredClients.length;
+
+    const paginatedClients = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        const pageItems = sortedAndFilteredClients.slice(start, start + ITEMS_PER_PAGE);
+
+        // 3. Join Cases (for GPS Status)
+        return pageItems.map(client => ({
+            ...client,
+            cases: cases.filter(c => c.client_id === client.id)
+        }));
+    }, [sortedAndFilteredClients, currentPage, cases]);
+
+    const isFetching = false;
+    // Alias for compatibility with existing JSX
+    const sortedClients = paginatedClients;
 
     // --- SEARCH REF & SHORTCUT ---
     const searchInputRef = useRef<HTMLInputElement>(null);
@@ -149,9 +200,7 @@ const Clients: React.FC = () => {
         return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
     }, []);
 
-    const [sortConfig, setSortConfig] = useState<{ key: keyof Client | 'status', direction: 'asc' | 'desc' }>({ key: 'nome_completo', direction: 'asc' });
-    const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_CLIENT_COLUMNS);
-    const [showColumnConfig, setShowColumnConfig] = useState(false);
+
 
     // --- EFEITO DEBOUNCE PARA BUSCA ---
     useEffect(() => {
@@ -171,18 +220,7 @@ const Clients: React.FC = () => {
 
     // Removido useEffect manual de carregamento
 
-    const sortedClients = useMemo(() => {
-        if (!paginatedClients) return [];
 
-        return [...paginatedClients].sort((a, b) => {
-            const aValue = sortConfig.key === 'status' ? getClientActiveCases(a.id) : (a[sortConfig.key] || '');
-            const bValue = sortConfig.key === 'status' ? getClientActiveCases(b.id) : (b[sortConfig.key] || '');
-
-            if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-            if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-            return 0;
-        });
-    }, [paginatedClients, sortConfig]);
 
     const filteredCaptadores = useMemo(() => {
         if (!newClient.filial) return [];
@@ -393,7 +431,6 @@ const Clients: React.FC = () => {
 
             setIsModalOpen(false);
             setNewClient({ nacionalidade: 'Brasileira', uf: 'MA', pendencias: [] });
-            queryClient.invalidateQueries({ queryKey: ['clients'] });
 
         } catch (error: any) {
             console.error(error);
@@ -427,7 +464,6 @@ const Clients: React.FC = () => {
         try {
             await updateClient({ ...client, status: 'ativo', motivo_arquivamento: undefined });
             showToast('success', 'Cliente restaurado com sucesso!');
-            queryClient.invalidateQueries({ queryKey: ['clients'] });
         } catch (error: any) {
             console.error('Erro ao restaurar:', error);
             showToast('error', `Erro: ${error.message}`);
@@ -449,7 +485,6 @@ const Clients: React.FC = () => {
             });
             showToast('success', 'Cliente movido para o Arquivo Morto.');
             setClientToArchive(null);
-            queryClient.invalidateQueries({ queryKey: ['clients'] });
         } catch (error: any) {
             console.error('Erro ao arquivar:', error);
             showToast('error', `Erro: ${error.message}`);
@@ -471,7 +506,6 @@ const Clients: React.FC = () => {
         try {
             await deleteClient(clientToDelete.id, deleteReason);
             setClientToDelete(null);
-            queryClient.invalidateQueries({ queryKey: ['clients'] });
         } catch (error: any) {
             console.error('Erro ao excluir:', error);
         }

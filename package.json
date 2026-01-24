@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "site": "vite",
+    "dev": "concurrently \"npm:site\" \"node runner.cjs\" --names \"SITE,SISTEMA\" --prefix-colors \"blue,magenta\" --kill-others",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -12,11 +13,11 @@
     "@aws-sdk/client-s3": "^3.700.0",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.39.0",
-    "@tanstack/react-query": "^5.90.19",
-    "@tanstack/react-query-devtools": "^5.91.2",
     "@wppconnect-team/wppconnect": "^1.36.0",
+    "cors": "^2.8.6",
     "dotenv": "^17.2.3",
-    "framer-motion": "latest",
+    "express": "^5.2.1",
+    "framer-motion": "^12.29.0",
     "jimp": "^0.22.12",
     "jsqr": "^1.4.0",
     "lucide-react": "latest",
@@ -34,6 +35,7 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "latest",
+    "concurrently": "^9.2.1",
     "typescript": "latest",
     "vite": "latest"
   }

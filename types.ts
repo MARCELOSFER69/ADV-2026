@@ -100,6 +100,16 @@ export interface Client {
   registered_by?: string;
   updated_by?: string;
   cnis_data?: CnisData;
+
+  // RGP & REAP
+  rgp_status?: 'Ativo' | 'Suspenso' | 'Cancelado' | 'Pendente';
+  rgp_localidade?: string;
+  rgp_numero?: string;
+  rgp_local_exercicio?: string;
+  rgp_data_primeiro?: string;
+  reap_status?: 'Regular' | 'Pendente Anual' | 'Não Realizada';
+  reap_ano_base?: number;
+  updated_at?: string;
 }
 
 export interface Task {
@@ -364,6 +374,7 @@ export type ViewState =
   | 'cnis'
   | 'gps-calculator'
   | 'document-builder'
+  | 'robots'
   | 'permissions'
   | 'whatsapp'
   | 'personal';
@@ -499,6 +510,7 @@ export interface UserPermission {
   access_tool_cnis?: boolean;
   access_tool_gps?: boolean;
   access_tool_docs?: boolean;
+  access_robots?: boolean;
 }
 
 export interface User {

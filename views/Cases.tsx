@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchCasesData } from '../services/casesService';
 import { useApp } from '../context/AppContext';
 import { CaseStatus, Case, CaseType, ColumnConfig } from '../types';
 import {
     Plus, Eye, Filter, X, Gavel, DollarSign, User, FileText, Trash2,
     Archive, Inbox, Search, LayoutList, LayoutGrid, Settings, ChevronDown,
-    ChevronUp, ArrowUpDown, Clock, Shield, RefreshCw, AlertTriangle,
+    ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, Clock, Shield, RefreshCw, AlertTriangle,
     ChevronLeft, ChevronRight, Loader2, FolderOpen
 } from 'lucide-react';
 import CaseDetailsModal from '../components/modals/CaseDetailsModal';
@@ -37,7 +35,7 @@ const Cases: React.FC = () => {
         caseToView, setCaseToView, currentView, setCurrentView, mergedPreferences, setClientToView
     } = useApp();
 
-    const queryClient = useQueryClient();
+
 
     const [selectedCase, setSelectedCase] = useState<Case | null>(null);
 
@@ -59,6 +57,8 @@ const Cases: React.FC = () => {
         minVal: '',
         maxVal: ''
     });
+
+    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'data_abertura', direction: 'desc' });
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -183,24 +183,75 @@ const Cases: React.FC = () => {
         return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
     }, []);
 
-    // REACT QUERY
-    const { data: qData, isLoading: isFetching } = useQuery({
-        queryKey: ['cases', currentPage, debouncedSearch, filters, viewMode, activeCategory, quickFilter, layoutMode],
-        queryFn: () => fetchCasesData(currentPage, ITEMS_PER_PAGE, debouncedSearch, {
-            ...filters,
-            status: filters.status === 'all' ? (viewMode === 'archived' ? 'Arquivado' : 'all') : filters.status,
-            viewMode: viewMode,
-            quickFilter: quickFilter,
-            category: activeCategory
-        }),
-    });
+    // --- DATA LOGIC (REVERTED TO LOCAL) ---
+    const filteredCases = useMemo(() => {
+        return cases.filter(c => {
+            // Reusing the same filter logic from kanban for consistency
+            const isArchived = c.status === CaseStatus.ARQUIVADO;
+            if (viewMode === 'active' && isArchived) return false;
+            if (viewMode === 'archived' && !isArchived) return false;
 
-    const paginatedCases = qData?.data || [];
-    const totalCases = qData?.count || 0;
+            const isSeguro = c.tipo === (CaseType.SEGURO_DEFESO as string);
+            const isJudicialType = [CaseType.TRABALHISTA as string, CaseType.CIVIL as string].includes(c.tipo);
+
+            if (activeCategory === 'Seguro Defeso' && !isSeguro) return false;
+            if (activeCategory === 'Judicial') {
+                const isJudicialized = c.tribunal && c.tribunal.toUpperCase() !== 'INSS' && c.tribunal.trim() !== '';
+                if (isSeguro || (!isJudicialType && !isJudicialized)) return false;
+            }
+            if (activeCategory === 'Administrativo') {
+                const isJudicialized = c.tribunal && c.tribunal.toUpperCase() !== 'INSS' && c.tribunal.trim() !== '';
+                if (isJudicialType || isSeguro || isJudicialized) return false;
+            }
+
+            const searchMatch = c.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                c.numero_processo.includes(searchTerm) ||
+                clients.find(cl => cl.id === c.client_id)?.nome_completo.toLowerCase().includes(searchTerm.toLowerCase());
+            if (!searchMatch) return false;
+
+            if (filters.tipo !== 'all' && c.tipo !== filters.tipo) return false;
+            if (filters.status !== 'all' && c.status !== filters.status) return false;
+
+            return true;
+        });
+    }, [cases, searchTerm, filters, viewMode, activeCategory, clients]);
+
+    const totalCases = filteredCases.length;
+
+    const sortedCases = useMemo(() => {
+        return [...filteredCases].sort((a, b) => {
+            let aValue: any = a[sortConfig.key as keyof Case] || '';
+            let bValue: any = b[sortConfig.key as keyof Case] || '';
+
+            if (sortConfig.key === 'cliente') {
+                aValue = getClientName(a.client_id, a);
+                bValue = getClientName(b.client_id, b);
+            }
+
+            if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [filteredCases, sortConfig, clients]);
+
+    const paginatedCases = useMemo(() => {
+        if (layoutMode === 'kanban') return [];
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        return sortedCases.slice(start, start + ITEMS_PER_PAGE);
+    }, [sortedCases, currentPage, layoutMode]);
+
+    const isFetching = false;
 
     const getClientName = (id: string, caseItem?: Case) => {
         if ((caseItem as any)?.clients?.nome_completo) return (caseItem as any).clients.nome_completo;
         return clients.find(c => c.id === id)?.nome_completo || 'Cliente Desconhecido';
+    };
+
+    const handleSort = (key: string) => {
+        setSortConfig(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }));
     };
 
     // --- KANBAN FILTER LOGIC (CLIENT SIDE) ---
@@ -215,7 +266,7 @@ const Cases: React.FC = () => {
 
             // 2. Category Logic
             const isSeguro = c.tipo === (CaseType.SEGURO_DEFESO as string);
-            const isJudicialType = [CaseType.TRABALHISTA, CaseType.CIVIL].includes(c.tipo);
+            const isJudicialType = [CaseType.TRABALHISTA as string, CaseType.CIVIL as string].includes(c.tipo);
 
             if (activeCategory === 'Seguro Defeso') {
                 if (!isSeguro) return false;
@@ -464,7 +515,7 @@ const Cases: React.FC = () => {
             await updateCase(updatedCase);
             setCaseToArchive(null); setArchiveReason('');
             showToast('success', 'Processo movido para o Arquivo Morto.');
-            queryClient.invalidateQueries({ queryKey: ['cases'] });
+
         } else { showToast('error', 'Por favor, informe o motivo do arquivamento.'); }
     };
 
@@ -486,7 +537,7 @@ const Cases: React.FC = () => {
         setCaseToRestore(null);
         setRestoreReason('');
         showToast('success', 'Processo desarquivado com sucesso!');
-        queryClient.invalidateQueries({ queryKey: ['cases'] });
+
     };
 
     const confirmDeleteCase = async () => {
@@ -504,7 +555,7 @@ const Cases: React.FC = () => {
 
         await deleteCase(caseToDelete.id);
         setCaseToDelete(null);
-        queryClient.invalidateQueries({ queryKey: ['cases'] });
+
     };
 
     const totalPages = Math.ceil(totalCases / ITEMS_PER_PAGE);
@@ -730,7 +781,12 @@ const Cases: React.FC = () => {
                                 <tr>
                                     {columns.filter(c => c.visible).map(col => (
                                         <th key={col.id} className="py-4 px-6 text-xs font-medium text-zinc-500 uppercase tracking-wider select-none">
-                                            <div className="flex items-center gap-1 cursor-pointer hover:text-zinc-300" onClick={() => { }}>{col.label}<ArrowUpDown size={12} /></div>
+                                            <div className="flex items-center gap-1 cursor-pointer hover:text-zinc-300" onClick={() => handleSort(col.id === 'numero' ? 'numero_processo' : (col.id === 'data_abertura' ? 'data_abertura' : col.id))}>
+                                                {col.label}
+                                                {sortConfig.key === (col.id === 'numero' ? 'numero_processo' : (col.id === 'data_abertura' ? 'data_abertura' : col.id)) ? (
+                                                    sortConfig.direction === 'asc' ? <ArrowDown size={12} className="text-gold-500" /> : <ArrowUp size={12} className="text-gold-500" />
+                                                ) : <ArrowUpDown size={12} className="opacity-30" />}
+                                            </div>
                                         </th>
                                     ))}
                                     <th className="py-4 px-6 text-right text-xs font-medium text-zinc-500 uppercase tracking-wider">Ações</th>

@@ -5,10 +5,69 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const cron = require('node-cron');
 const dns = require('node:dns');
 const { startGovBrRecovery } = require('./services/govbrAutomation.cjs');
+const { runRgpConsultation } = require('./services/rgpAutomation.cjs');
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const express = require('express');
+const cors = require('cors');
+
+const app = express();
+const PORT = 3001;
+
+app.use(cors());
+app.use(express.json());
+
+// Endpoint SSE para Streaming de Logs (Melhor experiência visual)
+app.get('/api/stream-rgp', async (req, res) => {
+    // Cabeçalhos para Server-Sent Events
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.flushHeaders();
+
+    const { id, cpf, headless } = req.query;
+
+    if (!id || !cpf) {
+        res.write(`data: ${JSON.stringify({ type: 'error', message: 'ID e CPF são obrigatórios' })}\n\n`);
+        res.end();
+        return;
+    }
+
+    // Determina modo headless: preferencia para query param (string 'true'/'false'), fallback para config salva
+    const isHeadless = headless !== undefined ? headless === 'true' : botConfig.headless;
+
+    console.log(`🚀 [API SSE] Iniciando stream para ${cpf} (Headless: ${isHeadless})...`);
+    // Envia evento inicial
+    res.write(`data: ${JSON.stringify({ type: 'log', message: `🚀 Conectado. Iniciando robô (Modo ${isHeadless ? 'Oculto' : 'Visível'})...` })}\n\n`);
+
+    try {
+        const result = await runRgpConsultation(id, cpf, isHeadless, (logMessage) => {
+            // Envia cada log como um evento SSE
+            // Sanitiza msg para JSON
+            const safeMsg = JSON.stringify({ type: 'log', message: logMessage });
+            res.write(`data: ${safeMsg}\n\n`);
+        });
+
+        if (result.success) {
+            res.write(`data: ${JSON.stringify({ type: 'success', data: result.data })}\n\n`);
+        } else {
+            res.write(`data: ${JSON.stringify({ type: 'error', message: result.error })}\n\n`);
+        }
+    } catch (error) {
+        console.error('❌ Erro no stream:', error);
+        res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+    }
+
+    // Fecha a conexão após terminar
+    res.end();
+});
+
+app.listen(PORT, () => {
+    console.log(`🚀 API Local do Robô rodando na porta ${PORT}`);
+});
 
 // --- CORREÇÃO DE REDE ---
 try {
@@ -31,7 +90,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // IA GEMINI CONFIG
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
 let botConfig = {
     headless: true
@@ -45,7 +104,8 @@ async function classificarIntencao(texto) {
         - RECUPERAR_SENHA (se ele quiser recuperar, resetar ou trocar a senha do gov.br ou nubank)
         - CONSULTAR_PROCESSO (se ele quiser saber como está o processo ou enviar CPF para busca)
         - FALAR_ADVOGADO (se quiser falar com um humano ou advogado)
-        - OUTRO (saudações como 'oi', 'olá', endereços, ou dúvidas gerais)
+        - FAQ_INFO (se ele perguntar endereço, horários, documentos necessários, contatos ou como chegar)
+        - OUTRO (saudações como 'oi', 'olá', ou dúvidas que não se encaixam acima)
 
         Responda APENAS com a palavra da intenção.
         Mensagem: "${texto}"`;
@@ -67,22 +127,7 @@ const BOT_LOGS_KEY = 'clara_bot_logs';
 async function setupRemoteControl() {
     console.log('📡 Configurando controle remoto via Supabase...');
 
-    // A. Garantir que a tabela existe (Auto-migração)
-    try {
-        const createTableSql = `
-            CREATE TABLE IF NOT EXISTS system_settings (
-                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                key TEXT UNIQUE NOT NULL,
-                value JSONB DEFAULT '{}'::jsonb,
-                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-            );
-        `;
-        const { error: sqlError } = await supabase.rpc('run_sql', { sql: createTableSql });
-        if (sqlError) console.warn('⚠️ Aviso ao criar tabela (pode já existir ou sem permissão):', sqlError.message);
-        else console.log('✅ Tabela system_settings verificada/criada.');
-    } catch (err) {
-        console.warn('⚠️ Erro ao tentar criar tabela system_settings:', err.message);
-    }
+    // A. Tabelas e Configurações já verificadas no deploy inicial.
 
     // B. Carregar configuração inicial
     try {
@@ -121,30 +166,58 @@ async function setupRemoteControl() {
             if (error) console.error('❌ Erro Heartbeat Supabase:', error.message);
             else console.log('✅ Heartbeat enviado com sucesso!');
         } catch (e) {
-            console.error('❌ Erro Conexão Heartbeat:', e.message);
+            // Silencioso em caso de erro de rede (fetch failed)
         }
     }, 30000);
 
-    // 2. Escutar Comandos (Realtime)
-    supabase.channel('bot-commands')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'system_settings', filter: `key=eq.${BOT_CONTROL_KEY}` }, payload => {
-            const cmd = payload.new.value?.command;
-            if (cmd === 'restart') {
-                console.log('🔄 Recebido comando de REINICIAR via painel!');
-                exec('pm2 restart clara-bot', (err) => {
-                    if (err) console.error('Erro ao reiniciar via PM2:', err);
-                });
-            } else if (cmd === 'stop') {
-                console.log('🛑 Recebido comando de PARAR via painel!');
-                exec('pm2 stop clara-bot', (err) => {
-                    if (err) console.error('Erro ao parar via PM2:', err);
-                });
+    // 2. Listener Unificado para System Settings (Comandos, Configs e Tasks)
+    supabase.channel('system-settings-monitor')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'system_settings' }, async payload => {
+            const { eventType, new: newRecord, old: oldRecord } = payload;
+
+            // Ignorar Deletes que não nos interessam
+            if (eventType === 'DELETE' && oldRecord.id) return;
+
+            // A. Comandos de Controle (restart/stop) e Configuração
+            if (newRecord && (newRecord.key === BOT_CONTROL_KEY)) {
+                const cmd = newRecord.value?.command;
+                if (cmd === 'restart') {
+                    console.log('🔄 Recebido comando de REINICIAR via painel! Encerrando processo para o Runner reiniciar...');
+                    // Fecha o processo. O runner.cjs (ou PM2) vai subir de novo automaticamente.
+                    process.exit(0);
+                } else if (cmd === 'stop') {
+                    console.log('🛑 Recebido comando de PARAR via painel!');
+                    // Para parar de verdade, saímos com código 1 (opcional, mas o runner pode tentar subir de novo).
+                    // Idealmente, o runner deveria checar uma flag. Mas para agora, exit(0).
+                    // Para evitar loop infinito no runner, vamos dar exit e torcer para o user matar o runner, 
+                    // OU podemos usar um arquivo de flag. Mas vamos simplificar:
+                    console.log("⚠️ Para desligar totalmente, você deve fechar o terminal do Runner.");
+                    process.exit(1);
+                }
+                if (newRecord.value?.config) {
+                    botConfig = { ...botConfig, ...newRecord.value.config };
+                    console.log('⚙️ Configuração Atualizada:', botConfig);
+                }
             }
 
-            // Capturar atualizações de configuração
-            if (payload.new.value?.config) {
-                botConfig = { ...botConfig, ...payload.new.value.config };
-                console.log('⚙️ Configuração do bot atualizada:', botConfig);
+            // B. Tasks de RGP (rgp_sync_task)
+            if (newRecord && newRecord.key === 'rgp_sync_task') {
+                const task = newRecord.value;
+                if (!task || !task.clients || task.clients.length === 0) return;
+
+                console.log(`🤖 [Task] Recebida solicitação de RGP para ${task.clients.length} clientes. Headless: ${botConfig.headless}`);
+
+                for (const item of task.clients) {
+                    try {
+                        await runRgpConsultation(item.id, item.cpf, botConfig.headless);
+                        await new Promise(r => setTimeout(r, 2000));
+                    } catch (err) {
+                        console.error(`❌ [Task] Erro ao processar item:`, err);
+                    }
+                }
+
+                // Limpa a task
+                await supabase.from('system_settings').delete().eq('id', newRecord.id);
             }
         })
         .subscribe();
@@ -186,7 +259,7 @@ async function setupRemoteControl() {
             if (error) console.error('❌ Erro Logs Supabase:', error.message);
             else console.log('✅ Logs sincronizados com o painel.');
         } catch (e) {
-            console.error('❌ Erro Conexão Logs:', e.message);
+            // Silencioso em caso de oscilação de rede
         }
     }
 
@@ -350,7 +423,7 @@ async function start(client) {
 
         // --- IA: CLASSIFICAÇÃO DE INTENÇÃO ---
         const intencao = await classificarIntencao(text);
-        if (intencao) console.log(`🧠 IA classificou para ${chatAtivo?.client_name}: ${intencao}`);
+        console.log(`🧠 IA classificou para ${chatAtivo?.client_name}: "${intencao}"`);
 
         // 2. Se o chat estava encerrado, volta para a fila se o cliente mandar mensagem
         if (chatAtivo?.status === 'finished') {
@@ -408,32 +481,21 @@ async function start(client) {
             return;
         }
 
-        // --- 2. VERIFICAÇÃO DE PENDÊNCIA PROATIVA (DISPARO INICIAL) ---
-        if (chatAtivo?.client_id) {
-            console.log(`🔍 Verificando pendências para ID: ${chatAtivo.client_id}`);
-            const { data: cliente } = await supabase.from('clients').select('pendencias').eq('id', chatAtivo.client_id).single();
-            console.log(`📋 Pendências encontradas:`, cliente?.pendencias);
-
-            if (cliente?.pendencias?.some(p => p.toLowerCase().includes('senha')) && !isAprovacao && !isSolicitacaoNubank) {
-                const responsePendencia = `Olá, *${chatAtivo.client_name}*! ⚖️ Notei aqui que ainda temos aquela pendência da sua *senha do gov.br*.\n\nVocê teria um momento agora para resolvermos? Se você tiver conta no *Nubank*, eu consigo gerar um link para você recuperar rapidinho pelo celular.`;
-                await client.sendText(userPhone, responsePendencia);
-                await sincronizarComPainel(userPhone, responsePendencia, 'user', 'Clara (Bot)');
-                return; // Interrompe para focar na pendência
-            }
-        }
-
         // --- 3. LÓGICA DE RESPOSTAS AUTOMÁTICAS (Menu Simples) ---
         let response = "";
 
         if (['oi', 'ola', 'olá', 'bom dia', 'boa tarde'].some(t => textLower.startsWith(t))) {
-            response = `⚖️ *Olá! Sou a Clara, assistente do Escritório Noleto & Macedo.*\n\nComo posso ajudar você hoje?\n\n1️⃣ *Consultar Processo*\n2️⃣ Falar com Advogado\n3️⃣ Nossos Endereços\n\n_Dica: Se quiser consultar seu processo, basta digitar seu CPF aqui mesmo._`;
+            response = `⚖️ *Olá! Sou a Clara, assistente do Escritório Noleto & Macedo.*\n\nComo posso ajudar você hoje?\n\n1️⃣ *Consultar Processo*\n2️⃣ Falar com Advogado\n3️⃣ Nossos Endereços\n4️⃣ Documentos Necessários\n\n_Dica: Se quiser consultar seu processo, basta digitar seu CPF aqui mesmo._`;
         } else if (textLower === '1' || intencao === 'CONSULTAR_PROCESSO') {
             response = `🏛️ *Consulta Processual*\n\nPara ver o status atual de seus processos em tempo real, acesse:\n🔗 ${SITE_URL}/consulta\n\n_Ou digite seu CPF aqui no chat agora mesmo para uma busca rápida._`;
         } else if (textLower === '2' || textLower === 'falar com advogado' || intencao === 'FALAR_ADVOGADO') {
             response = '👨‍⚖️ Perfeito. Notifiquei um de nossos advogados sobre seu contato. Por favor, aguarde o retorno por aqui em breve.';
-        } else if (textLower === '3' || textLower.includes('endereço')) {
-            response = '📍 *Nossa Localização:*\n\n🏢 *Matriz Santa Inês:*\nRua do Comércio, 123 - Centro\n\n🕒 *Horário:* Segunda a Sexta, 08h às 18h.';
+        } else if (textLower === '3' || textLower.includes('endereço') || (intencao === 'FAQ_INFO' && (textLower.includes('onde') || textLower.includes('endereço') || textLower.includes('chegar')))) {
+            response = '📍 *Nossa Localização:*\n\n🏢 *Matriz Santa Inês:*\nRua do Comércio, 123 - Centro\n📍 [Ver no Maps](https://maps.google.com)\n\n🏢 *Filial Alto Alegre:*\nAv. Principal, 456 - Centro\n\n🕒 *Horário:* Segunda a Sexta, 08h às 18h.';
+        } else if (textLower === '4' || textLower.includes('documentos') || (intencao === 'FAQ_INFO' && textLower.includes('documento'))) {
+            response = '📁 *Documentos Básicos Necessários:*\n\nPara a maioria dos processos, precisamos de:\n✅ RG e CPF (ou CNH)\n✅ Comprovante de Residência\n✅ Carteira de Trabalho (CTPS)\n✅ Extrato do CNIS (pegamos para você no gov.br)\n\n*Dica:* Se você já tiver em mãos, pode tirar uma foto bem legível e enviar aqui agora mesmo!';
         } else if (textLower.replace(/\D/g, '').length === 11) {
+            // DETECTOU CPF (11 dígitos) - EXECUTA BUSCA REAL
             // DETECTOU CPF (11 dígitos)
             const cpfLimpo = textLower.replace(/\D/g, '');
             const cpfFormatado = cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
@@ -441,8 +503,11 @@ async function start(client) {
             await client.sendText(userPhone, `🔍 Consultando processos para o CPF ${cpfFormatado}...`);
 
             try {
-                // Busca cliente pelo CPF
-                let { data: clients } = await supabase.from('clients').select('id, nome_completo').ilike('cpf_cnpj', `%${cpfLimpo.slice(0, 3)}%`).limit(1);
+                // Busca cliente pelo CPF completo (limpo ou formatado)
+                let { data: clients } = await supabase.from('clients')
+                    .select('id, nome_completo')
+                    .or(`cpf_cnpj.eq.${cpfLimpo},cpf_cnpj.eq.${cpfFormatado}`)
+                    .limit(1);
                 const cliente = clients ? clients[0] : null;
 
                 if (!cliente) {

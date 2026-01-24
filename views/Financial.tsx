@@ -1,6 +1,4 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchFinancialData } from '../services/financialService';
 import { useApp } from '../context/AppContext';
 import { FinancialType, Case, FinancialRecord, CaseType, CommissionReceipt } from '../types';
 import {
@@ -23,9 +21,9 @@ type SubTabType = 'list' | 'receipts';
 type PeriodMode = 'month' | 'year' | 'all';
 
 const Financial: React.FC = () => {
-    const { cases, clients, showToast, officeExpenses, setCurrentView, currentView, setCaseToView, deleteFinancialRecord, commissionReceipts, confirmReceiptSignature, deleteCommissionReceipt, uploadReceiptFile, addFinancialRecord, setClientToView } = useApp();
+    const { cases, clients, financial, showToast, officeExpenses, setCurrentView, currentView, setCaseToView, deleteFinancialRecord, commissionReceipts, confirmReceiptSignature, deleteCommissionReceipt, uploadReceiptFile, addFinancialRecord, setClientToView } = useApp();
 
-    const queryClient = useQueryClient();
+
 
     const [activeTab, setActiveTab] = useState<TabType>('overview');
     const [subTab, setSubTab] = useState<SubTabType>('list');
@@ -46,14 +44,7 @@ const Financial: React.FC = () => {
 
     const [showFilters, setShowFilters] = useState(false);
 
-    // REACT QUERY
-    const { data: financial = [], isLoading } = useQuery({
-        queryKey: ['financial', filterType, filterStatus],
-        queryFn: () => fetchFinancialData({
-            type: filterType,
-            status: filterStatus as any
-        }),
-    });
+    const isLoading = false;
 
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'dataReferencia', direction: 'desc' });
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -309,7 +300,7 @@ const Financial: React.FC = () => {
         await addFinancialRecord({ id: crypto.randomUUID(), ...newRecord as FinancialRecord });
         setIsModalOpen(false); setNewRecord({ descricao: '', valor: 0, tipo: FinancialType.RECEITA, data_vencimento: new Date().toISOString().split('T')[0], status_pagamento: true }); setAmountStr('');
         showToast('success', 'Adicionado!');
-        queryClient.invalidateQueries({ queryKey: ['financial'] });
+
     };
 
     const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -45,6 +45,10 @@ export function Personal() {
     }
   }, [botLogs, activeTab]);
 
+  // --- NEW TERMINAL STATE ---
+  const [terminalLines, setTerminalLines] = useState<{ type: string, message: string, timestamp: string }[]>([]);
+  const [terminalInput, setTerminalInput] = useState('');
+
   useEffect(() => {
     // 1. Carregar Status Inicial
     const fetchStatus = async () => {
@@ -64,7 +68,11 @@ export function Personal() {
       }
     };
 
-    const checkOnline = (heartbeat: string) => {
+    const checkOnline = (heartbeat: string | undefined) => {
+      if (!heartbeat) {
+        setIsBotOnline(false);
+        return;
+      }
       const last = new Date(heartbeat).getTime();
       const now = new Date().getTime();
       setIsBotOnline(now - last < 65000); // 1 minuto de tolerância
@@ -72,8 +80,16 @@ export function Personal() {
 
     fetchStatus();
 
-    // 2. Escutar Mudanças em Tempo Real (Escuta TUDO: Insert, Update, Delete)
-    const channel = supabase.channel('bot-monitor')
+    // Intervalo para revalidar status offline (caso pare de chegar heartbeats)
+    const interval = setInterval(() => {
+      setBotStatus(prev => {
+        if (prev) checkOnline(prev.last_heartbeat);
+        return prev;
+      });
+    }, 5000);
+
+    // 2. Escutar Mudanças em Tempo Real (Status e Controle)
+    const channelSettings = supabase.channel('bot-monitor')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'system_settings' }, payload => {
         setIsSyncing(true);
         setTimeout(() => setIsSyncing(false), 2000);
@@ -91,7 +107,19 @@ export function Personal() {
       })
       .subscribe();
 
-    return () => { channel.unsubscribe(); };
+    // 3. NOVO: Canal de Terminal Real-Time (Logs e Comandos)
+    const channelTerminal = supabase.channel('bot_terminal')
+      .on('broadcast', { event: 'log' }, (payload) => {
+        const log = payload.payload;
+        setTerminalLines(prev => [...prev, log]);
+      })
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      channelSettings.unsubscribe();
+      channelTerminal.unsubscribe();
+    };
   }, []);
 
   const sendBotCommand = async (command: 'restart' | 'stop') => {
@@ -321,7 +349,7 @@ export function Personal() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             {/* Status Card */}
             <div className="md:col-span-4 space-y-4">
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-lg">
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-lg group relative transition-all duration-300 hover:border-purple-500/30">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="font-bold text-white flex items-center gap-2">
                     <Activity size={18} className="text-purple-500" /> Status do Robô
@@ -341,6 +369,8 @@ export function Personal() {
                     <span className="text-gray-500">Último Sinal</span>
                     <span className="text-white">{botStatus?.last_heartbeat ? new Date(botStatus.last_heartbeat).toLocaleTimeString() : '-'}</span>
                   </div>
+
+                  {/* BOTOES DE ACAO */}
                   <div className="pt-4 border-t border-gray-800 flex gap-2">
                     <button
                       onClick={() => sendBotCommand('restart')}
@@ -358,55 +388,84 @@ export function Personal() {
                       <Square size={16} />
                     </button>
                   </div>
-                </div>
-              </div>
 
-              <div className="bg-purple-900/10 border border-purple-500/20 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <EyeOff size={14} className="text-purple-400" />
-                    <span className="text-xs text-purple-200">Automação em Segundo Plano (Oculto)</span>
+                  {/* HOVER CONFIG: HEADLESS TOGGLE */}
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 pt-2 flex items-center justify-between text-xs text-gray-500 border-t border-gray-800/50 mt-2">
+                    <span className="flex items-center gap-1.5">
+                      <Eye size={12} /> Ver navegador?
+                    </span>
+                    <button
+                      onClick={toggleHeadless}
+                      className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${!isHeadless ? 'bg-purple-500' : 'bg-gray-700'}`}
+                      title={isHeadless ? "Modo Oculto (Ativo)" : "Modo Visível (Ativo)"}
+                    >
+                      <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${!isHeadless ? 'translate-x-3' : 'translate-x-0'}`} />
+                    </button>
                   </div>
-                  <button
-                    onClick={toggleHeadless}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isHeadless ? 'bg-purple-600' : 'bg-gray-700'}`}
-                  >
-                    <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isHeadless ? 'translate-x-4' : 'translate-x-0'}`} />
-                  </button>
-                </div>
-                <p className="text-[10px] text-purple-400/80 leading-relaxed italic">
-                  Dica: Ative para evitar janelas piscando na tela e poder usar o PC normalmente. Se desativado, o robô abre o navegador de forma visível.
-                </p>
-                <div className="pt-2 border-t border-purple-500/10 flex items-start gap-2 text-[10px] text-purple-400/60">
-                  <Shield size={12} className="shrink-0 mt-0.5" />
-                  <span>Se o robô travar em um Captcha difícil, desative esta opção para ajudar manualmente.</span>
                 </div>
               </div>
             </div>
 
-            {/* Logs Window */}
+            {/* Logs Window (Real-time Interactive) */}
             <div className="md:col-span-8">
               <div className="bg-[#0c0d10] border border-gray-800 rounded-xl overflow-hidden shadow-2xl flex flex-col h-[500px]">
                 <div className="bg-gray-900 px-4 py-2 border-b border-gray-800 flex justify-between items-center">
                   <span className="text-xs font-bold text-gray-500 flex items-center gap-2">
-                    <Terminal size={14} /> CLARA-BOT@TERMINAL
-                    {isSyncing && (
+                    <Terminal size={14} /> CLARA-BOT@TERMINAL (v2.0)
+                    {isBotOnline && (
                       <span className="flex items-center gap-1.5 ml-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                        <span className="text-[10px] text-emerald-500/50 font-normal">Sincronizando...</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[10px] text-emerald-500/50 font-normal">Real-Time</span>
                       </span>
                     )}
                   </span>
                   <div className="flex gap-1.5">
-                    {!isSyncing && <div className="text-[10px] text-gray-700 font-mono mr-2">LIVE</div>}
                     <div className="w-2.5 h-2.5 rounded-full bg-red-500/20" />
                     <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/20" />
                     <div className="w-2.5 h-2.5 rounded-full bg-green-500/20" />
                   </div>
                 </div>
-                <div className="flex-1 p-4 font-mono text-[11px] text-emerald-500/90 overflow-y-auto whitespace-pre-wrap selection:bg-emerald-500/20 custom-scrollbar">
-                  {botLogs || '> Aguardando logs do robô...'}
+
+                {/* Scrollable Logs Area */}
+                <div className="flex-1 p-4 font-mono text-[11px] overflow-y-auto whitespace-pre-wrap selection:bg-emerald-500/20 custom-scrollbar flex flex-col gap-1">
+                  {/* Histórico antigo (se houver) */}
+                  {botLogs && <div className="text-gray-600 border-b border-gray-800 pb-2 mb-2">{botLogs.slice(-1000)}... [Histórico Carregado]</div>}
+
+                  {/* Logs em Tempo Real */}
+                  {terminalLines.map((line, i) => (
+                    <div key={i} className={`${line.type === 'error' ? 'text-red-400' : line.type === 'warn' ? 'text-yellow-400' : 'text-emerald-500/90'} break-all`}>
+                      <span className="opacity-30 mr-2">[{new Date(line.timestamp).toLocaleTimeString()}]</span>
+                      {line.message}
+                    </div>
+                  ))}
                   <div ref={logsEndRef} />
+                </div>
+
+                {/* Command Input Area */}
+                <div className="bg-gray-900/50 p-2 border-t border-gray-800 flex items-center gap-2">
+                  <span className="text-emerald-500 font-bold ml-2">❯</span>
+                  <input
+                    type="text"
+                    className="flex-1 bg-transparent border-none outline-none text-white font-mono text-sm placeholder-gray-700"
+                    placeholder="Digite um comando (ex: status, help)..."
+                    value={terminalInput}
+                    onChange={(e) => setTerminalInput(e.target.value)}
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter' && terminalInput.trim()) {
+                        const cmd = terminalInput.trim();
+                        // Adiciona log local
+                        setTerminalLines(prev => [...prev, { type: 'info', message: `❯ ${cmd}`, timestamp: new Date().toISOString() }]);
+                        setTerminalInput('');
+
+                        // Envia Broadcast
+                        await supabase.channel('bot_terminal').send({
+                          type: 'broadcast',
+                          event: 'command',
+                          payload: { cmd }
+                        });
+                      }
+                    }}
+                  />
                 </div>
               </div>
             </div>

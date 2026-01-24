@@ -1,5 +1,4 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { AppProvider, useApp } from './context/AppContext';
 import Layout from './components/Layout/Layout';
 import Login from './views/Login';
@@ -23,6 +22,7 @@ const Retirements = React.lazy(() => import('./views/Retirements'));
 const CnisReader = React.lazy(() => import('./views/Tools/CnisReader'));
 const GpsCalculator = React.lazy(() => import('./views/Tools/GpsCalculator'));
 const DocumentBuilder = React.lazy(() => import('./views/Tools/DocumentBuilder'));
+const Robots = React.lazy(() => import('./views/Tools/Robots'));
 const Permissions = React.lazy(() => import('./views/Permissions'));
 
 // Importação adaptada para Named Export (pois criamos export function Personal)
@@ -47,24 +47,14 @@ const View = React.memo<{
   const ids = Array.isArray(id) ? id : [id];
   const isActive = ids.includes(activeView);
 
+  if (!isActive) return null;
+
   return (
-    <AnimatePresence mode="wait">
-      {isActive && (
-        <motion.div
-          key={Array.isArray(id) ? id[0] : id}
-          initial={{ opacity: 0, y: 5 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -5 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-          className="h-full flex flex-col"
-          style={{ height: '100%', width: '100%' }}
-        >
-          <Suspense fallback={<PageLoader />}>
-            {children}
-          </Suspense>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <div className="h-full flex flex-col" style={{ height: '100%', width: '100%' }}>
+      <Suspense fallback={<PageLoader />}>
+        {children}
+      </Suspense>
+    </div>
   );
 });
 
@@ -180,6 +170,10 @@ const AppContent: React.FC = () => {
 
       <View id="document-builder" activeView={currentView}>
         <DocumentBuilder />
+      </View>
+
+      <View id="robots" activeView={currentView}>
+        <Robots />
       </View>
 
       {/* --- NOVA TELA PESSOAL --- */}

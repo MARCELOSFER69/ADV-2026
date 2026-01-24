@@ -7,7 +7,7 @@ import {
     MessageCircle, FileText, ChevronRight, AlertTriangle,
     CheckCircle2, Printer, ChevronDown, Check, Clock, Plus, Trash2, Share2, FileSpreadsheet,
     UploadCloud, Loader2, Eye, Download, Users, Lock, EyeOff, Square, CheckSquare, Shield, Gavel, Copy,
-    LayoutDashboard, ChevronLeft
+    LayoutDashboard, ChevronLeft, Fish
 } from 'lucide-react';
 import WhatsAppModal from './WhatsAppModal';
 import { formatCPFOrCNPJ, formatPhone, formatCurrencyInput, parseCurrencyToNumber } from '../../services/formatters';
@@ -23,6 +23,7 @@ import ClientDocsTab from '../tabs/ClientDocsTab';
 import ClientCredentialsTab from '../tabs/ClientCredentialsTab';
 import ClientHistoryTab from '../tabs/ClientHistoryTab';
 import ClientCnisTab from '../tabs/ClientCnisTab';
+import ClientRgpTab from '../tabs/ClientRgpTab';
 import { History as HistoryIcon, Calculator } from 'lucide-react';
 
 // PENDING OPTIONS Constant
@@ -42,7 +43,7 @@ interface ClientDetailsModalProps {
     onClose: () => void;
     onSelectCase?: (caseItem: Case) => void;
     initialEditMode?: boolean;
-    initialTab?: 'info' | 'docs' | 'credentials' | 'history' | 'cnis';
+    initialTab?: 'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp';
 }
 
 const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose, onSelectCase, initialEditMode = false, initialTab = 'info' }) => {
@@ -60,7 +61,8 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
         { id: 'docs', label: 'Documentos', visible: true, order: 1 },
         { id: 'credentials', label: 'Credenciais', visible: true, order: 2 },
         { id: 'history', label: 'Histórico', visible: true, order: 3 },
-        { id: 'cnis', label: 'Dados CNIS', visible: true, order: 4 }
+        { id: 'cnis', label: 'Dados CNIS', visible: true, order: 4 },
+        { id: 'rgp', label: 'RGP', visible: true, order: 5 }
     ], []);
 
     const tabsConfig = useMemo(() => {
@@ -75,7 +77,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
         return merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     }, [mergedPreferences.clientDetailsLayout, defaultTabs]);
 
-    const [activeTab, setActiveTab] = useState<'info' | 'docs' | 'credentials' | 'history' | 'cnis'>(initialTab);
+    const [activeTab, setActiveTab] = useState<'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp'>(initialTab);
     const [isEditMode, setIsEditMode] = useState(initialEditMode);
     const [editedClient, setEditedClient] = useState<Client>(client);
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
@@ -111,7 +113,24 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
         if (client.documentos !== editedClient.documentos) {
             setEditedClient(prev => ({ ...prev, documentos: client.documentos }));
         }
-    }, [client.documentos]);
+        // Sync RGP fields if they update externally (e.g. via robot)
+        if (
+            client.rgp_status !== editedClient.rgp_status ||
+            client.rgp_localidade !== editedClient.rgp_localidade ||
+            client.rgp_numero !== editedClient.rgp_numero ||
+            client.rgp_data_primeiro !== editedClient.rgp_data_primeiro ||
+            client.rgp_local_exercicio !== editedClient.rgp_local_exercicio
+        ) {
+            setEditedClient(prev => ({
+                ...prev,
+                rgp_status: client.rgp_status,
+                rgp_localidade: client.rgp_localidade,
+                rgp_numero: client.rgp_numero,
+                rgp_data_primeiro: client.rgp_data_primeiro,
+                rgp_local_exercicio: client.rgp_local_exercicio
+            }));
+        }
+    }, [client.documentos, client.rgp_status, client.rgp_localidade, client.rgp_numero, client.rgp_data_primeiro, client.rgp_local_exercicio]);
 
     // Sincroniza aba inicial se mudar
     useEffect(() => {
@@ -123,13 +142,13 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
 
     // --- LISTA UNIFICADA DE DOCUMENTOS ---
     const allAvailableDocs = useMemo(() => {
-        const standard = [
+        const standard: { id: string; type: 'standard' | 'custom'; title: string; templateData?: any }[] = [
             { id: 'std_declaracao', type: 'standard', title: 'Declaração de Residência' }
         ];
 
         const custom = customTemplates.map(t => ({
             id: t.id,
-            type: 'custom',
+            type: 'custom' as const,
             title: t.titulo,
             templateData: t
         }));
@@ -388,7 +407,8 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                                 tab.id === 'docs' ? UploadCloud :
                                     tab.id === 'credentials' ? Lock :
                                         tab.id === 'history' ? HistoryIcon :
-                                            tab.id === 'cnis' ? Calculator : FileText;
+                                            tab.id === 'cnis' ? Calculator :
+                                                tab.id === 'rgp' ? Fish : FileText;
 
                             if (!tab.visible) return null;
 
@@ -453,6 +473,14 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
 
                         {activeTab === 'cnis' && (
                             <ClientCnisTab client={client} onUpdate={updateClient} />
+                        )}
+
+                        {activeTab === 'rgp' && (
+                            <ClientRgpTab
+                                client={editedClient}
+                                onUpdate={updateClient}
+                                setEditedClient={setEditedClient}
+                            />
                         )}
                     </div>
 

@@ -1,0 +1,553 @@
+<html lang="pt-BR" class="js-focus-visible" data-js-focus-visible=""><head><meta http-equiv="origin-trial" content="A7vZI3v+Gz7JfuRolKNM4Aff6zaGuT7X0mf3wtoZTnKv6497cVMnhy03KDqX7kBz/q/iidW7srW31oQbBt4VhgoAAACUeyJvcmlnaW4iOiJodHRwczovL3d3dy5nb29nbGUuY29tOjQ0MyIsImZlYXR1cmUiOiJEaXNhYmxlVGhpcmRQYXJ0eVN0b3JhZ2VQYXJ0aXRpb25pbmczIiwiZXhwaXJ5IjoxNzU3OTgwODAwLCJpc1N1YmRvbWFpbiI6dHJ1ZSwiaXNUaGlyZFBhcnR5Ijp0cnVlfQ=="><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style type="text/css">:root, :host {
+  --fa-font-solid: normal 900 1em/1 "Font Awesome 6 Free";
+  --fa-font-regular: normal 400 1em/1 "Font Awesome 6 Free";
+  --fa-font-light: normal 300 1em/1 "Font Awesome 6 Pro";
+  --fa-font-thin: normal 100 1em/1 "Font Awesome 6 Pro";
+  --fa-font-duotone: normal 900 1em/1 "Font Awesome 6 Duotone";
+  --fa-font-brands: normal 400 1em/1 "Font Awesome 6 Brands";
+  --fa-font-sharp-solid: normal 900 1em/1 "Font Awesome 6 Sharp";
+  --fa-font-sharp-regular: normal 400 1em/1 "Font Awesome 6 Sharp";
+  --fa-font-sharp-light: normal 300 1em/1 "Font Awesome 6 Sharp";
+  --fa-font-sharp-thin: normal 100 1em/1 "Font Awesome 6 Sharp";
+  --fa-font-sharp-duotone-solid: normal 900 1em/1 "Font Awesome 6 Sharp Duotone";
+}
+
+svg:not(:root).svg-inline--fa, svg:not(:host).svg-inline--fa {
+  overflow: visible;
+  box-sizing: content-box;
+}
+
+.svg-inline--fa {
+  display: var(--fa-display, inline-block);
+  height: 1em;
+  overflow: visible;
+  vertical-align: -0.125em;
+}
+.svg-inline--fa.fa-2xs {
+  vertical-align: 0.1em;
+}
+.svg-inline--fa.fa-xs {
+  vertical-align: 0em;
+}
+.svg-inline--fa.fa-sm {
+  vertical-align: -0.0714285705em;
+}
+.svg-inline--fa.fa-lg {
+  vertical-align: -0.2em;
+}
+.svg-inline--fa.fa-xl {
+  vertical-align: -0.25em;
+}
+.svg-inline--fa.fa-2xl {
+  vertical-align: -0.3125em;
+}
+.svg-inline--fa.fa-pull-left {
+  margin-right: var(--fa-pull-margin, 0.3em);
+  width: auto;
+}
+.svg-inline--fa.fa-pull-right {
+  margin-left: var(--fa-pull-margin, 0.3em);
+  width: auto;
+}
+.svg-inline--fa.fa-li {
+  width: var(--fa-li-width, 2em);
+  top: 0.25em;
+}
+.svg-inline--fa.fa-fw {
+  width: var(--fa-fw-width, 1.25em);
+}
+
+.fa-layers svg.svg-inline--fa {
+  bottom: 0;
+  left: 0;
+  margin: auto;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.fa-layers-counter, .fa-layers-text {
+  display: inline-block;
+  position: absolute;
+  text-align: center;
+}
+
+.fa-layers {
+  display: inline-block;
+  height: 1em;
+  position: relative;
+  text-align: center;
+  vertical-align: -0.125em;
+  width: 1em;
+}
+.fa-layers svg.svg-inline--fa {
+  transform-origin: center center;
+}
+
+.fa-layers-text {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transform-origin: center center;
+}
+
+.fa-layers-counter {
+  background-color: var(--fa-counter-background-color, #ff253a);
+  border-radius: var(--fa-counter-border-radius, 1em);
+  box-sizing: border-box;
+  color: var(--fa-inverse, #fff);
+  line-height: var(--fa-counter-line-height, 1);
+  max-width: var(--fa-counter-max-width, 5em);
+  min-width: var(--fa-counter-min-width, 1.5em);
+  overflow: hidden;
+  padding: var(--fa-counter-padding, 0.25em 0.5em);
+  right: var(--fa-right, 0);
+  text-overflow: ellipsis;
+  top: var(--fa-top, 0);
+  transform: scale(var(--fa-counter-scale, 0.25));
+  transform-origin: top right;
+}
+
+.fa-layers-bottom-right {
+  bottom: var(--fa-bottom, 0);
+  right: var(--fa-right, 0);
+  top: auto;
+  transform: scale(var(--fa-layers-scale, 0.25));
+  transform-origin: bottom right;
+}
+
+.fa-layers-bottom-left {
+  bottom: var(--fa-bottom, 0);
+  left: var(--fa-left, 0);
+  right: auto;
+  top: auto;
+  transform: scale(var(--fa-layers-scale, 0.25));
+  transform-origin: bottom left;
+}
+
+.fa-layers-top-right {
+  top: var(--fa-top, 0);
+  right: var(--fa-right, 0);
+  transform: scale(var(--fa-layers-scale, 0.25));
+  transform-origin: top right;
+}
+
+.fa-layers-top-left {
+  left: var(--fa-left, 0);
+  right: auto;
+  top: var(--fa-top, 0);
+  transform: scale(var(--fa-layers-scale, 0.25));
+  transform-origin: top left;
+}
+
+.fa-1x {
+  font-size: 1em;
+}
+
+.fa-2x {
+  font-size: 2em;
+}
+
+.fa-3x {
+  font-size: 3em;
+}
+
+.fa-4x {
+  font-size: 4em;
+}
+
+.fa-5x {
+  font-size: 5em;
+}
+
+.fa-6x {
+  font-size: 6em;
+}
+
+.fa-7x {
+  font-size: 7em;
+}
+
+.fa-8x {
+  font-size: 8em;
+}
+
+.fa-9x {
+  font-size: 9em;
+}
+
+.fa-10x {
+  font-size: 10em;
+}
+
+.fa-2xs {
+  font-size: 0.625em;
+  line-height: 0.1em;
+  vertical-align: 0.225em;
+}
+
+.fa-xs {
+  font-size: 0.75em;
+  line-height: 0.0833333337em;
+  vertical-align: 0.125em;
+}
+
+.fa-sm {
+  font-size: 0.875em;
+  line-height: 0.0714285718em;
+  vertical-align: 0.0535714295em;
+}
+
+.fa-lg {
+  font-size: 1.25em;
+  line-height: 0.05em;
+  vertical-align: -0.075em;
+}
+
+.fa-xl {
+  font-size: 1.5em;
+  line-height: 0.0416666682em;
+  vertical-align: -0.125em;
+}
+
+.fa-2xl {
+  font-size: 2em;
+  line-height: 0.03125em;
+  vertical-align: -0.1875em;
+}
+
+.fa-fw {
+  text-align: center;
+  width: 1.25em;
+}
+
+.fa-ul {
+  list-style-type: none;
+  margin-left: var(--fa-li-margin, 2.5em);
+  padding-left: 0;
+}
+.fa-ul > li {
+  position: relative;
+}
+
+.fa-li {
+  left: calc(-1 * var(--fa-li-width, 2em));
+  position: absolute;
+  text-align: center;
+  width: var(--fa-li-width, 2em);
+  line-height: inherit;
+}
+
+.fa-border {
+  border-color: var(--fa-border-color, #eee);
+  border-radius: var(--fa-border-radius, 0.1em);
+  border-style: var(--fa-border-style, solid);
+  border-width: var(--fa-border-width, 0.08em);
+  padding: var(--fa-border-padding, 0.2em 0.25em 0.15em);
+}
+
+.fa-pull-left {
+  float: left;
+  margin-right: var(--fa-pull-margin, 0.3em);
+}
+
+.fa-pull-right {
+  float: right;
+  margin-left: var(--fa-pull-margin, 0.3em);
+}
+
+.fa-beat {
+  animation-name: fa-beat;
+  animation-delay: var(--fa-animation-delay, 0s);
+  animation-direction: var(--fa-animation-direction, normal);
+  animation-duration: var(--fa-animation-duration, 1s);
+  animation-iteration-count: var(--fa-animation-iteration-count, infinite);
+  animation-timing-function: var(--fa-animation-timing, ease-in-out);
+}
+
+.fa-bounce {
+  animation-name: fa-bounce;
+  animation-delay: var(--fa-animation-delay, 0s);
+  animation-direction: var(--fa-animation-direction, normal);
+  animation-duration: var(--fa-animation-duration, 1s);
+  animation-iteration-count: var(--fa-animation-iteration-count, infinite);
+  animation-timing-function: var(--fa-animation-timing, cubic-bezier(0.28, 0.84, 0.42, 1));
+}
+
+.fa-fade {
+  animation-name: fa-fade;
+  animation-delay: var(--fa-animation-delay, 0s);
+  animation-direction: var(--fa-animation-direction, normal);
+  animation-duration: var(--fa-animation-duration, 1s);
+  animation-iteration-count: var(--fa-animation-iteration-count, infinite);
+  animation-timing-function: var(--fa-animation-timing, cubic-bezier(0.4, 0, 0.6, 1));
+}
+
+.fa-beat-fade {
+  animation-name: fa-beat-fade;
+  animation-delay: var(--fa-animation-delay, 0s);
+  animation-direction: var(--fa-animation-direction, normal);
+  animation-duration: var(--fa-animation-duration, 1s);
+  animation-iteration-count: var(--fa-animation-iteration-count, infinite);
+  animation-timing-function: var(--fa-animation-timing, cubic-bezier(0.4, 0, 0.6, 1));
+}
+
+.fa-flip {
+  animation-name: fa-flip;
+  animation-delay: var(--fa-animation-delay, 0s);
+  animation-direction: var(--fa-animation-direction, normal);
+  animation-duration: var(--fa-animation-duration, 1s);
+  animation-iteration-count: var(--fa-animation-iteration-count, infinite);
+  animation-timing-function: var(--fa-animation-timing, ease-in-out);
+}
+
+.fa-shake {
+  animation-name: fa-shake;
+  animation-delay: var(--fa-animation-delay, 0s);
+  animation-direction: var(--fa-animation-direction, normal);
+  animation-duration: var(--fa-animation-duration, 1s);
+  animation-iteration-count: var(--fa-animation-iteration-count, infinite);
+  animation-timing-function: var(--fa-animation-timing, linear);
+}
+
+.fa-spin {
+  animation-name: fa-spin;
+  animation-delay: var(--fa-animation-delay, 0s);
+  animation-direction: var(--fa-animation-direction, normal);
+  animation-duration: var(--fa-animation-duration, 2s);
+  animation-iteration-count: var(--fa-animation-iteration-count, infinite);
+  animation-timing-function: var(--fa-animation-timing, linear);
+}
+
+.fa-spin-reverse {
+  --fa-animation-direction: reverse;
+}
+
+.fa-pulse,
+.fa-spin-pulse {
+  animation-name: fa-spin;
+  animation-direction: var(--fa-animation-direction, normal);
+  animation-duration: var(--fa-animation-duration, 1s);
+  animation-iteration-count: var(--fa-animation-iteration-count, infinite);
+  animation-timing-function: var(--fa-animation-timing, steps(8));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fa-beat,
+.fa-bounce,
+.fa-fade,
+.fa-beat-fade,
+.fa-flip,
+.fa-pulse,
+.fa-shake,
+.fa-spin,
+.fa-spin-pulse {
+    animation-delay: -1ms;
+    animation-duration: 1ms;
+    animation-iteration-count: 1;
+    transition-delay: 0s;
+    transition-duration: 0s;
+  }
+}
+@keyframes fa-beat {
+  0%, 90% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(var(--fa-beat-scale, 1.25));
+  }
+}
+@keyframes fa-bounce {
+  0% {
+    transform: scale(1, 1) translateY(0);
+  }
+  10% {
+    transform: scale(var(--fa-bounce-start-scale-x, 1.1), var(--fa-bounce-start-scale-y, 0.9)) translateY(0);
+  }
+  30% {
+    transform: scale(var(--fa-bounce-jump-scale-x, 0.9), var(--fa-bounce-jump-scale-y, 1.1)) translateY(var(--fa-bounce-height, -0.5em));
+  }
+  50% {
+    transform: scale(var(--fa-bounce-land-scale-x, 1.05), var(--fa-bounce-land-scale-y, 0.95)) translateY(0);
+  }
+  57% {
+    transform: scale(1, 1) translateY(var(--fa-bounce-rebound, -0.125em));
+  }
+  64% {
+    transform: scale(1, 1) translateY(0);
+  }
+  100% {
+    transform: scale(1, 1) translateY(0);
+  }
+}
+@keyframes fa-fade {
+  50% {
+    opacity: var(--fa-fade-opacity, 0.4);
+  }
+}
+@keyframes fa-beat-fade {
+  0%, 100% {
+    opacity: var(--fa-beat-fade-opacity, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(var(--fa-beat-fade-scale, 1.125));
+  }
+}
+@keyframes fa-flip {
+  50% {
+    transform: rotate3d(var(--fa-flip-x, 0), var(--fa-flip-y, 1), var(--fa-flip-z, 0), var(--fa-flip-angle, -180deg));
+  }
+}
+@keyframes fa-shake {
+  0% {
+    transform: rotate(-15deg);
+  }
+  4% {
+    transform: rotate(15deg);
+  }
+  8%, 24% {
+    transform: rotate(-18deg);
+  }
+  12%, 28% {
+    transform: rotate(18deg);
+  }
+  16% {
+    transform: rotate(-22deg);
+  }
+  20% {
+    transform: rotate(22deg);
+  }
+  32% {
+    transform: rotate(-12deg);
+  }
+  36% {
+    transform: rotate(12deg);
+  }
+  40%, 100% {
+    transform: rotate(0deg);
+  }
+}
+@keyframes fa-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.fa-rotate-90 {
+  transform: rotate(90deg);
+}
+
+.fa-rotate-180 {
+  transform: rotate(180deg);
+}
+
+.fa-rotate-270 {
+  transform: rotate(270deg);
+}
+
+.fa-flip-horizontal {
+  transform: scale(-1, 1);
+}
+
+.fa-flip-vertical {
+  transform: scale(1, -1);
+}
+
+.fa-flip-both,
+.fa-flip-horizontal.fa-flip-vertical {
+  transform: scale(-1, -1);
+}
+
+.fa-rotate-by {
+  transform: rotate(var(--fa-rotate-angle, 0));
+}
+
+.fa-stack {
+  display: inline-block;
+  vertical-align: middle;
+  height: 2em;
+  position: relative;
+  width: 2.5em;
+}
+
+.fa-stack-1x,
+.fa-stack-2x {
+  bottom: 0;
+  left: 0;
+  margin: auto;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: var(--fa-stack-z-index, auto);
+}
+
+.svg-inline--fa.fa-stack-1x {
+  height: 1em;
+  width: 1.25em;
+}
+.svg-inline--fa.fa-stack-2x {
+  height: 2em;
+  width: 2.5em;
+}
+
+.fa-inverse {
+  color: var(--fa-inverse, #fff);
+}
+
+.sr-only,
+.fa-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.sr-only-focusable:not(:focus),
+.fa-sr-only-focusable:not(:focus) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.svg-inline--fa .fa-primary {
+  fill: var(--fa-primary-color, currentColor);
+  opacity: var(--fa-primary-opacity, 1);
+}
+
+.svg-inline--fa .fa-secondary {
+  fill: var(--fa-secondary-color, currentColor);
+  opacity: var(--fa-secondary-opacity, 0.4);
+}
+
+.svg-inline--fa.fa-swap-opacity .fa-primary {
+  opacity: var(--fa-secondary-opacity, 0.4);
+}
+
+.svg-inline--fa.fa-swap-opacity .fa-secondary {
+  opacity: var(--fa-primary-opacity, 1);
+}
+
+.svg-inline--fa mask .fa-primary,
+.svg-inline--fa mask .fa-secondary {
+  fill: black;
+}
+
+.fad.fa-inverse,
+.fa-duotone.fa-inverse {
+  color: var(--fa-inverse, #fff);
+}</style><link rel="preload" href="/_next/static/media/0c0348938576d0f4-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/18511ba8e35e3dd2-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/2b78f974e1d17ca7-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/3576583bfcda09c9-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/3de9e264bf413ed6-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/43075eb672642685-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/50e9152f0b26c205-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/6e19b098b407b430-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/74a974df84d40aa7-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/764ac9a979eb4336-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/b1de0937699003b0-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/b6c38c468a92e619-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/bb9fef963e044fe3-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/bdfcbdcca3e38e52-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/ca4a055c767b2bc1-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/ccea938f23e8278b-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/ddf095b646d81bed-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="preload" href="/_next/static/media/f5af568b2b01b679-s.p.ttf" as="font" crossorigin="" type="font/ttf"><link rel="stylesheet" href="/_next/static/css/689222d1d3cf552e.css" data-precedence="next"><link rel="stylesheet" href="/_next/static/css/9ad843b5f646e29b.css" data-precedence="next"><link rel="stylesheet" href="/_next/static/css/23e6f980bfe2e30b.css" data-precedence="next"><link rel="stylesheet" href="/_next/static/css/ef46db3751d8e999.css" data-precedence="next"><link rel="stylesheet" href="/_next/static/css/50b87c2c909cab82.css" data-precedence="next"><link rel="stylesheet" href="/_next/static/css/0454ecf16b7daeb6.css" data-precedence="next"><link rel="stylesheet" href="/_next/static/css/fc957392a2ae22e1.css" data-precedence="next"><link rel="preload" as="script" fetchpriority="low" href="/_next/static/chunks/webpack-212d764468a8f6b1.js"><script type="text/javascript" async="" charset="utf-8" src="https://www.gstatic.com/recaptcha/releases/PoyoqOPhxBO7pBk68S4YbpHZ/recaptcha__pt_br.js" crossorigin="anonymous" integrity="sha384-TmAJBm+/+DEhxctaf4ar60dba/HD/C+SbhmW7ZBYBgi8UrjhZv7WDpzmLuoOZAK0"></script><script src="/_next/static/chunks/ca91c6c0-c7cce7592a77a731.js" async=""></script><script src="/_next/static/chunks/1645-0366e78485eb430e.js" async=""></script><script src="/_next/static/chunks/main-app-4a624467af1f7ac9.js" async=""></script><script src="https://docs-ds.estaleiro.serpro.gov.br/govbr-ds-core/dist/core-init.js" async=""></script><script src="https://docs-ds.estaleiro.serpro.gov.br/govbr-ds-core/dist/core.min.js" async=""></script><title>PesqBrasil</title><meta name="description" content="RGP Pescador e Pescadora Profissional"><link rel="icon" href="/icon.png?b408b39d2e3d80a7" type="image/png" sizes="500x500"><meta name="next-size-adjust"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.min.css"><script src="/_next/static/chunks/polyfills-42372ed130431b0a.js" nomodule=""></script><link rel="preload" href="https://www.google.com/recaptcha/api.js?render=6LeJP-srAAAAAFdZMYINP6CJ4COI_MAzFvk_0gs1" as="script"></head><body class="__className_d80ea8"><header id="header" class="d-print-none"><div class="container"><div class="logo mb-1"><a href="/"><img alt="alt" loading="lazy" width="48" height="24" decoding="async" data-nimg="1" style="color:transparent" src="/images/logo.svg"></a></div><div class="d-flex justify-content-between align-items-center "><div class="site-title"><div class="d-flex align-items-center"><div class="d-flex flex-column"><span class="title">Consulta Pública</span><span class="subtitle subtitle-header-responsive d-inline-block">Consulta de situação de pescadores profissionais ativos e solicitações realizadas no PesqBrasil</span></div></div><div tagname="div" class="notification br-message-custom warning d-none"><div class="icon message-icon"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></div><div class="content"><span class="message-title">Atenção!&nbsp;</span><span class="message-body"></span></div><div class="close"><button class="br-button circle small" type="button" aria-label="Fechar"><i class="fas fa-times" aria-hidden="true"></i></button></div></div></div></div></div></header><main><div class="px-sm-4 px-3"><div class="container-fluid border-solid-sm rounder-md border-gray-5 mt-sm-4 mt-0 mx-auto mb-7"><div class="px-sm-3 px-2 py-6"><h3 class="text-up-02 text-semi-bold mt-0">Consulte a situação do(a) pescador(a) ou da solicitação usando o CPF ou o nº do RGP</h3><form class="mt-1 d-flex flex-column gap-3"><div class="row row-gap-4 my-4"><div class="col-sm-6 col-md-6 col-lg-6 col-12"><div class="br-input"><div class="input-label"><label for="input_____r2">CPF</label></div><div class="input-content"><div class="input-group"><input id="input_____r2" placeholder="CPF do(a) solicitante" datatype="text" maxlength="15" type="text" value="" name="cpf" class="focus-visible" data-focus-visible-added=""></div></div></div></div><div class="col-sm-6 col-md-6 col-lg-6 col-12"><div class="br-input"><div class="input-label"><label for="input_____r3">Nº do RGP</label></div><div class="input-content"><div class="input-group"><input id="input_____r3" placeholder="RGP do(a) pescador(a)" datatype="text" maxlength="400" type="text" value="" name="codigoRGP"></div></div></div></div></div><div class="mx-auto w-100 recaptcha-container"></div><div class="row w-100 mx-auto mt-4 d-flex button-group-gap justify-content-end flex-sm-row flex-column"><button id="button_____r0" class="br-button secondary disabled d-sm-flex order-sm-0 order-1" disabled=""><span class="step-info d-none d-sm-block"></span>Limpar</button><button type="submit" id="button_____r1" class="br-button primary disabled d-sm-flex" disabled=""><span class="step-info d-none d-sm-block"></span>Consultar</button></div></form></div><div class="result-card"><h4>Resultado da consulta pública do CPF ***509123**<span> e Nº do RGP MAPA***509123**</span></h4><div class="result-card-info mx-auto mt-6"><div class="result-card-photo-info d-flex flex-column align-items-center px-8x mb-2"><img alt="Imagem de um avatar padrão" loading="lazy" width="160" height="214" decoding="async" data-nimg="1" class="image-avatar-consulta" srcset="/_next/image?url=%2Fimages%2Fnot-photo.png&amp;w=256&amp;q=75 1x, /_next/image?url=%2Fimages%2Fnot-photo.png&amp;w=384&amp;q=75 2x" src="/_next/image?url=%2Fimages%2Fnot-photo.png&amp;w=384&amp;q=75" style="color: transparent;"><p class="text-up-02 text-semi-bold mt-3 text-center">AGDA C</p><p class="text-blue-warm-vivid-80 text-medium mb-1">***509123**</p><p class="text-blue-warm-vivid-80 text-medium mb-0">MAPA***509123**</p></div><div class="result-card-all-info"><p class="text-semi-bold text-base mb-2">Situação do RGP:<span class="text-medium ml-1 text-green-cool-vivid-70 text-semi-bold">Ativo</span></p><p class="text-semi-bold text-base mb-2">Tipo de registro:<span class="text-medium ml-1">Registro inicial com protocolo</span></p><p class="text-semi-bold text-base mb-2">UF do pescador(a):<span class="text-medium ml-1">MA</span></p><p class="text-semi-bold text-base mb-2">Município do pescador(a):<span class="text-medium ml-1">Buritirana</span></p><p class="text-semi-bold text-base mb-2">Categoria:<span class="text-medium ml-1">Artesanal</span></p><p class="text-semi-bold text-base mb-2">Forma de atuação:<span class="text-medium ml-1">Desembarcado</span></p><p class="text-semi-bold text-base mb-2">Produto de pesca:<span class="text-medium ml-1">Peixes</span></p><p class="text-semi-bold text-base mb-2">Ano de nascimento:<span class="text-medium ml-1">1998</span></p><p class="text-semi-bold text-base mb-2">Data de criação do registro:<span class="text-medium ml-1">10/12/2024</span></p><p class="text-semi-bold text-base mb-2">Data do 1º RGP:<span class="text-medium ml-1">20/10/2020</span></p><div id="table_____rf" class="br-table table-info-consulta-publica small" data-search="data-search" data-selection="data-selection" data-collapse="data-collapse" data-random="data-random"><div class="table-header"><div class="top-bar"><div class="table-title"></div><div class="search-trigger d-flex align-items-center"></div></div><div class="selected-bar"><div class="info"><span class="count">0</span><span class="text">item selecionado</span></div><div class="actions-trigger text-nowrap"><button type="button" id="button_____rg" class="br-button circle inverted" data-toggle="dropdown" data-target="target02-table_____rf" aria-label="Ver mais opções"><span class="step-info d-none d-sm-block"></span><svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="ellipsis-vertical" class="svg-inline--fa fa-ellipsis-vertical fa-sm card-header-icon" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 512"><path fill="currentColor" d="M64 360a56 56 0 1 0 0 112 56 56 0 1 0 0-112zm0-160a56 56 0 1 0 0 112 56 56 0 1 0 0-112zM120 96A56 56 0 1 0 8 96a56 56 0 1 0 112 0z"></path></svg></button><div id="target02-table_____rf" class="br-list" role="list" hidden=""><button id="button_____ri" class="br-button" data-toggle=""><span class="step-info d-none d-sm-block"></span>Ação 1</button><div class="br-divider"></div><button id="button_____rj" class="br-button"><span class="step-info d-none d-sm-block"></span>Ação 2</button></div></div></div></div><div class="responsive-table"><table><caption></caption><thead class="table__header"><tr><th class="bg-gray-5 table__first--item">Local de pesca</th><th class="bg-gray-5 text-center">UF</th><th class="bg-gray-5 text-center">Município</th></tr></thead><tbody class="overflow-hidden pb-4"><tr id="list_____rk"><td class="  localPesca "><span class="undefined  "><span>Rio</span></span></td><td class="text-center  uf justify-content-center"><span class="undefined  "><span>MA</span></span></td><td class="text-center  municipio justify-content-center"><span class="undefined  "><span>Santa Inês</span></span></td></tr></tbody></table></div><div class="table-footer table__footer--fixed bg-gray-1" style="visibility: hidden;"><nav id="pagination_____rn" class="br-pagination flex-nowrap"><div class="pagination-per-page"><div class="br-select"><div class="br-input"><label for="select_____ro_____select">Exibir</label><input id="select_____ro_____select" data-value="20" data-displayvalue="20" autocomplete="off" type="text" value="20"><button class="br-button" type="button" aria-label="Exibir lista" tabindex="-1" data-trigger="data-trigger"><i class="fas fa-angle-down" aria-hidden="true"></i></button></div><div id="list_____rp" class="br-list" tabindex="0" style="transform: translateY(calc(-100% - 48px));"><div class="br-item" tabindex="-1" role=""><div class="br-radio"><input id="select_____ro____5" type="radio" value="5" name="select_____ro"><label class="text-nowrap" for="select_____ro____5">5</label></div></div><div class="br-item" tabindex="-1" role=""><div class="br-radio"><input id="select_____ro____10" type="radio" value="10" name="select_____ro"><label class="text-nowrap" for="select_____ro____10">10</label></div></div><div class="br-item" tabindex="-1" role=""><div class="br-radio"><input id="select_____ro____20" type="radio" value="20" name="select_____ro" checked="true"><label class="text-nowrap" for="select_____ro____20">20</label></div></div><div class="br-item" tabindex="-1" role=""><div class="br-radio"><input id="select_____ro____50" type="radio" value="50" name="select_____ro"><label class="text-nowrap" for="select_____ro____50">50</label></div></div><div class="br-item" tabindex="-1" role=""><div class="br-radio"><input id="select_____ro____100" type="radio" value="100" name="select_____ro"><label class="text-nowrap" for="select_____ro____100">100</label></div></div></div></div></div><div class="br-divider mx-3 d-md-flex d-none"></div><div class="pagination-information d-none d-sm-flex"><span class="current">1</span>–<span class="per-page">1</span>&nbsp;de&nbsp;<span class="total">1</span>&nbsp;itens</div><div class="pagination-go-to-page d-none d-sm-flex ml-auto"></div><div class="pagination-arrows ml-auto ml-sm-0"><button type="button" id="button_____rv" class="br-button circle disabled" disabled="" aria-label="Página anterior"><span class="step-info d-none d-sm-block"></span><svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="angle-left" class="svg-inline--fa fa-angle-left fa-sm card-header-icon" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path fill="currentColor" d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"></path></svg></button><button type="button" id="button_____r10" class="br-button circle disabled" disabled="" aria-label="Próxima página"><span class="step-info d-none d-sm-block"></span><svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="angle-right" class="svg-inline--fa fa-angle-right fa-sm card-header-icon" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path fill="currentColor" d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"></path></svg></button></div></nav></div></div></div></div></div></div></div></main><!--$--><!--/$--><script src="/_next/static/chunks/webpack-212d764468a8f6b1.js" async=""></script><script>(self.__next_f=self.__next_f||[]).push([0]);self.__next_f.push([2,null])</script><script>self.__next_f.push([1,"1:HL[\"/_next/static/media/0c0348938576d0f4-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\n2:HL[\"/_next/static/media/18511ba8e35e3dd2-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\n3:HL[\"/_next/static/media/2b78f974e1d17ca7-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\n4:HL[\"/_next/static/media/3576583bfcda09c9-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\n5:HL[\"/_next/static/media/3de9e264bf413ed6-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\n6:HL[\"/_next/static/media/43075eb672642685-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\n7:HL[\"/_next/static/media/50e9152f0b26c205-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\n8:HL[\"/_next/static/media/6e19b098b407b430-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\n9:HL[\"/_next/static/media/74a974df84d40aa7-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\na:HL[\"/_next/static/media/764ac9a979eb4336-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\nb:HL[\"/_next/static/media/b1de0937699003b0-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\nc:HL[\"/_next/static/media/b6c38c468a92e619-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\nd:HL[\"/_next/static/media/bb9fef963e044fe3-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\ne:HL[\"/_next/static/media/bdfcbdcca3e38e52-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\nf:HL[\"/_next/static/media/ca4a055c767b2bc1-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\n10:HL[\"/_next/static/media/ccea938f23e8278b-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\n11:HL[\"/_next/static/media/ddf095b646d81bed-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\n12:HL[\"/_next/static/media/f5af568b2b01b679-s.p.ttf\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/ttf\"}]\n13:HL[\"/_next/static/css/689222d1d3cf552e.css\",\"style\"]\n14:HL[\"/_next/static/css/9ad843b5f646e29b.css\",\"style\"]\n15:HL[\"/_next/static/css/23e6f980bfe2e30b.css\",\"style\"]\n16:HL[\"/_next/static/css/ef46db3751d8e999.css\",\"style\"]\n17:HL[\"/_next/static/css/50b87c2c909cab82.css\",\"style\"]\n18:HL[\"/_next/stati"])</script><script>self.__next_f.push([1,"c/css/0454ecf16b7daeb6.css\",\"style\"]\n19:HL[\"/_next/static/css/fc957392a2ae22e1.css\",\"style\"]\n"])</script><script>self.__next_f.push([1,"1a:I[18285,[],\"\"]\n1c:\"$Sreact.suspense\"\n1d:I[43776,[\"377\",\"static/chunks/3db6f675-a9f06021b26f9764.js\",\"9284\",\"static/chunks/9284-f9c5f06147d17242.js\",\"3566\",\"static/chunks/3566-f9901f12632a6421.js\",\"2919\",\"static/chunks/2919-eb60a28d5854466f.js\",\"4900\",\"static/chunks/4900-3308ce3512fbba08.js\",\"1521\",\"static/chunks/1521-adb5d7fa5bf53111.js\",\"9262\",\"static/chunks/9262-5e8dcdf99c8b8393.js\",\"2031\",\"static/chunks/2031-fcb7027d4b213643.js\",\"7461\",\"static/chunks/7461-1805ac7745033908.js\",\"9302\",\"static/chunks/app/acesso-externo/page-ddd52a93f8e2c938.js\"],\"BailoutToCSR\"]\n1e:I[94114,[\"377\",\"static/chunks/3db6f675-a9f06021b26f9764.js\",\"9284\",\"static/chunks/9284-f9c5f06147d17242.js\",\"3566\",\"static/chunks/3566-f9901f12632a6421.js\",\"2919\",\"static/chunks/2919-eb60a28d5854466f.js\",\"4900\",\"static/chunks/4900-3308ce3512fbba08.js\",\"1521\",\"static/chunks/1521-adb5d7fa5bf53111.js\",\"9262\",\"static/chunks/9262-5e8dcdf99c8b8393.js\",\"2031\",\"static/chunks/2031-fcb7027d4b213643.js\",\"7461\",\"static/chunks/7461-1805ac7745033908.js\",\"9302\",\"static/chunks/app/acesso-externo/page-ddd52a93f8e2c938.js\"],\"default\"]\n1f:I[2128,[],\"\"]\n20:I[81501,[],\"\"]\n23:I[7863,[],\"\"]\n24:[]\n0:[\"$\",\"$L1a\",null,{\"buildId\":\"qTs6D7pTtcxF3uaOOw1mg\",\"assetPrefix\":\"\",\"urlParts\":[\"\",\"acesso-externo\"],\"initialTree\":[\"\",{\"children\":[\"acesso-externo\",{\"children\":[\"__PAGE__\",{}]}]},\"$undefined\",\"$undefined\",true],\"initialSeedData\":[\"\",{\"children\":[\"acesso-externo\",{\"children\":[\"__PAGE__\",{},[[\"$L1b\",[\"$\",\"$1c\",null,{\"fallback\":null,\"children\":[\"$\",\"$L1d\",null,{\"reason\":\"next/dynamic\",\"children\":[\"$\",\"$L1e\",null,{}]}]}],null],null],null]},[null,[\"$\",\"$L1f\",null,{\"parallelRouterKey\":\"children\",\"segmentPath\":[\"children\",\"acesso-externo\",\"children\"],\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L20\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$undefined\",\"notFoundStyles\":\"$undefined\"}]],null]},[[[[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/css/689222d1d3cf552e.css\",\"precedence\":\"next\""])</script><script>self.__next_f.push([1,",\"crossOrigin\":\"$undefined\"}],[\"$\",\"link\",\"1\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/css/9ad843b5f646e29b.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\"}],[\"$\",\"link\",\"2\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/css/23e6f980bfe2e30b.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\"}],[\"$\",\"link\",\"3\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/css/ef46db3751d8e999.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\"}],[\"$\",\"link\",\"4\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/css/50b87c2c909cab82.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\"}],[\"$\",\"link\",\"5\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/css/0454ecf16b7daeb6.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\"}],[\"$\",\"link\",\"6\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/css/fc957392a2ae22e1.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\"}]],\"$L21\"],null],null],\"couldBeIntercepted\":false,\"initialHead\":[null,\"$L22\"],\"globalErrorComponent\":\"$23\",\"missingSlots\":\"$W24\"}]\n"])</script><script>self.__next_f.push([1,"25:I[61021,[\"377\",\"static/chunks/3db6f675-a9f06021b26f9764.js\",\"7495\",\"static/chunks/6dc81886-88268d9e1c4dffd6.js\",\"4552\",\"static/chunks/e4731884-8bc72c44a0ea337d.js\",\"9284\",\"static/chunks/9284-f9c5f06147d17242.js\",\"3566\",\"static/chunks/3566-f9901f12632a6421.js\",\"2919\",\"static/chunks/2919-eb60a28d5854466f.js\",\"8986\",\"static/chunks/8986-fc6806767e5e28fd.js\",\"1311\",\"static/chunks/1311-a1f5434cb01c2e83.js\",\"4900\",\"static/chunks/4900-3308ce3512fbba08.js\",\"8866\",\"static/chunks/8866-cae247941f5d7222.js\",\"4567\",\"static/chunks/4567-9e86cd741aab1f36.js\",\"9262\",\"static/chunks/9262-5e8dcdf99c8b8393.js\",\"6618\",\"static/chunks/6618-60a02b37b7d6bce9.js\",\"8461\",\"static/chunks/8461-c56b3fff5579cee8.js\",\"4827\",\"static/chunks/4827-04bc6b1c13fb1f52.js\",\"1962\",\"static/chunks/1962-b47f2d56948af34d.js\",\"3185\",\"static/chunks/app/layout-715574f8581baea5.js\"],\"default\"]\n26:I[65492,[\"377\",\"static/chunks/3db6f675-a9f06021b26f9764.js\",\"7495\",\"static/chunks/6dc81886-88268d9e1c4dffd6.js\",\"4552\",\"static/chunks/e4731884-8bc72c44a0ea337d.js\",\"9284\",\"static/chunks/9284-f9c5f06147d17242.js\",\"3566\",\"static/chunks/3566-f9901f12632a6421.js\",\"2919\",\"static/chunks/2919-eb60a28d5854466f.js\",\"8986\",\"static/chunks/8986-fc6806767e5e28fd.js\",\"1311\",\"static/chunks/1311-a1f5434cb01c2e83.js\",\"4900\",\"static/chunks/4900-3308ce3512fbba08.js\",\"8866\",\"static/chunks/8866-cae247941f5d7222.js\",\"4567\",\"static/chunks/4567-9e86cd741aab1f36.js\",\"9262\",\"static/chunks/9262-5e8dcdf99c8b8393.js\",\"6618\",\"static/chunks/6618-60a02b37b7d6bce9.js\",\"8461\",\"static/chunks/8461-c56b3fff5579cee8.js\",\"4827\",\"static/chunks/4827-04bc6b1c13fb1f52.js\",\"1962\",\"static/chunks/1962-b47f2d56948af34d.js\",\"3185\",\"static/chunks/app/layout-715574f8581baea5.js\"],\"default\"]\n27:I[51542,[\"377\",\"static/chunks/3db6f675-a9f06021b26f9764.js\",\"7495\",\"static/chunks/6dc81886-88268d9e1c4dffd6.js\",\"4552\",\"static/chunks/e4731884-8bc72c44a0ea337d.js\",\"9284\",\"static/chunks/9284-f9c5f06147d17242.js\",\"3566\",\"static/chunks/3566-f9901f12632a6421.js\",\"2919\",\"static/chunks/2919-eb60a28d5854466f.js\",\"8986\",\"static/chunks/8"])</script><script>self.__next_f.push([1,"986-fc6806767e5e28fd.js\",\"1311\",\"static/chunks/1311-a1f5434cb01c2e83.js\",\"4900\",\"static/chunks/4900-3308ce3512fbba08.js\",\"8866\",\"static/chunks/8866-cae247941f5d7222.js\",\"4567\",\"static/chunks/4567-9e86cd741aab1f36.js\",\"9262\",\"static/chunks/9262-5e8dcdf99c8b8393.js\",\"6618\",\"static/chunks/6618-60a02b37b7d6bce9.js\",\"8461\",\"static/chunks/8461-c56b3fff5579cee8.js\",\"4827\",\"static/chunks/4827-04bc6b1c13fb1f52.js\",\"1962\",\"static/chunks/1962-b47f2d56948af34d.js\",\"3185\",\"static/chunks/app/layout-715574f8581baea5.js\"],\"default\"]\n28:I[61344,[\"377\",\"static/chunks/3db6f675-a9f06021b26f9764.js\",\"9284\",\"static/chunks/9284-f9c5f06147d17242.js\",\"3566\",\"static/chunks/3566-f9901f12632a6421.js\",\"4900\",\"static/chunks/4900-3308ce3512fbba08.js\",\"7601\",\"static/chunks/app/error-ac70a2e1a440f050.js\"],\"default\"]\n29:I[79284,[\"9284\",\"static/chunks/9284-f9c5f06147d17242.js\",\"4900\",\"static/chunks/4900-3308ce3512fbba08.js\",\"9160\",\"static/chunks/app/not-found-88df690aa9693e30.js\"],\"Image\"]\n2a:I[24900,[\"9284\",\"static/chunks/9284-f9c5f06147d17242.js\",\"4900\",\"static/chunks/4900-3308ce3512fbba08.js\",\"9160\",\"static/chunks/app/not-found-88df690aa9693e30.js\"],\"\"]\n2b:I[18094,[\"377\",\"static/chunks/3db6f675-a9f06021b26f9764.js\",\"7495\",\"static/chunks/6dc81886-88268d9e1c4dffd6.js\",\"4552\",\"static/chunks/e4731884-8bc72c44a0ea337d.js\",\"9284\",\"static/chunks/9284-f9c5f06147d17242.js\",\"3566\",\"static/chunks/3566-f9901f12632a6421.js\",\"2919\",\"static/chunks/2919-eb60a28d5854466f.js\",\"8986\",\"static/chunks/8986-fc6806767e5e28fd.js\",\"1311\",\"static/chunks/1311-a1f5434cb01c2e83.js\",\"4900\",\"static/chunks/4900-3308ce3512fbba08.js\",\"8866\",\"static/chunks/8866-cae247941f5d7222.js\",\"4567\",\"static/chunks/4567-9e86cd741aab1f36.js\",\"9262\",\"static/chunks/9262-5e8dcdf99c8b8393.js\",\"6618\",\"static/chunks/6618-60a02b37b7d6bce9.js\",\"8461\",\"static/chunks/8461-c56b3fff5579cee8.js\",\"4827\",\"static/chunks/4827-04bc6b1c13fb1f52.js\",\"1962\",\"static/chunks/1962-b47f2d56948af34d.js\",\"3185\",\"static/chunks/app/layout-715574f8581baea5.js\"],\"default\"]\n"])</script><script>self.__next_f.push([1,"21:[\"$\",\"html\",null,{\"lang\":\"pt-BR\",\"suppressHydrationWarning\":true,\"children\":[[\"$\",\"head\",null,{\"children\":[\"$\",\"link\",null,{\"rel\":\"stylesheet\",\"href\":\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.min.css\"}]}],[\"$\",\"body\",null,{\"className\":\"__className_d80ea8\",\"children\":[[\"$\",\"$L25\",null,{}],[\"$\",\"$1c\",null,{\"fallback\":null,\"children\":[\"$\",\"$L1d\",null,{\"reason\":\"next/dynamic\",\"children\":[\"$\",\"$L26\",null,{}]}]}],[\"$\",\"$L27\",null,{}],[\"$\",\"main\",null,{\"children\":[\"$\",\"$L1f\",null,{\"parallelRouterKey\":\"children\",\"segmentPath\":[\"children\"],\"error\":\"$28\",\"errorStyles\":[],\"errorScripts\":[],\"template\":[\"$\",\"$L20\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":[\"$\",\"div\",null,{\"className\":\"d-flex flex-column align-items-center justify-content-sm-center not-found--container\",\"children\":[[\"$\",\"$L29\",null,{\"alt\":\"barco de pesca não encontrado\",\"src\":{\"src\":\"/_next/static/media/Pescador.e8faac13.svg\",\"height\":148,\"width\":424,\"blurWidth\":0,\"blurHeight\":0}}],[\"$\",\"div\",null,{\"className\":\"d-flex flex-column align-items-center justify-content-sm-center\",\"children\":[[\"$\",\"h2\",null,{\"className\":\"text-up-03 text-sm-semi-bold\",\"children\":\"Página não encontrada\"}],[\"$\",\"p\",null,{\"className\":\"text-up-01 text-md-medium\",\"children\":[\"Parece que o link acessado não está mais disponível ou nunca existiu.\",[\"$\",\"br\",null,{}],\"Verifique se o endereço está correto ou utilize o menu principal.\"]}]]}],[\"$\",\"$L2a\",null,{\"className\":\"br-button primary\",\"href\":\"/\",\"children\":[[\"$\",\"svg\",null,{\"aria-hidden\":\"true\",\"focusable\":\"false\",\"data-prefix\":\"fas\",\"data-icon\":\"house\",\"className\":\"svg-inline--fa fa-house \",\"role\":\"img\",\"xmlns\":\"http://www.w3.org/2000/svg\",\"viewBox\":\"0 0 576 512\",\"style\":{},\"children\":[\"$\",\"path\",null,{\"fill\":\"currentColor\",\"d\":\"M575.8 255.5c0 18-15 32.1-32 32.1l-32 0 .7 160.2c0 2.7-.2 5.4-.5 8.1l0 16.2c0 22.1-17.9 40-40 40l-16 0c-1.1 0-2.2 0-3.3-.1c-1.4 .1-2.8 .1-4.2 .1L416 512l-24 0c-22.1 0-40-17.9-40-40l0-24 0-64c0-17.7-14.3-32-32-32l-64 0c-17.7 0-32 14.3-32 32l0 64 0 24c0 22.1-17.9 40-40 40l-24 0-31.9 0c-1.5 0-3-.1-4.5-.2c-1.2 .1-2.4 .2-3.6 .2l-16 0c-22.1 0-40-17.9-40-40l0-112c0-.9 0-1.9 .1-2.8l0-69.7-32 0c-18 0-32-14-32-32.1c0-9 3-17 10-24L266.4 8c7-7 15-8 22-8s15 2 21 7L564.8 231.5c8 7 12 15 11 24z\",\"style\":{}}]}],\"Acessar tela inicial\"]}]]}],\"notFoundStyles\":[]}]}],[\"$\",\"$1c\",null,{\"fallback\":null,\"children\":[\"$\",\"$1c\",null,{\"fallback\":null,\"children\":[\"$\",\"$L1d\",null,{\"reason\":\"next/dynamic\",\"children\":[\"$\",\"$L2b\",null,{}]}]}]}],[\"$\",\"script\",null,{\"src\":\"https://docs-ds.estaleiro.serpro.gov.br/govbr-ds-core/dist/core-init.js\",\"async\":true}],[\"$\",\"script\",null,{\"src\":\"https://docs-ds.estaleiro.serpro.gov.br/govbr-ds-core/dist/core.min.js\",\"async\":true}]]}]]}]\n"])</script><script>self.__next_f.push([1,"22:[[\"$\",\"meta\",\"0\",{\"name\":\"viewport\",\"content\":\"width=device-width, initial-scale=1\"}],[\"$\",\"meta\",\"1\",{\"charSet\":\"utf-8\"}],[\"$\",\"title\",\"2\",{\"children\":\"PesqBrasil\"}],[\"$\",\"meta\",\"3\",{\"name\":\"description\",\"content\":\"RGP Pescador e Pescadora Profissional\"}],[\"$\",\"link\",\"4\",{\"rel\":\"icon\",\"href\":\"/icon.png?b408b39d2e3d80a7\",\"type\":\"image/png\",\"sizes\":\"500x500\"}],[\"$\",\"meta\",\"5\",{\"name\":\"next-size-adjust\"}]]\n1b:null\n"])</script><next-route-announcer style="position: absolute;"></next-route-announcer><script src="https://www.google.com/recaptcha/api.js?render=6LeJP-srAAAAAFdZMYINP6CJ4COI_MAzFvk_0gs1" data-nscript="afterInteractive"></script><div><div class="grecaptcha-badge" data-style="bottomright" style="width: 256px; height: 60px; display: block; transition: right 0.3s; position: fixed; bottom: 14px; right: -186px; box-shadow: gray 0px 0px 5px; border-radius: 2px; overflow: hidden;"><div class="grecaptcha-logo"><iframe title="reCAPTCHA" width="256" height="60" role="presentation" name="a-7xh4ugcb6s0" frameborder="0" scrolling="no" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-top-navigation allow-modals allow-popups-to-escape-sandbox allow-storage-access-by-user-activation" src="https://www.google.com/recaptcha/api2/anchor?ar=1&amp;k=6LeJP-srAAAAAFdZMYINP6CJ4COI_MAzFvk_0gs1&amp;co=aHR0cHM6Ly9wZXNxYnJhc2lsLXBlc2NhZG9ycHJvZmlzc2lvbmFsLm1wYS5nb3YuYnI6NDQz&amp;hl=pt-BR&amp;v=PoyoqOPhxBO7pBk68S4YbpHZ&amp;size=invisible&amp;anchor-ms=20000&amp;execute-ms=30000&amp;cb=i6wv8zx9y0qb"></iframe></div><div class="grecaptcha-error"></div><textarea id="g-recaptcha-response-100000" name="g-recaptcha-response" class="g-recaptcha-response" style="width: 250px; height: 40px; border: 1px solid rgb(193, 193, 193); margin: 10px 25px; padding: 0px; resize: none; display: none;"></textarea></div><iframe style="display: none;"></iframe></div><div class="br-scrim-util foco d-none" data-scrim="true"><div class="br-modal modal-custom" aria-labelledby="titulomodalexemplo"><div class="br-modal-header"><div class="d-flex flex-row align-items-center justify-content-between">Occoreu um erro</div></div><div class="br-modal-body"><div><p class="placeholder">Nenhuma ação definida.</p></div></div><div class="br-modal-footer justify-content-center justify-content-sm-end button-group-gap"><button type="button" id="button_____rl" class="br-button secondary"><span class="step-info d-none d-sm-block"></span>Fechar</button><button type="button" id="button_____rm" class="br-button primary"><span class="step-info d-none d-sm-block"></span>Ok</button></div></div></div></body></html>

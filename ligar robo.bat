@@ -1,14 +1,16 @@
 @echo off
-title Robo Advogado - Noleto & Macedo
+title ROBO ADV 2026 - RUNNER
 color 0A
-echo ==========================================
-echo      INICIANDO O ROBO DE WHATSAPP...
-echo ==========================================
-echo.
 cd /d "%~dp0"
-node bot.cjs
+
+echo ===================================================
+echo    INICIANDO O ROBO DE AUTOMACAO (CLARA BOT)
+echo ===================================================
 echo.
-echo ==========================================
-echo    O ROBO DESLIGOU OU DEU ERRO.
-echo ==========================================
+echo Para parar, apenas feche esta janela.
+echo O robo vai reiniciar automaticamente se der erro.
+echo.
+
+node runner.cjs
+
 pause

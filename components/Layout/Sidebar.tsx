@@ -4,7 +4,7 @@ import {
     LayoutDashboard, Users, Scale, DollarSign, LogOut, Hourglass, Camera, X,
     Save, Trash2, Loader2, FileScan, Briefcase, ChevronDown, Calculator,
     Shield, Gavel, FileText, Building, HandCoins, CalendarCheck, Bell,
-    UserCog, User, Stethoscope, MessageSquare
+    UserCog, User, Stethoscope, MessageSquare, Cpu
 } from 'lucide-react';
 import { BRAND_CONFIG } from '../../logoData';
 import NotificationsPanel from '../ui/NotificationsPanel';
@@ -104,6 +104,7 @@ const Sidebar: React.FC = () => {
         ...((isAdmin || user?.permissions?.access_tool_cnis) ? [{ id: 'cnis', label: 'Leitor CNIS', icon: FileScan }] : []),
         ...((isAdmin || user?.permissions?.access_tool_gps) ? [{ id: 'gps-calculator', label: 'Calculadora GPS', icon: Calculator }] : []),
         ...((isAdmin || user?.permissions?.access_tool_docs) ? [{ id: 'document-builder', label: 'Criador Modelos', icon: Briefcase }] : []),
+        ...((isAdmin || user?.permissions?.access_robots) ? [{ id: 'robots', label: 'Robôs', icon: Cpu }] : []),
     ];
 
     const financialItems = [

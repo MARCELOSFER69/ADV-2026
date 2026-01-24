@@ -1,10 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../services/supabaseClient';
-import { fetchFinancialData } from '../services/financialService';
-import { fetchCasesData } from '../services/casesService';
 import { useApp } from '../context/AppContext';
-import { motion } from 'framer-motion';
 import {
     ArrowDownRight,
     Users,
@@ -167,11 +163,7 @@ const PENDING_OPTIONS_LIST = [
 ];
 
 const Dashboard: React.FC = () => {
-    const { clients, events, tasks, toggleTask, user, setCurrentView, setCaseToView, setClientToView, setIsNewCaseModalOpen, saveUserPreferences, showToast, reminders, addReminder, toggleReminder, deleteReminder } = useApp();
-
-    // REACT QUERY DATA (LOCALIZED)
-    const { data: cases = [] } = useQuery<any[]>({ queryKey: ['cases', 'dashboard'], queryFn: async () => { const { data } = await supabase.from('cases').select('*'); return data || []; } });
-    const { data: financial = [] } = useQuery<any[]>({ queryKey: ['financial', 'dashboard'], queryFn: () => fetchFinancialData() });
+    const { clients, cases, financial, events, tasks, toggleTask, user, setCurrentView, setCaseToView, setClientToView, setIsNewCaseModalOpen, saveUserPreferences, showToast, reminders, addReminder, toggleReminder, deleteReminder } = useApp();
 
     // State
     const [widgets, setWidgets] = useState<DashboardWidget[]>(DEFAULT_LAYOUT);
@@ -975,7 +967,7 @@ const Dashboard: React.FC = () => {
     return (
         <div className="space-y-6 pb-20">
             {/* EDIT TOOLBAR */}
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4 mb-8">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4 mb-8">
                 <div className="flex items-center gap-2">
                     <button onClick={() => setIsEditMode(!isEditMode)} className={`group flex items-center p-2 rounded-full transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap ${isEditMode ? 'bg-yellow-600 text-white w-36' : 'bg-zinc-800 text-zinc-400 hover:text-white w-10 hover:w-48'}`}>
                         <div className="shrink-0">{isEditMode ? <Save size={20} /> : <Settings size={20} />}</div>
@@ -1002,14 +994,13 @@ const Dashboard: React.FC = () => {
                         </div>
                     </div>
                 )}
-            </motion.div>
+            </div>
 
             {/* WIDGET GRID */}
             <div className="grid grid-cols-4 gap-4 sm:gap-6">
                 {widgets.map((widget, index) => (
-                    <motion.div
+                    <div
                         key={widget.id}
-                        layoutId={widget.id}
                         className={`relative bg-zinc-900/60 backdrop-blur-md border ${isEditMode ? 'border-dashed border-yellow-500/50 cursor-move' : 'border-white/5'} rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col`}
                         style={{ gridColumn: `span ${widget.width}` }}
                     >
@@ -1025,7 +1016,7 @@ const Dashboard: React.FC = () => {
                         <div className="flex-1 p-5 overflow-hidden">
                             {renderWidgetContent(widget)}
                         </div>
-                    </motion.div>
+                    </div>
                 ))}
             </div>
 

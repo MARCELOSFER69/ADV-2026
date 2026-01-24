@@ -28,6 +28,9 @@ interface AppContextType {
     paginatedClients: Client[];
     totalClients: number;
     fetchClients: (page: number, perPage: number, search?: string, filters?: any) => Promise<void>;
+    refreshClient: (clientId: string) => Promise<void>;
+    reloadData: () => Promise<void>;
+    // reloadData duplicado removido
 
     paginatedCases: Case[];
     totalCases: number;
@@ -48,8 +51,8 @@ interface AppContextType {
     setCurrentView: (view: ViewState) => void;
     clientToView: string | null;
     setClientToView: (id: string | null, tab?: 'info' | 'docs' | 'credentials' | 'history' | 'cnis') => void;
-    clientDetailTab: 'info' | 'docs' | 'credentials' | 'history' | 'cnis';
-    setClientDetailTab: (tab: 'info' | 'docs' | 'credentials' | 'history' | 'cnis') => void;
+    clientDetailTab: 'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp';
+    setClientDetailTab: (tab: 'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp') => void;
 
     addClient: (client: Client) => Promise<void>;
     updateClient: (updatedClient: Client) => Promise<void>;
@@ -122,6 +125,9 @@ interface AppContextType {
     markChatAsRead: (chatId: string) => Promise<void>;
     deleteChat: (chatId: string) => Promise<void>;
     finishChat: (chatId: string) => Promise<void>;
+
+    // --- AUTOMATION ---
+    triggerRgpSync: (clientList: { id: string, cpf_cnpj: string }[]) => Promise<void>;
 }
 
 interface ToastMessage {
@@ -221,9 +227,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
     const [currentView, setCurrentView] = useState<ViewState>('dashboard');
     const [clientToView, _setClientToView] = useState<string | null>(null);
-    const [clientDetailTab, setClientDetailTab] = useState<'info' | 'docs' | 'credentials' | 'history' | 'cnis'>('info');
+    const [clientDetailTab, setClientDetailTab] = useState<'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp'>('info');
 
-    const setClientToView = useCallback((id: string | null, tab?: 'info' | 'docs' | 'credentials' | 'history' | 'cnis') => {
+    const setClientToView = useCallback((id: string | null, tab?: 'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp') => {
         _setClientToView(id);
         if (tab) setClientDetailTab(tab);
     }, []);
@@ -557,11 +563,36 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
         if (usingDb) {
             try {
-                // Optimized Initial Load: Only fetch essential global settings and user-specific items
-                const { data: globalPrefsData } = await supabase.from('system_settings').select('value').eq('key', 'global_preferences').single();
-                if (globalPrefsData && globalPrefsData.value) {
-                    setGlobalPreferences(globalPrefsData.value);
+                const { data: clientsData } = await supabase.from('clients').select('*').order('data_cadastro', { ascending: false });
+                const { data: casesData } = await supabase.from('cases').select('*').order('data_abertura', { ascending: false });
+                const { data: financeData } = await supabase.from('financial').select('*, clients(nome_completo)').order('data_vencimento', { ascending: true });
+                const { data: eventsData } = await supabase.from('events').select('*').order('data_hora', { ascending: true });
+                const { data: tasksData } = await supabase.from('tasks').select('*');
+                const { data: expensesData } = await supabase.from('office_expenses').select('*').order('data_despesa', { ascending: false });
+                const { data: balancesData } = await supabase.from('office_balances').select('*').order('data_entrada', { ascending: false });
+                const { data: captadoresData } = await supabase.from('captadores').select('*');
+                const { data: receiptsData } = await supabase.from('commission_receipts').select('*').order('data_geracao', { ascending: false });
+                const { data: credsData } = await supabase.from('personal_credentials').select('*').order('created_at', { ascending: false });
+
+                if (clientsData) {
+                    const mappedClients = clientsData.map((c: any) => ({
+                        ...c,
+                        interviewStatus: c.interview_status || 'Pendente',
+                        interviewDate: c.interview_date,
+                        documentos: c.documentos || []
+                    }));
+                    setClients(mappedClients);
                 }
+
+                if (casesData) setCases(casesData);
+                if (financeData) setFinancial(financeData as any);
+                if (eventsData) setEvents(eventsData);
+                if (tasksData) setTasks(tasksData);
+                if (expensesData) setOfficeExpenses(expensesData);
+                if (balancesData) setOfficeBalances(balancesData);
+                if (captadoresData) setCaptadores(captadoresData);
+                if (receiptsData) setCommissionReceipts(receiptsData);
+                if (credsData) setPersonalCredentials(credsData);
 
                 if (currentUserId) {
                     const { data: remindersData } = await supabase
@@ -572,12 +603,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                     if (remindersData) setReminders(remindersData);
                 }
 
-                // Fetch other essential lists (keep small ones)
-                const { data: captadoresData } = await supabase.from('captadores').select('*');
-                if (captadoresData) setCaptadores(captadoresData);
-
-                const { data: credsData } = await supabase.from('personal_credentials').select('*').order('created_at', { ascending: false });
-                if (credsData) setPersonalCredentials(credsData);
+                const { data: globalPrefsData } = await supabase.from('system_settings').select('value').eq('key', 'global_preferences').single();
+                if (globalPrefsData && globalPrefsData.value) {
+                    setGlobalPreferences(globalPrefsData.value);
+                }
 
                 // WhatsApp Initial Load
                 const { data: chatsData } = await supabase.from('chats')
@@ -586,7 +615,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 if (chatsData) setChats(chatsData);
 
                 // Enable Realtime for WhatsApp
-                const chatsChannel = supabase.channel('whatsapp-realtime')
+                supabase.channel('whatsapp-realtime')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'chats' }, payload => {
                         console.log("⚡ [Realtime] Chat Update:", payload.eventType, payload.new);
                         if (payload.eventType === 'INSERT') {
@@ -603,16 +632,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                         console.log("📩 [Realtime] Nova Mensagem!", newMessage.sender_type, ":", newMessage.content, "Chat ID:", newMessage.chat_id);
 
                         setChatMessages(prev => {
-                            // Verifica duplicatas por ID ou Conteúdo+Timestamp
                             const isDuplicate = prev.some(m => m.id === newMessage.id || (m.content === newMessage.content && m.timestamp === newMessage.timestamp));
-                            if (!isDuplicate) {
-                                console.log("➕ Adicionando ao estado do chat");
-                                return [...prev, newMessage];
-                            }
+                            if (!isDuplicate) return [...prev, newMessage];
                             return prev;
                         });
 
-                        // Force refresh if it's a client message to update counts and snippets
                         if (newMessage.sender_type === 'client') {
                             setChats(prev => prev.map(c => {
                                 if (c.id === newMessage.chat_id) {
@@ -629,7 +653,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                     })
                     .subscribe();
 
+                // Realtime subscription for clients (RGP/CNIS updates)
+                supabase.channel('clients-realtime')
+                    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'clients' }, payload => {
+                        console.log("👥 [Realtime] Client Update:", payload.new.id);
+                        setClients(prev => prev.map(c => c.id === payload.new.id ? { ...c, ...payload.new } : c));
+                    })
+                    .subscribe();
+
                 await fetchClients(1, 50);
+                await fetchCases(1, 50);
 
                 isDataLoaded.current = true;
             } catch (error) {
@@ -641,7 +674,43 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             setIsLoading(false);
             isLoadingRef.current = false;
         }
-    }, [fetchClients]);
+    }, [fetchClients, fetchCases]);
+
+    // --- REFRESH SINGLE CLIENT (Fallback for Realtime) ---
+    const refreshClient = useCallback(async (clientId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('clients')
+                .select('*, cases(id, status, gps_lista)')
+                .eq('id', clientId)
+                .single();
+
+            if (error) { console.error("RefreshClient error:", error); return; }
+
+            if (data) {
+                const mapped: Client = {
+                    ...data,
+                    cases: data.cases || [],
+                    interviewStatus: data.interview_status || 'Pendente',
+                    interviewDate: data.interview_date,
+                    documentos: data.documentos || []
+                };
+
+                // Updates BOTH states to ensure consistency across views
+                setClients(prev => prev.map(c => c.id === clientId ? { ...c, ...mapped } : c));
+                setPaginatedClients(prev => prev.map(c => c.id === clientId ? { ...c, ...mapped } : c));
+            }
+        } catch (e) {
+            console.error("RefreshClient exception:", e);
+        }
+    }, []);
+
+    // --- RELOAD DATA (Silent Refresh) ---
+    const reloadData = useCallback(async () => {
+        if (user?.id) {
+            await loadData(user.id, true);
+        }
+    }, [user, loadData]);
 
     // --- PERMISSÕES ---
     const fetchUserPermissions = useCallback(async (email: string): Promise<UserPermission | undefined> => {
@@ -2045,6 +2114,52 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             showToast('error', `Erro ao apagar: ${error.message || 'Erro desconhecido'}`);
         }
     }, [usingDb, showToast]);
+
+    const triggerRgpSync = useCallback(async (clientList: { id: string, cpf_cnpj: string }[]) => {
+        const task = {
+            clients: clientList.map(c => ({
+                id: c.id,
+                cpf: c.cpf_cnpj.replace(/\D/g, '')
+            })),
+            timestamp: new Date().toISOString()
+        };
+
+        // Tenta chamada direta na API Local (Mais rápido e confiável se estiver na mesma máquina)
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
+
+            const response = await fetch('http://localhost:3001/api/rgp-sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(task),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                showToast('success', 'Consulta iniciada via API Local!');
+                return;
+            }
+        } catch (e) {
+            console.warn("⚠️ API Local indisponível, usando fallback via Supabase...");
+        }
+
+        // Fallback: Supabase Realtime
+        try {
+            const { error } = await supabase.from('system_settings').upsert({
+                key: 'rgp_sync_task',
+                value: task
+            }, { onConflict: 'key' });
+
+            if (error) throw error;
+            showToast('success', `${clientList.length === 1 ? 'Consulta' : 'Sincronização em massa'} enviada para a fila.`);
+        } catch (err) {
+            console.error("Erro ao disparar RGP sync:", err);
+            showToast('error', "Falha ao enviar comando para o robô.");
+        }
+    }, [showToast]);
+
     const mergedPreferences = useMemo(() => {
         return { ...globalPreferences, ...(user?.preferences || {}) };
     }, [globalPreferences, user?.preferences]);
@@ -2078,7 +2193,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         newCaseParams, openNewCaseWithParams,
         caseToView, setCaseToView,
         clientDetailTab, setClientDetailTab,
-        chats, chatMessages, fetchChatMessages, assumeChat, sendMessage, markChatAsRead, deleteChat, finishChat
+        chats, chatMessages, fetchChatMessages, assumeChat, sendMessage, markChatAsRead, deleteChat, finishChat,
+        triggerRgpSync, refreshClient, reloadData
     }), [
         user, login, logout, updateUserProfile, saveUserPreferences,
         globalPreferences, mergedPreferences, saveGlobalPreferences,
@@ -2105,7 +2221,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         newCaseParams, openNewCaseWithParams,
         caseToView, setCaseToView,
         clientDetailTab, setClientDetailTab,
-        chats, chatMessages, fetchChatMessages, assumeChat, sendMessage, markChatAsRead, deleteChat, finishChat
+        chats, chatMessages, fetchChatMessages, assumeChat, sendMessage, markChatAsRead, deleteChat, finishChat,
+        triggerRgpSync, refreshClient, reloadData
     ]);
 
     return (
