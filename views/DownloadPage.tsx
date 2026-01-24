@@ -2,23 +2,27 @@ import React from 'react';
 import { Download, Monitor, Shield, Zap } from 'lucide-react';
 
 const DownloadPage: React.FC = () => {
-    // Estado para armazenar a versão
+    // Estado para armazenar a versão e URL
     const [version, setVersion] = React.useState<string | null>(null);
+    const [downloadUrl, setDownloadUrl] = React.useState<string>("#");
     const [isLoading, setIsLoading] = React.useState(true);
 
-    // URL direta para o último release (redirecionamento do GitHub)
-    const downloadUrl = "https://github.com/MARCELOSFER69/ADV-2026/releases/latest/download/Escritorio.Noleto.&.Macedo.Setup.exe";
-
     React.useEffect(() => {
-        // Busca a versão mais recente via API do GitHub
+        // Busca a versão mais recente e o link do executável via API
         fetch('https://api.github.com/repos/MARCELOSFER69/ADV-2026/releases/latest')
             .then(res => res.json())
             .then(data => {
-                if (data.tag_name) {
-                    setVersion(data.tag_name);
+                if (data.tag_name) setVersion(data.tag_name);
+
+                // Encontrar o asset que termina com .exe (para Windows)
+                if (data.assets && Array.isArray(data.assets)) {
+                    const exeAsset = data.assets.find((asset: any) => asset.name.endsWith('.exe'));
+                    if (exeAsset) {
+                        setDownloadUrl(exeAsset.browser_download_url);
+                    }
                 }
             })
-            .catch(err => console.error("Erro ao buscar versão:", err))
+            .catch(err => console.error("Erro ao buscar release:", err))
             .finally(() => setIsLoading(false));
     }, []);
 
@@ -42,7 +46,7 @@ const DownloadPage: React.FC = () => {
 
                     <div className="relative z-10">
                         <h3 className="text-2xl font-bold text-white mb-2">
-                            {isLoading ? 'Buscando versão...' : `Versão Windows (${version || 'Recente'})`}
+                            {isLoading ? 'Buscando versão...' : `Versão Windows (${version || 'v?'})`}
                         </h3>
                         <p className="text-emerald-400 font-medium mb-6 flex items-center gap-2">
                             <Shield size={16} /> Verificado e Seguro
@@ -58,10 +62,13 @@ const DownloadPage: React.FC = () => {
                             href={downloadUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center gap-3 bg-gold-600 hover:bg-gold-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-lg hover:shadow-gold-600/30 w-full md:w-auto"
+                            className={`inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-lg w-full md:w-auto ${downloadUrl === '#'
+                                    ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                    : 'bg-gold-600 hover:bg-gold-700 text-white hover:shadow-gold-600/30'
+                                }`}
                         >
                             <Download size={24} />
-                            BAIXAR {version || 'INSTALADOR'}
+                            {downloadUrl === '#' ? 'INDISPONÍVEL' : `BAIXAR ${version || 'INSTALADOR'}`}
                         </a>
 
                         <p className="mt-4 text-xs text-slate-500">
@@ -74,7 +81,7 @@ const DownloadPage: React.FC = () => {
                 <div className="space-y-6">
                     <h3 className="text-xl font-bold text-white">Como Instalar?</h3>
                     <div className="space-y-4">
-                        <Step number={1} title="Faça o Download" desc={`Clique no botão ao lado para baixar o arquivo Setup ${version || ''}.exe.`} />
+                        <Step number={1} title="Faça o Download" desc={`Clique no botão ao lado para baixar o arquivo .exe oficial.`} />
                         <Step number={2} title="Execute o Arquivo" desc="O Windows pode pedir permissão (Tela SmartScreen). Clique em 'Mais Informações' > 'Executar mesmo assim'." />
                         <Step number={3} title="Login" desc="Use suas mesmas credenciais do sistema web." />
                     </div>
