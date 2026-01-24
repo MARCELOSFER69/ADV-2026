@@ -2,9 +2,25 @@ import React from 'react';
 import { Download, Monitor, Shield, Zap } from 'lucide-react';
 
 const DownloadPage: React.FC = () => {
-    // URL dinâmica para o último release do GitHub
-    // Isso garante que o usuário sempre baixe a versão mais recente
+    // Estado para armazenar a versão
+    const [version, setVersion] = React.useState<string | null>(null);
+    const [isLoading, setIsLoading] = React.useState(true);
+
+    // URL direta para o último release (redirecionamento do GitHub)
     const downloadUrl = "https://github.com/MARCELOSFER69/ADV-2026/releases/latest/download/Escritorio.Noleto.&.Macedo.Setup.exe";
+
+    React.useEffect(() => {
+        // Busca a versão mais recente via API do GitHub
+        fetch('https://api.github.com/repos/MARCELOSFER69/ADV-2026/releases/latest')
+            .then(res => res.json())
+            .then(data => {
+                if (data.tag_name) {
+                    setVersion(data.tag_name);
+                }
+            })
+            .catch(err => console.error("Erro ao buscar versão:", err))
+            .finally(() => setIsLoading(false));
+    }, []);
 
     return (
         <div className="flex flex-col h-full animate-in fade-in duration-500">
@@ -25,7 +41,9 @@ const DownloadPage: React.FC = () => {
                     </div>
 
                     <div className="relative z-10">
-                        <h3 className="text-2xl font-bold text-white mb-2">Versão Windows (x64)</h3>
+                        <h3 className="text-2xl font-bold text-white mb-2">
+                            {isLoading ? 'Buscando versão...' : `Versão Windows (${version || 'Recente'})`}
+                        </h3>
                         <p className="text-emerald-400 font-medium mb-6 flex items-center gap-2">
                             <Shield size={16} /> Verificado e Seguro
                         </p>
@@ -43,7 +61,7 @@ const DownloadPage: React.FC = () => {
                             className="inline-flex items-center justify-center gap-3 bg-gold-600 hover:bg-gold-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-lg hover:shadow-gold-600/30 w-full md:w-auto"
                         >
                             <Download size={24} />
-                            BAIXAR INSTALADOR
+                            BAIXAR {version || 'INSTALADOR'}
                         </a>
 
                         <p className="mt-4 text-xs text-slate-500">
@@ -56,7 +74,7 @@ const DownloadPage: React.FC = () => {
                 <div className="space-y-6">
                     <h3 className="text-xl font-bold text-white">Como Instalar?</h3>
                     <div className="space-y-4">
-                        <Step number={1} title="Faça o Download" desc="Clique no botão ao lado para baixar o arquivo Setup.exe." />
+                        <Step number={1} title="Faça o Download" desc={`Clique no botão ao lado para baixar o arquivo Setup ${version || ''}.exe.`} />
                         <Step number={2} title="Execute o Arquivo" desc="O Windows pode pedir permissão (Tela SmartScreen). Clique em 'Mais Informações' > 'Executar mesmo assim'." />
                         <Step number={3} title="Login" desc="Use suas mesmas credenciais do sistema web." />
                     </div>
