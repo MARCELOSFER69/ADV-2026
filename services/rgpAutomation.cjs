@@ -17,7 +17,12 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 async function runRgpConsultation(clientId, cpf, headless = true, onLog = null) {
     return new Promise((resolve, reject) => {
         const pythonPath = 'python'; // Assumindo que python está no PATH
-        const scriptPath = path.join(__dirname, '..', 'robos', 'robo_pesqbrasil_consulta.py');
+        let scriptPath = path.join(__dirname, '..', 'robos', 'robo_pesqbrasil_consulta.py');
+
+        // Handle Electron asar unpacking
+        if (scriptPath.includes('app.asar') && !scriptPath.includes('app.asar.unpacked')) {
+            scriptPath = scriptPath.replace('app.asar', 'app.asar.unpacked');
+        }
         const headlessFlag = headless ? '--headless' : '';
 
         // Usar spawn para streaming de logs
@@ -28,12 +33,12 @@ async function runRgpConsultation(clientId, cpf, headless = true, onLog = null) 
         if (onLog) onLog(`🚀 Iniciando motor de consulta para CPF ${cpf}...`);
         console.log("🚀 [RGP AUTOMATION v2.0] Script loaded with DB Fix (No updated_at) and New Regex.");
 
-        const process = spawn(pythonPath, args);
+        const botProcess = spawn(pythonPath, args);
 
         let stdoutData = '';
         let stderrData = '';
 
-        process.stdout.on('data', (data) => {
+        botProcess.stdout.on('data', (data) => {
             const lines = data.toString();
             stdoutData += lines;
             // Envia logs limpos para o callback
@@ -47,14 +52,14 @@ async function runRgpConsultation(clientId, cpf, headless = true, onLog = null) 
             console.log(`[RGP STDOUT] ${lines.trim()}`);
         });
 
-        process.stderr.on('data', (data) => {
+        botProcess.stderr.on('data', (data) => {
             const text = data.toString();
             stderrData += text;
             if (onLog) onLog(`⚠️ ${text.trim()}`);
             console.error(`[RGP STDERR] ${text.trim()}`);
         });
 
-        process.on('close', async (code) => {
+        botProcess.on('close', async (code) => {
             console.log(`🤖 [RGP] Processo finalizado com código ${code}`);
 
             if (code !== 0) {
@@ -151,7 +156,7 @@ async function runRgpConsultation(clientId, cpf, headless = true, onLog = null) 
             }
         });
 
-        process.on('error', (err) => {
+        botProcess.on('error', (err) => {
             const errMsg = `Falha ao iniciar processo: ${err.message}`;
             if (onLog) onLog(`❌ ${errMsg}`);
             return resolve({ success: false, error: errMsg });

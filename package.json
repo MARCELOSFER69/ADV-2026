@@ -1,7 +1,7 @@
 {
   "name": "escritorio-noleto-e-macedo",
   "private": true,
-  "version": "0.0.2",
+  "version": "0.0.4",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -10,10 +10,11 @@
     "electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
     "electron:dev": "concurrently -k \"cross-env BROWSER=none npm run site\" \"npm run electron\"",
     "build": "tsc && vite build",
-    "build:win": "npm run build && electron-builder --win --publish always",
+    "build:win": "npm run build && electron-builder --win --publish never",
     "preview": "vite preview"
   },
   "build": {
+    "npmRebuild": false,
     "appId": "com.advogados.desktop",
     "productName": "Escritorio Noleto & Macedo",
     "publish": [
@@ -31,7 +32,11 @@
       "rgp_server.cjs",
       "services/**/*",
       "robos/**/*",
-      "public/icon.png"
+      "public/icon.png",
+      ".env"
+    ],
+    "asarUnpack": [
+      "robos/**/*"
     ],
     "directories": {
       "output": "release"
@@ -54,6 +59,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "electron-is-dev": "^3.0.1",
+    "electron-log": "^5.4.3",
     "electron-updater": "^6.7.3",
     "express": "^5.2.1",
     "framer-motion": "^12.29.0",
@@ -63,7 +69,8 @@
     "node-cron": "^3.0.3",
     "react": "latest",
     "react-dom": "latest",
-    "recharts": "^3.5.0"
+    "recharts": "^3.5.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "latest",
@@ -72,7 +79,7 @@
     "@vitejs/plugin-react": "latest",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
-    "electron": "^40.0.0",
+    "electron": "^33.4.11",
     "electron-builder": "^26.4.0",
     "pdfjs-dist": "^4.5.136",
     "playwright": "^1.49.1",

@@ -5,7 +5,7 @@ import Login from './views/Login';
 import PublicConsultation from './views/PublicConsultation';
 import { Loader2 } from 'lucide-react';
 import NewCaseModal from './components/modals/NewCaseModal';
-import GlobalSearchModal from './components/modals/GlobalSearchModal';
+import CommandPalette from './components/ui/CommandPalette';
 // Removed Enum import to prevent crash
 // import { CaseType } from './types'; 
 
@@ -39,7 +39,9 @@ const PageLoader = () => (
   </div>
 );
 
-// Componente auxiliar para manter a tela viva (Keep Alive) com Suspense
+import { motion, AnimatePresence } from 'framer-motion';
+
+// Componente auxiliar para manter a tela viva (Keep Alive) com Suspense e Animação
 const View = React.memo<{
   id: string | string[];
   activeView: string;
@@ -48,16 +50,27 @@ const View = React.memo<{
   const ids = Array.isArray(id) ? id : [id];
   const isActive = ids.includes(activeView);
 
-  if (!isActive) return null;
-
   return (
-    <div className="h-full flex flex-col" style={{ height: '100%', width: '100%' }}>
-      <Suspense fallback={<PageLoader />}>
-        {children}
-      </Suspense>
-    </div>
+    <AnimatePresence>
+      {isActive && (
+        <motion.div
+          key={Array.isArray(id) ? id[0] : id}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="h-full w-full flex flex-col"
+        >
+          <Suspense fallback={<PageLoader />}>
+            {children}
+          </Suspense>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 });
+
+import TitleBar from './components/Layout/TitleBar';
 
 const AppContent: React.FC = () => {
   const { currentView, user, isLoading, events, isNewCaseModalOpen, setIsNewCaseModalOpen } = useApp();
@@ -99,7 +112,14 @@ const AppContent: React.FC = () => {
   }, []);
 
   if (isPublicRoute) {
-    return <PublicConsultation />;
+    return (
+      <div className="h-screen flex flex-col bg-navy-950">
+        <TitleBar />
+        <div className="flex-1 overflow-hidden">
+          <PublicConsultation />
+        </div>
+      </div>
+    );
   }
 
   if (isLoading) {
@@ -114,86 +134,98 @@ const AppContent: React.FC = () => {
   }
 
   if (!user) {
-    return <Login />;
+    return (
+      <div className="h-screen flex flex-col bg-navy-950">
+        <TitleBar />
+        <div className="flex-1 overflow-hidden">
+          <Login />
+        </div>
+      </div>
+    );
   }
 
   return (
-    <Layout>
-      <View id="dashboard" activeView={currentView}>
-        <Dashboard />
-      </View>
+    <div className="h-screen flex flex-col bg-navy-950 overflow-hidden">
+      <TitleBar />
+      <div className="flex-1 overflow-hidden">
+        <Layout>
+          <View id="dashboard" activeView={currentView}>
+            <Dashboard />
+          </View>
 
-      <View id="clients" activeView={currentView}>
-        <Clients />
-      </View>
+          <View id="clients" activeView={currentView}>
+            <Clients />
+          </View>
 
-      <View id="whatsapp" activeView={currentView}>
-        <WhatsApp />
-      </View>
+          <View id="whatsapp" activeView={currentView}>
+            <WhatsApp />
+          </View>
 
-      <View
-        id={['cases', 'cases-judicial', 'cases-administrative', 'cases-insurance']}
-        activeView={currentView}
-      >
-        <Cases />
-      </View>
+          <View
+            id={['cases', 'cases-judicial', 'cases-administrative', 'cases-insurance']}
+            activeView={currentView}
+          >
+            <Cases />
+          </View>
 
-      <View id="expertise" activeView={currentView}>
-        <Expertise />
-      </View>
+          <View id="expertise" activeView={currentView}>
+            <Expertise />
+          </View>
 
-      <View
-        id={['financial', 'commissions']}
-        activeView={currentView}
-      >
-        <Financial />
-      </View>
+          <View
+            id={['financial', 'commissions']}
+            activeView={currentView}
+          >
+            <Financial />
+          </View>
 
-      <View id="office-expenses" activeView={currentView}>
-        <OfficeExpenses />
-      </View>
+          <View id="office-expenses" activeView={currentView}>
+            <OfficeExpenses />
+          </View>
 
-      <View id="financial-calendar" activeView={currentView}>
-        <FinancialCalendar />
-      </View>
+          <View id="financial-calendar" activeView={currentView}>
+            <FinancialCalendar />
+          </View>
 
-      <View id="retirements" activeView={currentView}>
-        <Retirements />
-      </View>
+          <View id="retirements" activeView={currentView}>
+            <Retirements />
+          </View>
 
-      <View id="cnis" activeView={currentView}>
-        <CnisReader />
-      </View>
+          <View id="cnis" activeView={currentView}>
+            <CnisReader />
+          </View>
 
-      <View id="gps-calculator" activeView={currentView}>
-        <GpsCalculator />
-      </View>
+          <View id="gps-calculator" activeView={currentView}>
+            <GpsCalculator />
+          </View>
 
-      <View id="document-builder" activeView={currentView}>
-        <DocumentBuilder />
-      </View>
+          <View id="document-builder" activeView={currentView}>
+            <DocumentBuilder />
+          </View>
 
-      <View id="robots" activeView={currentView}>
-        <Robots />
-      </View>
+          <View id="robots" activeView={currentView}>
+            <Robots />
+          </View>
 
-      {/* --- NOVA TELA PESSOAL --- */}
-      <View id="personal" activeView={currentView}>
-        <Personal />
-      </View>
-      {/* ------------------------- */}
+          {/* --- NOVA TELA PESSOAL --- */}
+          <View id="personal" activeView={currentView}>
+            <Personal />
+          </View>
+          {/* ------------------------- */}
 
-      <View id="permissions" activeView={currentView}>
-        <Permissions />
-      </View>
+          <View id="permissions" activeView={currentView}>
+            <Permissions />
+          </View>
 
-      <View id="download" activeView={currentView}>
-        <DownloadPage />
-      </View>
+          <View id="download" activeView={currentView}>
+            <DownloadPage />
+          </View>
 
-      <NewCaseModal isOpen={isNewCaseModalOpen} onClose={() => setIsNewCaseModalOpen(false)} forcedType={getForcedType()} />
-      <GlobalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-    </Layout>
+          <NewCaseModal isOpen={isNewCaseModalOpen} onClose={() => setIsNewCaseModalOpen(false)} forcedType={getForcedType()} />
+          <CommandPalette isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+        </Layout>
+      </div>
+    </div>
   );
 };
 

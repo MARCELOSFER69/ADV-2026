@@ -18,11 +18,21 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
     const formatMoney = (val: number) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
     };
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return '';
+        // Converte YYYY-MM-DD para o formato brasileiro sem variações de fuso horário
+        const parts = dateStr.split('T')[0].split('-');
+        if (parts.length === 3) {
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return new Date(dateStr).toLocaleDateString('pt-BR');
+    };
 
     const renderItem = (item: AppNotification) => {
 
         // --- DESIGN 1: LEMBRETES PESSOAIS (Indigo) ---
         if (item.type === 'reminder') {
+            const isPersonal = item.clientName === 'Pessoal';
             return (
                 <div key={item.id} className="p-3 rounded-xl border border-indigo-500/20 bg-indigo-500/5 mb-2 flex items-start gap-3 group hover:bg-indigo-500/10 transition-all hover:scale-[1.02]">
                     <div className="p-2 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
@@ -30,10 +40,15 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
                     </div>
                     <div className="flex-1 min-w-0">
                         <h4 className="text-sm font-bold text-indigo-300 leading-tight">{item.title}</h4>
+                        {!isPersonal && item.clientName && (
+                            <p className="text-xs text-indigo-400 mt-1 font-bold">{item.clientName}</p>
+                        )}
                         <p className="text-xs text-zinc-200 mt-1 font-medium">{item.message}</p>
                         <div className="flex justify-between items-center mt-2">
-                            <p className="text-[10px] text-indigo-500/70 font-mono uppercase tracking-wider">Lembrete Pessoal</p>
-                            {item.date && <p className="text-[10px] text-zinc-500">{new Date(item.date).toLocaleDateString('pt-BR')}</p>}
+                            <p className="text-[10px] text-indigo-500/70 font-mono uppercase tracking-wider">
+                                {isPersonal ? 'Lembrete Pessoal' : 'Evento do Processo'}
+                            </p>
+                            {item.date && <p className="text-[10px] text-zinc-500">{formatDate(item.date)}</p>}
                         </div>
                     </div>
                 </div>
@@ -51,7 +66,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
                         <h4 className="text-sm font-bold text-purple-300 leading-tight">{item.title}</h4>
                         <p className="text-xs text-zinc-200 mt-1 font-bold">{item.clientName}</p>
                         <p className="text-[10px] text-zinc-400 mt-0.5">{item.message}</p>
-                        {item.date && <p className="text-[10px] text-zinc-600 mt-1 text-right">{new Date(item.date).toLocaleDateString('pt-BR')}</p>}
+                        {item.date && <p className="text-[10px] text-zinc-600 mt-1 text-right">{formatDate(item.date)}</p>}
                     </div>
                 </div>
             );
@@ -96,7 +111,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
                     </div>
                     <p className="text-xs text-zinc-300 mt-1 font-medium truncate">{item.clientName}</p>
                     <p className="text-[10px] text-zinc-500 mt-0.5 leading-tight line-clamp-2">{item.message}</p>
-                    {item.date && <p className="text-[10px] text-zinc-600 mt-1 text-right">{new Date(item.date).toLocaleDateString('pt-BR')}</p>}
+                    {item.date && <p className="text-[10px] text-zinc-600 mt-1 text-right">{formatDate(item.date)}</p>}
                 </div>
             </div>
         );

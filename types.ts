@@ -27,6 +27,18 @@ export enum FinancialType {
   COMISSAO = 'Comissão',
 }
 
+export type Category = 'expense' | 'income' | 'benefit' | 'reminder' | 'interview';
+export type TransactionType = 'Receita' | 'Despesa' | 'Comissão';
+
+export const PENDING_OPTIONS_LIST = [
+  'Assinatura pendente',
+  'Documento faltante',
+  'Foto do rosto',
+  'Senha do GOV.BR',
+  'Dados bancários',
+  'Outros'
+];
+
 export enum EventType {
   AUDIENCIA = 'Audiência',
   PRAZO_FATAL = 'Prazo Fatal',
@@ -467,6 +479,7 @@ export interface DashboardWidget {
 }
 
 export interface UserPreferences {
+  theme?: 'standard' | 'dark' | 'white';
   casesViewMode?: 'kanban' | 'list';
   casesColumns?: ColumnConfig[];
   clientsViewMode?: 'list' | 'grid';
@@ -474,6 +487,7 @@ export interface UserPreferences {
   dashboardLayout?: DashboardWidget[];
   customModalities?: Record<string, string[]>;
   customCaseTypes?: string[];
+  assistantTriggerPosition?: 'floating' | 'sidebar';
   kanbanColumnWidth?: number;
   kanbanCardScale?: number;
   clientsFontSize?: number;

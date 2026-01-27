@@ -1,73 +1,27 @@
-import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback, memo } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { useApp } from '../context/AppContext';
 import {
-    ArrowDownRight,
-    Users,
-    Plus,
-    TrendingUp,
-    Activity,
-    CheckCircle2,
-    Maximize2,
-    Minimize2,
-    Save,
-    RotateCcw,
-    Download,
-    Upload,
-    ChevronLeft,
-    ChevronRight,
-    Settings,
-    X,
-    ArrowUpRight,
-    PieChart as PieChartIcon,
-    BarChart,
-    List,
-    Grid,
-    CheckSquare,
-    AlertTriangle,
-    Cake,
-    MessageCircle,
-    Calendar,
-    Trash2,
-    Filter,
-    DollarSign,
-    StickyNote,
-    UserPlus,
-    Square,
-    Shield,
-    Radar as RadarIcon,
-    History,
-    FileText,
-    Trophy,
-    AlertOctagon,
-    Wallet,
-    Bell,
-    Check,
-    Building2,
-    Briefcase,
-    Scale
+    ArrowDownRight, Users, Plus, TrendingUp, Activity, CheckCircle2,
+    Maximize2, Minimize2, Save, RotateCcw, Download, Upload,
+    ChevronLeft, ChevronRight, Settings, X, ArrowUpRight,
+    PieChart as PieChartIcon, BarChart, List, Grid, CheckSquare,
+    AlertTriangle, Cake, MessageCircle, Calendar, Trash2,
+    Filter, DollarSign, StickyNote, UserPlus, Square, Shield,
+    Radar as RadarIcon, History, FileText, Trophy, AlertOctagon,
+    Wallet, Bell, Check, Building2, Briefcase, Scale, PlusCircle,
+    Search, Eye, RefreshCcw, MoreVertical, Clock, MapPin, Phone, Mail,
+    MessageSquare, Gavel, BookOpen, AlertCircle, Info, Menu,
+    LayoutDashboard, LogOut, ChevronDown, DownloadIcon, Share2, Send
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-    AreaChart,
-    Area,
-    BarChart as ReBarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    PieChart,
-    Pie,
-    Cell,
-    Legend,
-    Radar,
-    RadarChart,
-    PolarGrid,
-    PolarAngleAxis,
+    AreaChart, Area, BarChart as ReBarChart, Bar, XAxis, YAxis,
+    CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie,
+    Cell, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis,
     PolarRadiusAxis
 } from 'recharts';
-import { CaseStatus, FinancialType, DashboardWidget, WidgetType, WidgetPeriod, CaseHistory, Branch, CaseType } from '../types';
+import { CaseStatus, FinancialType, DashboardWidget, WidgetType, WidgetPeriod, CaseHistory, Branch, CaseType, Category, TransactionType, PENDING_OPTIONS_LIST } from '../types';
 import WhatsAppModal from '../components/modals/WhatsAppModal';
 import { formatDateDisplay } from '../utils/dateUtils';
 import KPITile from '../components/dashboard/KPITile';
@@ -79,9 +33,13 @@ import WelcomeSection from '../components/dashboard/WelcomeSection';
 import ReceivablesList from '../components/dashboard/ReceivablesList';
 import DeadlinesList from '../components/dashboard/DeadlinesList';
 import TasksList from '../components/dashboard/TasksList';
-import BirthdayList from '../components/dashboard/BirthdayList';
 import AgendaWidget from '../components/dashboard/AgendaWidget';
-import { memo } from 'react';
+import BirthdayList from '../components/dashboard/BirthdayList';
+import { useDashboardData } from '../hooks/useDashboardData';
+import CaptadoresDetailedWidget from '../components/dashboard/CaptadoresDetailedWidget';
+import PendenciasOverviewWidget from '../components/dashboard/PendenciasOverviewWidget';
+import DashboardCalendarWidget from '../components/dashboard/DashboardCalendarWidget';
+import { CashFlowWidget, RadarFinancialWidget, FunnelChartWidget, TypeDistributionWidget } from '../components/dashboard/DashboardWidgets';
 
 // --- CATÁLOGO PROFISSIONAL COMPLETO ---
 const WIDGET_CATALOG: { category: string, items: { type: WidgetType; label: string; defaultWidth: 1 | 2 | 3 | 4 }[] }[] = [
@@ -153,15 +111,6 @@ const PERIOD_LABELS: Record<WidgetPeriod, string> = {
     'all_time': 'Total Geral'
 };
 
-const PENDING_OPTIONS_LIST = [
-    'Senha',
-    'Duas Etapas',
-    'Nível da Conta (Bronze)',
-    'Pendência na Receita Federal',
-    'Documentação Incompleta',
-    'Outros'
-];
-
 const Dashboard: React.FC = () => {
     const { clients, cases, financial, events, tasks, toggleTask, user, setCurrentView, setCaseToView, setClientToView, setIsNewCaseModalOpen, saveUserPreferences, showToast, reminders, addReminder, toggleReminder, deleteReminder } = useApp();
 
@@ -227,134 +176,22 @@ const Dashboard: React.FC = () => {
 
     // --- DYNAMIC DATA CALCULATION ---
 
-    const getDateRange = (period: WidgetPeriod = 'this_month') => {
-        const now = new Date();
-        let start = new Date(0), end = new Date(), prevStart = new Date(0), prevEnd = new Date(0);
-
-        if (period === 'this_month') {
-            start = new Date(now.getFullYear(), now.getMonth(), 1);
-            end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-            prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            prevEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-        } else if (period === 'last_month') {
-            start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-            prevStart = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-            prevEnd = new Date(now.getFullYear(), now.getMonth() - 1, 0, 23, 59, 59);
-        } else if (period === 'this_year') {
-            start = new Date(now.getFullYear(), 0, 1);
-            end = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
-            prevStart = new Date(now.getFullYear() - 1, 0, 1);
-            prevEnd = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59);
-        }
-        return { start, end, prevStart, prevEnd };
-    };
-
-    const calculateKPI = useCallback((type: WidgetType, period: WidgetPeriod = 'this_month') => {
-        const { start, end, prevStart, prevEnd } = getDateRange(period);
-        let currentValue = 0, previousValue = 0, label = '', format = 'number';
-
-        if (type === 'kpi-income' || type === 'kpi-expense') {
-            const finType = type === 'kpi-income' ? FinancialType.RECEITA : FinancialType.DESPESA;
-            label = type === 'kpi-income' ? 'Receita' : 'Despesas';
-            format = 'currency';
-            currentValue = financial.filter(f => f.tipo === finType && f.status_pagamento && new Date(f.data_vencimento) >= start && new Date(f.data_vencimento) <= end).reduce((acc, curr) => acc + curr.valor, 0);
-            previousValue = financial.filter(f => f.tipo === finType && f.status_pagamento && new Date(f.data_vencimento) >= prevStart && new Date(f.data_vencimento) <= prevEnd).reduce((acc, curr) => acc + curr.valor, 0);
-        } else if (type === 'kpi-new-clients') {
-            label = 'Novos Clientes';
-            currentValue = clients.filter(c => new Date(c.data_cadastro) >= start && new Date(c.data_cadastro) <= end).length;
-            previousValue = clients.filter(c => new Date(c.data_cadastro) >= prevStart && new Date(c.data_cadastro) <= prevEnd).length;
-        } else if (type === 'kpi-active-cases') {
-            label = 'Processos Ativos';
-            currentValue = cases.filter(c => c.status !== CaseStatus.ARQUIVADO).length;
-            previousValue = currentValue;
-        } else if (type === 'kpi-success-rate') {
-            label = 'Taxa de Êxito';
-            format = 'percentage';
-            const total = cases.filter(c => c.status === CaseStatus.CONCLUIDO_CONCEDIDO || c.status === CaseStatus.CONCLUIDO_INDEFERIDO).length;
-            const wins = cases.filter(c => c.status === CaseStatus.CONCLUIDO_CONCEDIDO).length;
-            currentValue = total > 0 ? (wins / total) * 100 : 0;
-            previousValue = currentValue;
-        }
-
-        let trend = 0;
-        if (previousValue > 0) trend = ((currentValue - previousValue) / previousValue) * 100;
-        else if (currentValue > 0) trend = 100;
-
-        return { currentValue, previousValue, trend, label, format };
-    }, [clients, cases, financial]);
-
-    const getChartData = useCallback((dataType: 'financial' | 'clients' | 'cases' = 'financial') => {
-        const data = [];
-        for (let i = 5; i >= 0; i--) {
-            const d = new Date(); d.setMonth(d.getMonth() - i);
-            const monthKey = d.toLocaleString('pt-BR', { month: 'short' });
-            const m = d.getMonth(), y = d.getFullYear();
-            if (dataType === 'financial') {
-                const income = financial.filter(f => f.tipo === FinancialType.RECEITA && f.status_pagamento && new Date(f.data_vencimento).getMonth() === m && new Date(f.data_vencimento).getFullYear() === y).reduce((acc, curr) => acc + curr.valor, 0);
-                const expense = financial.filter(f => f.tipo === FinancialType.DESPESA && f.status_pagamento && new Date(f.data_vencimento).getMonth() === m && new Date(f.data_vencimento).getFullYear() === y).reduce((acc, curr) => acc + curr.valor, 0);
-                data.push({ name: monthKey, Receita: income, Despesa: expense, Lucro: income - expense });
-            } else if (dataType === 'clients') {
-                data.push({ name: monthKey, Clientes: clients.filter(c => new Date(c.data_cadastro).getMonth() === m && new Date(c.data_cadastro).getFullYear() === y).length });
-            } else {
-                data.push({ name: monthKey, Processos: cases.filter(c => new Date(c.data_abertura).getMonth() === m && new Date(c.data_abertura).getFullYear() === y).length });
-            }
-        }
-        return data;
-    }, [clients, cases, financial]);
-
-    // --- CALCULATIONS ---
-
-    const topCaptadores = useMemo(() => {
-        const ranking: Record<string, number> = {};
-        clients.forEach(c => { if (c.captador) ranking[c.captador] = (ranking[c.captador] || 0) + 1; });
-        return Object.entries(ranking).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 5);
-    }, [clients]);
-
-    const stagnantCasesCount = useMemo(() => {
-        const limitDate = new Date(); limitDate.setDate(limitDate.getDate() - 60);
-        return cases.filter(c => c.status !== CaseStatus.ARQUIVADO && !c.status.includes('Concluído') && new Date(c.data_abertura) < limitDate).length;
-    }, [cases]);
-
-    const cashFlowData = useMemo(() => {
-        const today = new Date(); const next30 = new Date(); next30.setDate(today.getDate() + 30);
-        const currentBalance = financial.reduce((acc, curr) => { if (!curr.status_pagamento) return acc; return acc + (curr.tipo === FinancialType.RECEITA ? curr.valor : -curr.valor); }, 0);
-        const projectedIncome = financial.filter(f => !f.status_pagamento && f.tipo === FinancialType.RECEITA && new Date(f.data_vencimento) <= next30).reduce((acc, curr) => acc + curr.valor, 0);
-        return [{ name: 'Saldo Atual', valor: currentBalance, fill: '#10B981' }, { name: 'Projeção (30d)', valor: currentBalance + projectedIncome, fill: '#3B82F6' }];
-    }, [financial]);
-
-    const funnelData = useMemo(() => {
-        const counts = { inicial: 0, andamento: 0, decisao: 0, finalizado: 0 };
-        cases.forEach(c => {
-            if ([CaseStatus.ANALISE, CaseStatus.EXIGENCIA, CaseStatus.AGUARDANDO_AUDIENCIA].includes(c.status)) counts.inicial++;
-            else if (c.status === CaseStatus.EM_RECURSO) counts.andamento++;
-            else if (c.status.includes('Aguardando')) counts.decisao++;
-            else if ([CaseStatus.CONCLUIDO_CONCEDIDO, CaseStatus.CONCLUIDO_INDEFERIDO, CaseStatus.ARQUIVADO].includes(c.status)) counts.finalizado++;
-        });
-        return [{ name: 'Inicial', value: counts.inicial, fill: '#60A5FA' }, { name: 'Andamento', value: counts.andamento, fill: '#EAB308' }, { name: 'Decisão', value: counts.decisao, fill: '#A855F7' }, { name: 'Finalizado', value: counts.finalizado, fill: '#10B981' }];
-    }, [cases]);
-
-    const radarData = useMemo(() => {
-        const { start, end } = getDateRange('this_month');
-        const income = financial.filter(f => f.tipo === FinancialType.RECEITA && f.status_pagamento && new Date(f.data_vencimento) >= start && new Date(f.data_vencimento) <= end).reduce((acc, curr) => acc + curr.valor, 0);
-        const expense = financial.filter(f => f.tipo === FinancialType.DESPESA && f.status_pagamento && new Date(f.data_vencimento) >= start && new Date(f.data_vencimento) <= end).reduce((acc, curr) => acc + curr.valor, 0);
-        const commissions = financial.filter(f => f.tipo === FinancialType.COMISSAO && f.status_pagamento && new Date(f.data_vencimento) >= start && new Date(f.data_vencimento) <= end).reduce((acc, curr) => acc + curr.valor, 0);
-        const max = Math.max(income, expense, commissions, 1);
-        return [{ subject: 'Receitas', A: income, fullMark: max }, { subject: 'Despesas', A: expense, fullMark: max }, { subject: 'Comissões', A: commissions, fullMark: max }];
-    }, [financial]);
-
-    const insuranceDueData = useMemo(() => {
-        const today = new Date(); const nextWeek = new Date(); nextWeek.setDate(today.getDate() + 7);
-        return financial.filter(f => !f.status_pagamento && f.tipo === FinancialType.RECEITA && (f.descricao.includes('Seguro Defeso') || f.descricao.includes('Benefício')) && new Date(f.data_vencimento) >= today && new Date(f.data_vencimento) <= nextWeek).sort((a, b) => new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime());
-    }, [financial]);
-
-    const overdueOrImpendingDeadlines = useMemo(() => cases.filter(c => c.data_fatal && c.status !== CaseStatus.ARQUIVADO && c.status !== CaseStatus.CONCLUIDO_CONCEDIDO).sort((a, b) => new Date(a.data_fatal!).getTime() - new Date(b.data_fatal!).getTime()).slice(0, 5), [cases]);
-    const pendingTasks = useMemo(() => tasks.filter(t => !t.concluido).slice(0, 5), [tasks]);
-    const upcomingEvents = useMemo(() => events.filter(e => new Date(e.data_hora) >= new Date()).sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime()).slice(0, 5), [events]);
-    const birthdaysThisMonth = useMemo(() => { const currentMonth = new Date().getMonth(); return clients.filter(c => { if (!c.data_nascimento) return false; const bDate = new Date(c.data_nascimento); const correctedDate = new Date(bDate.getTime() + bDate.getTimezoneOffset() * 60000); return correctedDate.getMonth() === currentMonth; }).sort((a, b) => new Date(a.data_nascimento!).getDate() - new Date(b.data_nascimento!).getDate()); }, [clients]);
-    const receivablesData = useMemo(() => financial.filter(f => f.tipo === FinancialType.RECEITA && !f.status_pagamento).sort((a, b) => new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime()), [financial]);
-    const originData = useMemo(() => [{ name: 'Indicação', value: 45 }, { name: 'Instagram', value: 30 }, { name: 'Google', value: 25 }], []);
-    const typeDistributionData = useMemo(() => { const counts: Record<string, number> = {}; cases.forEach(c => { counts[c.tipo] = (counts[c.tipo] || 0) + 1; }); return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value); }, [cases]);
+    const {
+        calculateKPI,
+        getChartData,
+        topCaptadores,
+        stagnantCasesCount,
+        cashFlowData,
+        funnelData,
+        radarData,
+        insuranceDueData,
+        overdueOrImpendingDeadlines,
+        pendingTasks,
+        upcomingEvents,
+        birthdaysThisMonth,
+        receivablesData,
+        typeDistributionData
+    } = useDashboardData({ clients, cases, financial, events, tasks, reminders });
 
     const COLORS = ['#EAB308', '#10B981', '#3B82F6', '#F97316', '#EF4444', '#8B5CF6'];
 
@@ -457,284 +294,101 @@ const Dashboard: React.FC = () => {
             }
 
             case 'list-captadores-detailed':
-                const filteredClientsByFilial = clients.filter(c => capWidgetFilial === 'Todas' || c.filial === capWidgetFilial);
-
-                // Agrupamento
-                const captadorGroups: Record<string, { count: number, id: string }> = {};
-                filteredClientsByFilial.forEach(c => {
-                    if (c.captador) {
-                        if (!captadorGroups[c.captador]) captadorGroups[c.captador] = { count: 0, id: c.captador };
-                        captadorGroups[c.captador].count++;
-                    }
-                });
-                const captadoresList = Object.values(captadorGroups).sort((a, b) => b.count - a.count);
-
-                // Detalhes do Captador Selecionado
-                if (selectedCaptadorForDetail) {
-                    const clientsOfCaptador = filteredClientsByFilial.filter(c => c.captador === selectedCaptadorForDetail);
-                    const totalClients = clientsOfCaptador.length;
-                    const withPending = clientsOfCaptador.filter(c => c.pendencias && c.pendencias.length > 0).length;
-                    const regular = totalClients - withPending;
-
-                    // Contagem de Processos por Tipo
-                    let judicialCount = 0;
-                    let adminCount = 0;
-                    let insuranceCount = 0;
-
-                    clientsOfCaptador.forEach(client => {
-                        const clientCases = cases.filter(c => c.client_id === client.id && c.status !== CaseStatus.ARQUIVADO);
-                        clientCases.forEach(c => {
-                            if (c.tipo === CaseType.SEGURO_DEFESO) insuranceCount++;
-                            else if ([CaseType.TRABALHISTA, CaseType.CIVIL].includes(c.tipo as any)) judicialCount++;
-                            else adminCount++;
-                        });
-                    });
-
-                    return (
-                        <div className="flex flex-col h-full animate-in slide-in-from-right-4">
-                            <div className="flex items-center gap-2 mb-4 border-b border-zinc-700 pb-2">
-                                <button onClick={() => setSelectedCaptadorForDetail(null)} className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white"><ChevronLeft size={18} /></button>
-                                <h3 className="text-sm font-bold text-white truncate flex-1">{selectedCaptadorForDetail}</h3>
-                                <span className="text-[10px] bg-zinc-800 px-2 py-0.5 rounded text-zinc-400">{capWidgetFilial}</span>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3 mb-4">
-                                <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-lg text-center">
-                                    <p className="text-[10px] text-emerald-400 uppercase font-bold">Regular</p>
-                                    <p className="text-xl font-bold text-white">{regular}</p>
-                                </div>
-                                <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-lg text-center">
-                                    <p className="text-[10px] text-red-400 uppercase font-bold">Pendentes</p>
-                                    <p className="text-xl font-bold text-white">{withPending}</p>
-                                </div>
-                            </div>
-
-                            <div className="flex-1 space-y-2 overflow-y-auto custom-scrollbar pr-1">
-                                <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Processos Ativos</h4>
-                                <div className="flex justify-between items-center p-2 bg-zinc-800/50 rounded-lg">
-                                    <span className="text-xs text-zinc-300 flex items-center gap-2"><Shield size={14} className="text-cyan-400" /> Seguro Defeso</span>
-                                    <span className="font-bold text-white text-sm">{insuranceCount}</span>
-                                </div>
-                                <div className="flex justify-between items-center p-2 bg-zinc-800/50 rounded-lg">
-                                    <span className="text-xs text-zinc-300 flex items-center gap-2"><Briefcase size={14} className="text-purple-400" /> Administrativo</span>
-                                    <span className="font-bold text-white text-sm">{adminCount}</span>
-                                </div>
-                                <div className="flex justify-between items-center p-2 bg-zinc-800/50 rounded-lg">
-                                    <span className="text-xs text-zinc-300 flex items-center gap-2"><Building2 size={14} className="text-orange-400" /> Judicial</span>
-                                    <span className="font-bold text-white text-sm">{judicialCount}</span>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                }
-
                 return (
-                    <div className="flex flex-col h-full">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-sm font-bold text-white font-serif flex items-center gap-2"><Users size={16} className="text-gold-500" /> {customTitle || 'Gestão de Captadores'}</h3>
-                        </div>
-
-                        {/* Filtro de Filiais (Tabs) */}
-                        <div className="flex gap-1 bg-black/40 p-1 rounded-lg mb-3 overflow-x-auto custom-scrollbar">
-                            {['Santa Inês', 'Aspema', 'Alto Alegre', 'São João do Carú', 'Todas'].map(branch => (
-                                <button
-                                    key={branch}
-                                    onClick={() => setCapWidgetFilial(branch)}
-                                    className={`px-3 py-1.5 rounded text-[10px] font-bold whitespace-nowrap transition-colors ${capWidgetFilial === branch ? 'bg-gold-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
-                                >
-                                    {branch}
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                            {captadoresList.length > 0 ? captadoresList.map((item, idx) => (
-                                <div
-                                    key={item.id}
-                                    onClick={() => setSelectedCaptadorForDetail(item.id)}
-                                    className="flex items-center justify-between p-3 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-gold-500/30 hover:bg-zinc-800 cursor-pointer group transition-all"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${idx < 3 ? 'bg-gold-500 text-black' : 'bg-zinc-700 text-zinc-300'}`}>{idx + 1}</span>
-                                        <span className="text-xs font-bold text-zinc-200 group-hover:text-white">{item.id}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">{item.count}</span>
-                                        <ChevronRight size={14} className="text-zinc-600 group-hover:text-gold-500" />
-                                    </div>
-                                </div>
-                            )) : (
-                                <div className="text-center py-8 text-zinc-500 text-xs">Nenhum captador nesta filial.</div>
-                            )}
-                        </div>
-                    </div>
+                    <CaptadoresDetailedWidget
+                        clients={clients}
+                        cases={cases}
+                        capWidgetFilial={capWidgetFilial}
+                        setCapWidgetFilial={setCapWidgetFilial}
+                        selectedCaptadorForDetail={selectedCaptadorForDetail}
+                        setSelectedCaptadorForDetail={setSelectedCaptadorForDetail}
+                        customTitle={customTitle}
+                    />
                 );
 
-            // --- WIDGET CORRIGIDO: PAINEL DE PENDÊNCIAS ---
             case 'list-pendencias-overview':
-                const clientsForPendency = clients.filter(c => penWidgetFilial === 'Todos' || c.filial === penWidgetFilial);
-
-                // Detalhe da Pendência (Lista de Clientes)
-                if (selectedPendenciaType) {
-                    const affectedClients = clientsForPendency.filter(c =>
-                        selectedPendenciaType === 'Outros'
-                            ? (c.pendencias && c.pendencias.some(p => !PENDING_OPTIONS_LIST.slice(0, 5).includes(p)))
-                            : c.pendencias?.includes(selectedPendenciaType)
-                    );
-
-                    return (
-                        <div className="flex flex-col h-full animate-in slide-in-from-right-4">
-                            <div className="flex items-center gap-2 mb-4 border-b border-zinc-700 pb-2">
-                                <button onClick={() => setSelectedPendenciaType(null)} className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white"><ChevronLeft size={18} /></button>
-                                <h3 className="text-sm font-bold text-white truncate flex-1">{selectedPendenciaType}</h3>
-                                <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded border border-red-500/20">{affectedClients.length}</span>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                                {affectedClients.map(client => (
-                                    <div
-                                        key={client.id}
-                                        onClick={() => {
-                                            setClientToView(client.id); // Define o cliente para visualização
-                                            setCurrentView('clients'); // Navega para a tela (que abre o modal)
-                                        }}
-                                        className="p-3 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-red-500/30 hover:bg-zinc-800 cursor-pointer group transition-all"
-                                    >
-                                        <h4 className="text-xs font-bold text-zinc-200 group-hover:text-white mb-1">{client.nome_completo}</h4>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-[10px] text-zinc-500">{client.filial || 'Matriz'}</span>
-                                            <ChevronRight size={14} className="text-zinc-600 group-hover:text-red-400" />
-                                        </div>
-                                    </div>
-                                ))}
-                                {affectedClients.length === 0 && <p className="text-xs text-zinc-500 text-center py-4">Nenhum cliente com esta pendência.</p>}
-                            </div>
-                        </div>
-                    );
-                }
-
-                // Visão Geral das Pendências
-                const pendencyCounts = PENDING_OPTIONS_LIST.map(opt => {
-                    const count = clientsForPendency.filter(c => {
-                        if (opt === 'Outros') return c.pendencias && c.pendencias.some(p => !PENDING_OPTIONS_LIST.slice(0, 5).includes(p));
-                        return c.pendencias?.includes(opt);
-                    }).length;
-                    return { label: opt, count };
-                }).sort((a, b) => b.count - a.count);
-
                 return (
-                    <div className="flex flex-col h-full">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-sm font-bold text-white font-serif flex items-center gap-2"><AlertTriangle size={16} className="text-red-500" /> {customTitle || 'Painel de Pendências'}</h3>
-                        </div>
-
-                        {/* Filtro de Filiais */}
-                        <div className="flex gap-1 bg-black/40 p-1 rounded-lg mb-3 overflow-x-auto custom-scrollbar">
-                            {['Todos', 'Santa Inês', 'Aspema', 'Alto Alegre', 'São João do Carú'].map(branch => (
-                                <button
-                                    key={branch}
-                                    onClick={() => setPenWidgetFilial(branch)}
-                                    className={`px-3 py-1.5 rounded text-[10px] font-bold whitespace-nowrap transition-colors ${penWidgetFilial === branch ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
-                                >
-                                    {branch}
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                            {pendencyCounts.map((item) => (
-                                <div
-                                    key={item.label}
-                                    onClick={() => setSelectedPendenciaType(item.label)}
-                                    className="flex items-center justify-between p-3 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-red-500/30 hover:bg-zinc-800 cursor-pointer group transition-all"
-                                >
-                                    <span className="text-xs font-medium text-zinc-300 group-hover:text-white">{item.label}</span>
-                                    <div className="flex items-center gap-3">
-                                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${item.count > 0 ? 'bg-red-500/20 text-red-400' : 'bg-zinc-800 text-zinc-600'}`}>{item.count}</span>
-                                        <ChevronRight size={14} className="text-zinc-600 group-hover:text-red-500" />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    <PendenciasOverviewWidget
+                        clients={clients}
+                        penWidgetFilial={penWidgetFilial}
+                        setPenWidgetFilial={setPenWidgetFilial}
+                        selectedPendenciaType={selectedPendenciaType}
+                        setSelectedPendenciaType={setSelectedPendenciaType}
+                        pendingOptionsList={PENDING_OPTIONS_LIST}
+                        setClientToView={setClientToView}
+                        setCurrentView={setCurrentView}
+                        customTitle={customTitle}
+                    />
                 );
 
             case 'calendar-reminders':
-                // Visualização Dupla: Calendário + Lista
-                const now = new Date();
-                const daysInMonth = new Date(reminderDate.getFullYear(), reminderDate.getMonth() + 1, 0).getDate();
-                const startDay = new Date(reminderDate.getFullYear(), reminderDate.getMonth(), 1).getDay();
-                const daysArr = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-                const blanks = Array.from({ length: startDay }, (_, i) => i);
-                const selectedDateStr = reminderDate.toISOString().split('T')[0];
-                const remindersForDay = reminders.filter(r => r.date === selectedDateStr);
-
                 return (
-                    <div className="flex gap-4 h-full">
-                        {/* Mini Calendar */}
-                        <div className="w-1/2 flex flex-col border-r border-white/5 pr-4">
-                            <div className="flex justify-between items-center mb-2">
-                                <h4 className="text-xs font-bold text-zinc-400 capitalize">{reminderDate.toLocaleString('pt-BR', { month: 'long' })}</h4>
-                                <div className="flex gap-1">
-                                    <button onClick={() => setReminderDate(new Date(reminderDate.setMonth(reminderDate.getMonth() - 1)))} className="p-1 hover:text-white text-zinc-500"><ChevronLeft size={14} /></button>
-                                    <button onClick={() => setReminderDate(new Date(reminderDate.setMonth(reminderDate.getMonth() + 1)))} className="p-1 hover:text-white text-zinc-500"><ChevronRight size={14} /></button>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-7 text-[9px] text-center text-zinc-500 mb-1">{['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(d => <div key={d}>{d}</div>)}</div>
-                            <div className="grid grid-cols-7 gap-1 flex-1 content-start">
-                                {blanks.map(b => <div key={`b-${b}`} />)}
-                                {daysArr.map(day => {
-                                    const dStr = new Date(reminderDate.getFullYear(), reminderDate.getMonth(), day).toISOString().split('T')[0];
-                                    const isSel = dStr === selectedDateStr;
-                                    const hasRem = reminders.some(r => r.date === dStr && !r.completed);
-                                    return (
-                                        <div key={day} onClick={() => setReminderDate(new Date(reminderDate.getFullYear(), reminderDate.getMonth(), day))}
-                                            className={`h-6 flex items-center justify-center rounded cursor-pointer relative text-xs transition-all ${isSel ? 'bg-gold-500 text-black font-bold' : 'text-zinc-400 hover:bg-white/5'}`}>
-                                            {day}
-                                            {hasRem && !isSel && <div className="absolute bottom-0.5 w-1 h-1 bg-gold-500 rounded-full" />}
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </div>
-                        {/* Tasks List */}
-                        <div className="flex-1 flex flex-col">
-                            <h4 className="text-xs font-bold text-white mb-2 flex items-center gap-2"><Bell size={12} className="text-gold-500" /> {reminderDate.getDate()} de {reminderDate.toLocaleString('pt-BR', { month: 'short' })}</h4>
-                            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                                {remindersForDay.map(rem => (
-                                    <div key={rem.id} className="flex items-center gap-2 p-2 rounded bg-white/5 group">
-                                        <button onClick={() => toggleReminder(rem.id)} className={`w-4 h-4 rounded border flex items-center justify-center ${rem.completed ? 'bg-emerald-500 border-emerald-500' : 'border-zinc-600'}`}>{rem.completed && <Check size={10} className="text-black" />}</button>
-                                        <span className={`text-xs flex-1 ${rem.completed ? 'text-zinc-500 line-through' : 'text-zinc-200'}`}>{rem.title}</span>
-                                        <button onClick={() => deleteReminder(rem.id)} className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-500"><Trash2 size={12} /></button>
-                                    </div>
-                                ))}
-                                {remindersForDay.length === 0 && <p className="text-[10px] text-zinc-600 text-center py-4">Nada agendado.</p>}
-                            </div>
-                            <div className="mt-2 flex gap-2">
-                                <input className="flex-1 bg-black border border-zinc-800 rounded px-2 py-1 text-xs text-white outline-none focus:border-gold-500" placeholder="Novo lembrete..." value={newReminderTitle} onChange={e => setNewReminderTitle(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddReminder()} />
-                                <button onClick={handleAddReminder} className="bg-gold-600 text-white p-1 rounded hover:bg-gold-500"><Plus size={14} /></button>
-                            </div>
-                        </div>
-                    </div>
+                    <DashboardCalendarWidget
+                        reminders={reminders}
+                        reminderDate={reminderDate}
+                        setReminderDate={setReminderDate}
+                        newReminderTitle={newReminderTitle}
+                        setNewReminderTitle={setNewReminderTitle}
+                        handleAddReminder={handleAddReminder}
+                        toggleReminder={toggleReminder}
+                        deleteReminder={deleteReminder}
+                    />
                 );
+
             case 'chart-cash-flow':
                 return (
+                    <CashFlowWidget
+                        data={cashFlowData}
+                        onClick={() => handleWidgetClick(widget.type)}
+                        customTitle={customTitle}
+                    />
+                );
+
+            case 'radar-financial':
+                return (
+                    <RadarFinancialWidget
+                        data={radarData}
+                        onClick={() => handleWidgetClick(widget.type)}
+                        customTitle={customTitle}
+                    />
+                );
+
+            case 'chart-funnel':
+                return (
+                    <FunnelChartWidget
+                        data={funnelData}
+                        onClick={() => handleWidgetClick(widget.type)}
+                        customTitle={customTitle}
+                    />
+                );
+
+            case 'chart-types':
+                return (
+                    <TypeDistributionWidget
+                        data={typeDistributionData}
+                        totalCases={cases.length}
+                        onClick={() => handleWidgetClick(widget.type)}
+                        customTitle={customTitle}
+                    />
+                );
+
+            case 'chart-origin':
+                const originData = [{ name: 'Indicação', value: 45 }, { name: 'Instagram', value: 30 }, { name: 'Google', value: 25 }];
+                return (
                     <div className="flex flex-col h-full cursor-pointer" onClick={() => handleWidgetClick(widget.type)}>
-                        <h3 className="text-sm font-bold text-white mb-2 font-serif flex items-center gap-2"><Wallet size={16} className="text-emerald-500" /> {customTitle || 'Fluxo de Caixa'}</h3>
-                        <div className="flex-1 min-h-[150px]">
+                        <h3 className="text-sm font-bold text-white mb-4 font-serif flex items-center gap-2"><UserPlus size={16} className="text-purple-400" />{customTitle || 'Origem de Clientes'}</h3>
+                        <div className="flex-1 min-h-[250px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <ReBarChart data={cashFlowData} layout="vertical" margin={{ left: 20 }}>
-                                    <XAxis type="number" hide />
-                                    <YAxis dataKey="name" type="category" tick={{ fill: '#ccc', fontSize: 10 }} width={80} />
-                                    <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: '#18181b', borderColor: '#3f3f46', borderRadius: '12px', color: '#fff' }} formatter={(val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)} />
-                                    <Bar dataKey="valor" barSize={20} radius={[0, 4, 4, 0]}>
-                                        {cashFlowData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}
-                                    </Bar>
-                                </ReBarChart>
+                                <PieChart>
+                                    <Pie data={originData} cx="50%" cy="50%" outerRadius={80} dataKey="value" labelLine={false}>{originData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0)" />)}</Pie>
+                                    <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#3f3f46', borderRadius: '12px', color: '#fff' }} />
+                                    <Legend verticalAlign="bottom" height={36} iconType="circle" formatter={(value) => <span className="text-zinc-400 text-[10px] ml-1">{value}</span>} />
+                                </PieChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
                 );
+
             case 'kpi-stagnation':
                 return (
                     <KPITile
@@ -748,6 +402,7 @@ const Dashboard: React.FC = () => {
                         bgColorClass="bg-red-500/10"
                     />
                 );
+
             case 'list-top-captadores':
                 return (
                     <div className="flex flex-col h-full cursor-pointer" onClick={() => handleWidgetClick(widget.type)}>
@@ -761,9 +416,10 @@ const Dashboard: React.FC = () => {
                         </div>
                     </div>
                 );
-            // --- ANTIGOS (RESTAURADOS) ---
+
             case 'text-welcome':
                 return <WelcomeSection userName={user?.name} />;
+
             case 'list-shortcuts':
                 return (
                     <DashboardShortcuts
@@ -773,23 +429,7 @@ const Dashboard: React.FC = () => {
                         onCommissions={() => setCurrentView('commissions')}
                     />
                 );
-            case 'radar-financial':
-                return (
-                    <div className="flex flex-col h-full cursor-pointer" onClick={() => handleWidgetClick(widget.type)}>
-                        <h3 className="text-sm font-bold text-white mb-2 font-serif flex items-center gap-2"><RadarIcon size={16} className="text-yellow-500" /> {customTitle || 'Radar Financeiro'}</h3>
-                        <div className="flex-1 min-h-[150px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                                    <PolarGrid stroke="#3f3f46" />
-                                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#a1a1aa', fontSize: 10 }} />
-                                    <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
-                                    <Radar name="Financeiro" dataKey="A" stroke="#EAB308" strokeWidth={2} fill="#EAB308" fillOpacity={0.3} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#3f3f46', borderRadius: '12px', color: '#fff' }} formatter={(val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)} />
-                                </RadarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                );
+
             case 'list-insurance-due':
                 return (
                     <InsuranceList
@@ -798,6 +438,7 @@ const Dashboard: React.FC = () => {
                         onCollection={handleCollection}
                     />
                 );
+
             case 'list-audit':
                 return (
                     <AuditList
@@ -805,7 +446,7 @@ const Dashboard: React.FC = () => {
                         logs={auditLogs}
                     />
                 );
-            // KPI e Charts
+
             case 'kpi-income':
             case 'kpi-expense':
             case 'kpi-active-cases':
@@ -831,6 +472,7 @@ const Dashboard: React.FC = () => {
                         type={widget.type}
                     />
                 );
+
             case 'chart-financial':
                 const chartData = getChartData(dataType);
                 return (
@@ -843,72 +485,7 @@ const Dashboard: React.FC = () => {
                         onClick={() => handleWidgetClick(widget.type)}
                     />
                 );
-            case 'chart-types':
-                return (
-                    <div className="flex flex-col h-full cursor-pointer" onClick={() => handleWidgetClick(widget.type)}>
-                        <h3 className="text-sm font-bold text-white mb-4 font-serif flex items-center gap-2">
-                            <PieChartIcon size={16} className="text-yellow-500" />
-                            {customTitle || 'Distribuição'}
-                        </h3>
-                        <div className="flex-1 min-h-[250px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={typeDistributionData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={50}
-                                        outerRadius={70}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {typeDistributionData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0)" />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#3f3f46', borderRadius: '12px', color: '#fff' }} />
-                                    <Legend verticalAlign="bottom" height={36} iconType="circle" formatter={(value) => <span className="text-zinc-400 text-[10px] ml-1">{value}</span>} />
-                                </PieChart>
-                            </ResponsiveContainer>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
-                                <span className="text-xl font-bold text-white">{cases.length}</span>
-                                <span className="text-[9px] text-zinc-500 uppercase tracking-widest">Processos</span>
-                            </div>
-                        </div>
-                    </div>
-                );
-            case 'chart-funnel':
-                return (
-                    <div className="flex flex-col h-full cursor-pointer" onClick={() => handleWidgetClick(widget.type)}>
-                        <h3 className="text-sm font-bold text-white mb-4 font-serif flex items-center gap-2"><Filter size={16} className="text-blue-400" />{customTitle || 'Funil de Processos'}</h3>
-                        <div className="flex-1 min-h-[250px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <ReBarChart data={funnelData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#27272a" />
-                                    <XAxis type="number" hide />
-                                    <YAxis dataKey="name" type="category" width={80} tick={{ fill: '#A1A1AA', fontSize: 11 }} />
-                                    <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: '#18181b', borderColor: '#3f3f46', borderRadius: '12px', color: '#fff' }} />
-                                    <Bar dataKey="value" barSize={20} radius={[0, 4, 4, 0]}>{funnelData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}</Bar>
-                                </ReBarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                );
-            case 'chart-origin':
-                return (
-                    <div className="flex flex-col h-full cursor-pointer" onClick={() => handleWidgetClick(widget.type)}>
-                        <h3 className="text-sm font-bold text-white mb-4 font-serif flex items-center gap-2"><UserPlus size={16} className="text-purple-400" />{customTitle || 'Origem de Clientes'}</h3>
-                        <div className="flex-1 min-h-[250px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie data={originData} cx="50%" cy="50%" outerRadius={80} dataKey="value" labelLine={false}>{originData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0)" />)}</Pie>
-                                    <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#3f3f46', borderRadius: '12px', color: '#fff' }} />
-                                    <Legend verticalAlign="bottom" height={36} iconType="circle" formatter={(value) => <span className="text-zinc-400 text-[10px] ml-1">{value}</span>} />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                );
+
             case 'list-receivables':
                 return (
                     <ReceivablesList
@@ -917,6 +494,7 @@ const Dashboard: React.FC = () => {
                         onCollection={handleCollection}
                     />
                 );
+
             case 'sticky-note':
                 return (
                     <div className="flex flex-col h-full">
@@ -926,6 +504,7 @@ const Dashboard: React.FC = () => {
                         </div>
                     </div>
                 );
+
             case 'list-agenda':
                 return (
                     <AgendaWidget
@@ -933,6 +512,7 @@ const Dashboard: React.FC = () => {
                         events={events}
                     />
                 );
+
             case 'list-deadlines':
                 return (
                     <DeadlinesList
@@ -941,6 +521,7 @@ const Dashboard: React.FC = () => {
                         onDeadlineClick={handleDeadlineClick}
                     />
                 );
+
             case 'list-tasks':
                 return (
                     <TasksList
@@ -950,6 +531,7 @@ const Dashboard: React.FC = () => {
                         onToggleTask={toggleTask}
                     />
                 );
+
             case 'list-birthdays':
                 return (
                     <BirthdayList
@@ -999,8 +581,12 @@ const Dashboard: React.FC = () => {
             {/* WIDGET GRID */}
             <div className="grid grid-cols-4 gap-4 sm:gap-6">
                 {widgets.map((widget, index) => (
-                    <div
+                    <motion.div
                         key={widget.id}
+                        layout
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: index * 0.05 }}
                         className={`relative bg-zinc-900/60 backdrop-blur-md border ${isEditMode ? 'border-dashed border-yellow-500/50 cursor-move' : 'border-white/5'} rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col`}
                         style={{ gridColumn: `span ${widget.width}` }}
                     >
@@ -1016,7 +602,7 @@ const Dashboard: React.FC = () => {
                         <div className="flex-1 p-5 overflow-hidden">
                             {renderWidgetContent(widget)}
                         </div>
-                    </div>
+                    </motion.div>
                 ))}
             </div>
 

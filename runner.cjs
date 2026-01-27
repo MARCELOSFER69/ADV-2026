@@ -1,8 +1,8 @@
 const { spawn } = require('child_process');
 const path = require('path');
 
-// Caminho absoluto para o RGP SERVER (Sistema Principal)
-const botScript = path.join(__dirname, 'rgp_server.cjs');
+// Caminho absoluto para o BOT UNIFICADO (WhatsApp + Robôs + IA)
+const botScript = path.join(__dirname, 'bot.cjs');
 
 function startBot() {
     console.log("\n===================================================");

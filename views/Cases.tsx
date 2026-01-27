@@ -204,9 +204,10 @@ const Cases: React.FC = () => {
                 if (isJudicialType || isSeguro || isJudicialized) return false;
             }
 
-            const searchMatch = c.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                c.numero_processo.includes(searchTerm) ||
-                clients.find(cl => cl.id === c.client_id)?.nome_completo.toLowerCase().includes(searchTerm.toLowerCase());
+            const searchMatch = !debouncedSearch ||
+                c.titulo.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                c.numero_processo.includes(debouncedSearch) ||
+                clients.find(cl => cl.id === c.client_id)?.nome_completo.toLowerCase().includes(debouncedSearch.toLowerCase());
             if (!searchMatch) return false;
 
             if (filters.tipo !== 'all' && c.tipo !== filters.tipo) return false;
@@ -214,7 +215,7 @@ const Cases: React.FC = () => {
 
             return true;
         });
-    }, [cases, searchTerm, filters, viewMode, activeCategory, clients]);
+    }, [cases, debouncedSearch, filters, viewMode, activeCategory, clients]);
 
     const totalCases = filteredCases.length;
 
@@ -247,12 +248,12 @@ const Cases: React.FC = () => {
         return clients.find(c => c.id === id)?.nome_completo || 'Cliente Desconhecido';
     };
 
-    const handleSort = (key: string) => {
+    const handleSort = useCallback((key: string) => {
         setSortConfig(prev => ({
             key,
             direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
         }));
-    };
+    }, []);
 
     // --- KANBAN FILTER LOGIC (CLIENT SIDE) ---
     const filteredCasesKanban = useMemo(() => {
@@ -284,9 +285,10 @@ const Cases: React.FC = () => {
             }
 
             // 3. Search Logic
-            const searchMatch = c.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                c.numero_processo.includes(searchTerm) ||
-                getClientName(c.client_id, c).toLowerCase().includes(searchTerm.toLowerCase());
+            const searchMatch = !debouncedSearch ||
+                c.titulo.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                c.numero_processo.includes(debouncedSearch) ||
+                getClientName(c.client_id, c).toLowerCase().includes(debouncedSearch.toLowerCase());
             if (!searchMatch) return false;
 
             // 4. Advanced Filters
@@ -314,7 +316,7 @@ const Cases: React.FC = () => {
         }
 
         return result;
-    }, [cases, viewMode, searchTerm, filters, quickFilter, clients, user, activeCategory, layoutMode]);
+    }, [cases, viewMode, debouncedSearch, filters, quickFilter, clients, user, activeCategory, layoutMode]);
 
     // Dynamic Kanban Columns
     const activeKanbanColumns = useMemo(() => {
@@ -645,33 +647,15 @@ const Cases: React.FC = () => {
                             )}
 
                             {layoutMode === 'list' && (
-                                <div className="relative">
-                                    <button onClick={() => setShowColumnConfig(!showColumnConfig)} className="px-3 py-2 rounded-lg border text-sm font-medium flex items-center gap-2 transition-all bg-[#09090b] border-zinc-800 text-zinc-400 hover:text-white"><Settings size={16} /> Colunas</button>
-                                    {showColumnConfig && (
-                                        <div className="absolute right-0 top-full mt-2 w-64 bg-[#0f1014] border border-zinc-800 rounded-xl shadow-2xl z-50 p-4">
-                                            <div className="flex justify-between items-center mb-3 pb-2 border-b border-zinc-800">
-                                                <h4 className="text-sm font-bold text-white">Editar Colunas</h4>
-                                                <button onClick={() => setShowColumnConfig(false)}><X size={16} className="text-zinc-500 hover:text-white" /></button>
-                                            </div>
-                                            <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
-                                                {columns.map((col, idx) => (
-                                                    <div key={col.id} className="flex items-center justify-between group p-1 hover:bg-zinc-800/50 rounded">
-                                                        <div className="flex items-center gap-2">
-                                                            <input type="checkbox" checked={col.visible} onChange={() => toggleColumn(col.id)} className="rounded bg-black border-zinc-600 text-gold-500 cursor-pointer" />
-                                                            <span className="text-sm text-zinc-300">{col.label}</span>
-                                                        </div>
-                                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100">
-                                                            <button onClick={() => moveColumn(idx, 'up')} disabled={idx === 0} className="p-1 hover:text-white text-zinc-500 disabled:opacity-30"><ChevronUp size={14} /></button>
-                                                            <button onClick={() => moveColumn(idx, 'down')} disabled={idx === columns.length - 1} className="p-1 hover:text-white text-zinc-500 disabled:opacity-30"><ChevronDown size={14} /></button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <button onClick={handleResetColumns} className="w-full mt-3 text-xs text-red-400 border border-red-500/20 rounded py-1 hover:bg-red-500/10">Restaurar Padrão</button>
-
-                                        </div>
-                                    )}
-                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowColumnConfig(!showColumnConfig);
+                                        setShowAdvancedFilters(false);
+                                    }}
+                                    className={`px-3 py-2 rounded-lg border text-sm font-medium flex items-center gap-2 transition-all ${showColumnConfig ? 'bg-zinc-900 border-gold-500 text-gold-500' : 'bg-[#09090b] border-zinc-800 text-zinc-400 hover:text-white'}`}
+                                >
+                                    <Settings size={16} /> <span className="hidden sm:inline">Colunas</span>
+                                </button>
                             )}
                         </div>
                     </div>
@@ -683,6 +667,34 @@ const Cases: React.FC = () => {
                         <button onClick={() => setQuickFilter('deadlines')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${quickFilter === 'deadlines' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'}`}><AlertTriangle size={10} /> Prazos Próximos</button>
                         <button onClick={() => setQuickFilter('stale')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${quickFilter === 'stale' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'}`}><Clock size={10} /> Parados +30d</button>
                     </div>
+
+                    {showColumnConfig && (
+                        <div className="pt-4 border-t border-zinc-800 animate-in slide-in-from-top-2">
+                            <div className="flex justify-between items-center mb-4">
+                                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Configuração de Colunas</h4>
+                                <button onClick={handleResetColumns} className="text-xs text-red-400 hover:text-red-300 transition-colors">Restaurar Padrão</button>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                {columns.map((col, idx) => (
+                                    <div key={col.id} className="flex items-center justify-between p-2 bg-[#09090b] border border-zinc-800 rounded-lg group hover:border-zinc-700 transition-all">
+                                        <div className="flex items-center gap-2 overflow-hidden">
+                                            <input
+                                                type="checkbox"
+                                                checked={col.visible}
+                                                onChange={() => toggleColumn(col.id)}
+                                                className="w-4 h-4 rounded bg-black border-zinc-700 text-gold-500 focus:ring-gold-500/20 cursor-pointer"
+                                            />
+                                            <span className="text-xs text-zinc-300 truncate">{col.label}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <button onClick={() => moveColumn(idx, 'up')} disabled={idx === 0} className="p-1 hover:text-white text-zinc-600 disabled:opacity-0 transition-all"><ChevronLeft size={14} /></button>
+                                            <button onClick={() => moveColumn(idx, 'down')} disabled={idx === columns.length - 1} className="p-1 hover:text-white text-zinc-600 disabled:opacity-0 transition-all"><ChevronRight size={14} /></button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {showAdvancedFilters && (
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-3 border-t border-zinc-800 animate-in slide-in-from-top-2">

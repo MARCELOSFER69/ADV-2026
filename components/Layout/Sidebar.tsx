@@ -4,13 +4,15 @@ import {
     LayoutDashboard, Users, Scale, DollarSign, LogOut, Hourglass, Camera, X,
     Save, Trash2, Loader2, FileScan, Briefcase, ChevronDown, Calculator,
     Shield, Gavel, FileText, Building, HandCoins, CalendarCheck, Bell,
-    UserCog, User, Stethoscope, MessageSquare, Cpu, Download
+    UserCog, User, Stethoscope, MessageSquare, Cpu, Download,
+    Sun, Moon, Monitor, Bot
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { BRAND_CONFIG } from '../../logoData';
 import NotificationsPanel from '../ui/NotificationsPanel';
 
 const Sidebar: React.FC = () => {
-    const { currentView, setCurrentView, logout, user, updateUserProfile, notifications } = useApp();
+    const { currentView, setCurrentView, logout, user, updateUserProfile, notifications, mergedPreferences, saveUserPreferences, isAssistantOpen, setIsAssistantOpen } = useApp();
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -23,6 +25,7 @@ const Sidebar: React.FC = () => {
     // Profile Edit State
     const [editName, setEditName] = useState('');
     const [editAvatar, setEditAvatar] = useState('');
+    const [editTheme, setEditTheme] = useState<'standard' | 'dark' | 'white'>('standard');
 
     // --- LÓGICA DE PERMISSÕES ---
     const SUPER_ADMIN_EMAIL = 'marcelofernando@escritorio.com';
@@ -42,8 +45,9 @@ const Sidebar: React.FC = () => {
         if (isProfileModalOpen && user) {
             setEditName(user.name || '');
             setEditAvatar(user.avatar || '');
+            setEditTheme(mergedPreferences.theme || 'standard');
         }
-    }, [isProfileModalOpen, user]);
+    }, [isProfileModalOpen, user, mergedPreferences.theme]);
 
     useEffect(() => {
         if (['cnis', 'gps-calculator', 'document-builder'].includes(currentView)) {
@@ -64,28 +68,46 @@ const Sidebar: React.FC = () => {
 
     const renderSingleItem = (item: any) => {
         const isActive = currentView === item.id;
+        const handleClick = () => {
+            if (item.onClick) {
+                item.onClick();
+            } else {
+                handleNavigation(item.id);
+            }
+        };
+
         return (
-            <button
+            <motion.button
                 key={item.id}
-                onClick={() => handleNavigation(item.id)}
+                onClick={handleClick}
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.95 }}
                 className="w-full flex items-center h-14 group/item relative"
             >
-                {isActive && <div className="absolute left-0 h-8 w-1 bg-gold-500 rounded-r opacity-0 group-hover:opacity-100 transition-opacity" />}
+                {isActive && (
+                    <motion.div
+                        layoutId="active-indicator"
+                        className="absolute left-0 h-8 w-1 bg-gold-500 rounded-r shadow-[0_0_10px_#ca8a04]"
+                    />
+                )}
                 <div className="min-w-[70px] flex items-center justify-center">
                     <div className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 ${isActive ? 'bg-gold-600 text-white shadow-lg shadow-gold-600/20' : 'text-slate-400 group-hover/item:text-gold-500'}`}>
                         {item.icon && <item.icon size={20} />}
                     </div>
                 </div>
-                <span className={`whitespace-nowrap overflow-hidden text-sm font-medium transition-all duration-300 ${isActive ? 'text-white' : 'text-slate-400 group-hover/item:text-white'} w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 group-hover:ml-1`}>
+                <span
+                    className={`whitespace-nowrap overflow-hidden text-sm font-medium transition-all duration-300 ${isActive ? 'text-white' : 'text-slate-400 group-hover/item:text-white'} w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 ml-1`}
+                >
                     {item.label}
                 </span>
-            </button>
+            </motion.button>
         );
     };
 
     const mainItemsBeforeCases = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }, // Dashboard geralmente liberado, mas se quiser granular pode usar canViewDashboard
         ...(canViewClients ? [{ id: 'clients', label: 'Clientes', icon: Users }] : []),
+        ...(mergedPreferences.assistantTriggerPosition === 'sidebar' ? [{ id: 'clara', label: 'Clara Copilot', icon: Bot, onClick: () => setIsAssistantOpen(true) }] : []),
         ...(canViewWhatsApp ? [{ id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare }] : []),
     ];
 
@@ -184,13 +206,26 @@ const Sidebar: React.FC = () => {
             name: editName,
             avatar: editAvatar
         });
+        await saveUserPreferences({ theme: editTheme });
         setIsSaving(false);
         setIsProfileModalOpen(false);
     };
 
+    const menuVariants = {
+        open: { height: 'auto', opacity: 1, transition: { duration: 0.4 } },
+        collapsed: { height: 0, opacity: 0, transition: { duration: 0.3 } }
+    };
+
+    const itemVariants = {
+        hidden: { x: -10, opacity: 0 },
+        visible: { x: 0, opacity: 1 }
+    };
+
     return (
         <>
-            <aside className="hidden md:flex flex-col w-[70px] hover:w-64 bg-navy-950 border-r border-slate-800 h-screen sticky top-0 transition-all duration-300 ease-in-out group z-50">
+            <aside
+                className="hidden md:flex flex-col w-[70px] hover:w-64 bg-navy-950 border-r border-slate-800 h-screen sticky top-0 transition-all duration-300 ease-in-out group z-50 overflow-hidden"
+            >
 
                 {/* Header Fixo - Logo */}
                 <div className="h-20 flex items-center justify-center border-b border-slate-800 shrink-0 overflow-hidden relative">
@@ -214,7 +249,7 @@ const Sidebar: React.FC = () => {
 
                     <button
                         onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                        className="w-full flex items-center h-14 group/notif relative"
+                        className="w-full flex items-center h-14 group/notif relative active-scale"
                     >
                         {isNotificationsOpen && <div className="absolute left-0 h-8 w-1 bg-gold-500 rounded-r opacity-0 group-hover:opacity-100 transition-opacity" />}
                         <div className="min-w-[70px] flex items-center justify-center relative">
@@ -236,7 +271,7 @@ const Sidebar: React.FC = () => {
                         <div>
                             <button
                                 onClick={() => setIsCasesOpen(!isCasesOpen)}
-                                className="w-full flex items-center h-14 group/cases"
+                                className="w-full flex items-center h-14 group/cases active-scale"
                             >
                                 <div className="min-w-[70px] flex items-center justify-center">
                                     <div className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 ${['cases-judicial', 'cases-administrative', 'cases-insurance', 'cases'].includes(currentView) ? 'bg-navy-900 text-gold-500' : 'text-slate-400 group-hover/cases:text-gold-500'}`}>
@@ -249,24 +284,38 @@ const Sidebar: React.FC = () => {
                                 </div>
                             </button>
 
-                            <div className={`overflow-hidden transition-all duration-300 ease-in-out space-y-1 ${isCasesOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'}`}>
-                                {caseItems.map((item) => {
-                                    const isActive = currentView === item.id;
-                                    return (
-                                        <button
-                                            key={item.id}
-                                            onClick={() => handleNavigation(item.id)}
-                                            className="w-full flex items-center h-10 group/subitem relative"
-                                        >
-                                            <div className="min-w-[70px] flex justify-end pr-6"></div>
-                                            <div className={`flex items-center gap-3 whitespace-nowrap overflow-hidden w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-300 pl-2 rounded-lg py-1.5 pr-3 ${isActive ? 'bg-navy-900 text-gold-500' : 'text-slate-500 hover:text-slate-300 hover:bg-navy-900/50'}`}>
-                                                <item.icon size={16} />
-                                                <span className="text-sm">{item.label}</span>
-                                            </div>
-                                        </button>
-                                    )
-                                })}
-                            </div>
+                            <AnimatePresence>
+                                {isCasesOpen && (
+                                    <motion.div
+                                        initial="collapsed"
+                                        animate="open"
+                                        exit="collapsed"
+                                        variants={menuVariants}
+                                        className="overflow-hidden space-y-1"
+                                    >
+                                        {caseItems.map((item, i) => {
+                                            const isActive = currentView === item.id;
+                                            return (
+                                                <motion.button
+                                                    key={item.id}
+                                                    variants={itemVariants}
+                                                    initial="hidden"
+                                                    animate="visible"
+                                                    transition={{ delay: i * 0.05 }}
+                                                    onClick={() => handleNavigation(item.id)}
+                                                    className="w-full flex items-center h-10 group/subitem relative active-scale"
+                                                >
+                                                    <div className="min-w-[70px] flex justify-end pr-6"></div>
+                                                    <div className={`flex items-center gap-3 whitespace-nowrap overflow-hidden w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-300 pl-2 rounded-lg py-1.5 pr-3 ${isActive ? 'bg-navy-900 text-gold-500' : 'text-slate-500 hover:text-slate-300 hover:bg-navy-900/50'}`}>
+                                                        <item.icon size={16} />
+                                                        <span className="text-sm">{item.label}</span>
+                                                    </div>
+                                                </motion.button>
+                                            )
+                                        })}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     )}
 
@@ -289,24 +338,38 @@ const Sidebar: React.FC = () => {
                                 </div>
                             </button>
 
-                            <div className={`overflow-hidden transition-all duration-300 ease-in-out space-y-1 ${isFinancialOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'}`}>
-                                {financialItems.map((item) => {
-                                    const isActive = currentView === item.id;
-                                    return (
-                                        <button
-                                            key={item.id}
-                                            onClick={() => handleNavigation(item.id)}
-                                            className="w-full flex items-center h-10 group/subitem relative"
-                                        >
-                                            <div className="min-w-[70px] flex justify-end pr-6"></div>
-                                            <div className={`flex items-center gap-3 whitespace-nowrap overflow-hidden w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-300 pl-2 rounded-lg py-1.5 pr-3 ${isActive ? 'bg-navy-900 text-gold-500' : 'text-slate-500 hover:text-slate-300 hover:bg-navy-900/50'}`}>
-                                                <item.icon size={16} />
-                                                <span className="text-sm">{item.label}</span>
-                                            </div>
-                                        </button>
-                                    )
-                                })}
-                            </div>
+                            <AnimatePresence>
+                                {isFinancialOpen && (
+                                    <motion.div
+                                        initial="collapsed"
+                                        animate="open"
+                                        exit="collapsed"
+                                        variants={menuVariants}
+                                        className="overflow-hidden space-y-1"
+                                    >
+                                        {financialItems.map((item, i) => {
+                                            const isActive = currentView === item.id;
+                                            return (
+                                                <motion.button
+                                                    key={item.id}
+                                                    variants={itemVariants}
+                                                    initial="hidden"
+                                                    animate="visible"
+                                                    transition={{ delay: i * 0.05 }}
+                                                    onClick={() => handleNavigation(item.id)}
+                                                    className="w-full flex items-center h-10 group/subitem relative"
+                                                >
+                                                    <div className="min-w-[70px] flex justify-end pr-6"></div>
+                                                    <div className={`flex items-center gap-3 whitespace-nowrap overflow-hidden w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-300 pl-2 rounded-lg py-1.5 pr-3 ${isActive ? 'bg-navy-900 text-gold-500' : 'text-slate-500 hover:text-slate-300 hover:bg-navy-900/50'}`}>
+                                                        <item.icon size={16} />
+                                                        <span className="text-sm">{item.label}</span>
+                                                    </div>
+                                                </motion.button>
+                                            )
+                                        })}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     )}
 
@@ -332,24 +395,38 @@ const Sidebar: React.FC = () => {
                                 </div>
                             </button>
 
-                            <div className={`overflow-hidden transition-all duration-300 ease-in-out space-y-1 ${isToolsOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'}`}>
-                                {toolItems.map((item) => {
-                                    const isActive = currentView === item.id;
-                                    return (
-                                        <button
-                                            key={item.id}
-                                            onClick={() => handleNavigation(item.id)}
-                                            className="w-full flex items-center h-10 group/subitem relative"
-                                        >
-                                            <div className="min-w-[70px] flex justify-end pr-6"></div>
-                                            <div className={`flex items-center gap-3 whitespace-nowrap overflow-hidden w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-300 pl-2 rounded-lg py-1.5 pr-3 ${isActive ? 'bg-navy-900 text-gold-500' : 'text-slate-500 hover:text-slate-300 hover:bg-navy-900/50'}`}>
-                                                <item.icon size={16} />
-                                                <span className="text-sm">{item.label}</span>
-                                            </div>
-                                        </button>
-                                    )
-                                })}
-                            </div>
+                            <AnimatePresence>
+                                {isToolsOpen && (
+                                    <motion.div
+                                        initial="collapsed"
+                                        animate="open"
+                                        exit="collapsed"
+                                        variants={menuVariants}
+                                        className="overflow-hidden space-y-1"
+                                    >
+                                        {toolItems.map((item, i) => {
+                                            const isActive = currentView === item.id;
+                                            return (
+                                                <motion.button
+                                                    key={item.id}
+                                                    variants={itemVariants}
+                                                    initial="hidden"
+                                                    animate="visible"
+                                                    transition={{ delay: i * 0.05 }}
+                                                    onClick={() => handleNavigation(item.id)}
+                                                    className="w-full flex items-center h-10 group/subitem relative"
+                                                >
+                                                    <div className="min-w-[70px] flex justify-end pr-6"></div>
+                                                    <div className={`flex items-center gap-3 whitespace-nowrap overflow-hidden w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-300 pl-2 rounded-lg py-1.5 pr-3 ${isActive ? 'bg-navy-900 text-gold-500' : 'text-slate-500 hover:text-slate-300 hover:bg-navy-900/50'}`}>
+                                                        <item.icon size={16} />
+                                                        <span className="text-sm">{item.label}</span>
+                                                    </div>
+                                                </motion.button>
+                                            )
+                                        })}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     )}
 
@@ -502,6 +579,33 @@ const Sidebar: React.FC = () => {
                                     onChange={(e) => setEditName(e.target.value)}
                                     placeholder="Seu nome"
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium text-zinc-400 uppercase mb-3">Tema do Sistema</label>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <button
+                                        onClick={() => setEditTheme('standard')}
+                                        className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all active-scale ${editTheme === 'standard' ? 'bg-navy-900 border-gold-500 text-gold-500' : 'bg-[#0f1014] border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                                    >
+                                        <Monitor size={20} />
+                                        <span className="text-[10px] font-bold uppercase">Padrão</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setEditTheme('dark')}
+                                        className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all active-scale ${editTheme === 'dark' ? 'bg-zinc-900 border-gold-500 text-gold-500' : 'bg-[#0f1014] border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                                    >
+                                        <Moon size={20} />
+                                        <span className="text-[10px] font-bold uppercase">Deep Dark</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setEditTheme('white')}
+                                        className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all active-scale ${editTheme === 'white' ? 'bg-slate-100 border-gold-500 text-gold-600 shadow-inner' : 'bg-[#0f1014] border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                                    >
+                                        <Sun size={20} />
+                                        <span className="text-[10px] font-bold uppercase">White</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

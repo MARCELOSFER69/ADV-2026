@@ -111,6 +111,8 @@ interface AppContextType {
 
     isNewCaseModalOpen: boolean;
     setIsNewCaseModalOpen: (isOpen: boolean) => void;
+    isNewClientModalOpen: boolean;
+    setIsNewClientModalOpen: (isOpen: boolean) => void;
     newCaseParams: { clientId?: string; type?: CaseType } | null;
     openNewCaseWithParams: (clientId: string, type: CaseType) => void;
     caseToView: string | null;
@@ -128,6 +130,11 @@ interface AppContextType {
 
     // --- AUTOMATION ---
     triggerRgpSync: (clientList: { id: string, cpf_cnpj: string }[]) => Promise<void>;
+    triggerReapSync: (clientList: { id: string, cpf_cnpj: string, senha_gov?: string }[]) => Promise<void>;
+
+    // --- ASSISTANT ---
+    isAssistantOpen: boolean;
+    setIsAssistantOpen: (isOpen: boolean) => void;
 }
 
 interface ToastMessage {
@@ -226,6 +233,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
     const [currentView, setCurrentView] = useState<ViewState>('dashboard');
+    const [isAssistantOpen, setIsAssistantOpen] = useState(false);
     const [clientToView, _setClientToView] = useState<string | null>(null);
     const [clientDetailTab, setClientDetailTab] = useState<'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp'>('info');
 
@@ -238,6 +246,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
+    const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
     const [newCaseParams, setNewCaseParams] = useState<{ clientId?: string; type?: CaseType } | null>(null);
 
     const openNewCaseWithParams = useCallback((clientId: string, type: CaseType) => {
@@ -1024,11 +1033,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                     const dayLabel = diffDays === 0 ? 'HOJE' : diffDays === 1 ? 'AMANHÃ' : `em ${diffDays} dias`;
                     const urgency = diffDays === 0 ? 'today' : diffDays === 1 ? 'tomorrow' : 'upcoming';
 
+                    const message = ev.tipo === ev.titulo ? ev.titulo : `${ev.tipo}: ${ev.titulo}`;
                     newNotifications.push({
                         id: `event-${ev.id}`,
                         type: 'reminder',
                         title: `Evento ${dayLabel}`,
-                        message: `${ev.tipo}: ${ev.titulo}${ev.cidade ? ` (${ev.cidade})` : ''}`,
+                        message: `${message}${ev.cidade ? ` (${ev.cidade})` : ''}`,
                         amount: 0,
                         date: eventDateStr,
                         urgency: urgency,
@@ -1895,7 +1905,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             // Compare for changes in status or value
             if (oldCase) {
                 const oldGps = oldCase.gps_lista || [];
-                const changes = [];
+                const changes: string[] = [];
                 gpsList.forEach(newG => {
                     const oldG = oldGps.find(o => o.id === newG.id);
                     if (!oldG || oldG.status !== newG.status) {
@@ -2160,9 +2170,59 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         }
     }, [showToast]);
 
+    const triggerReapSync = useCallback(async (clientList: { id: string, cpf_cnpj: string, senha_gov?: string }[]) => {
+        const task = {
+            clients: clientList.map(c => ({
+                id: c.id,
+                cpf: c.cpf_cnpj.replace(/\D/g, ''),
+                senha_gov: c.senha_gov
+            })),
+            timestamp: new Date().toISOString()
+        };
+
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+            const response = await fetch('http://localhost:3001/api/reap-sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(task),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                showToast('success', 'Robô de Manutenção REAP iniciado via API Local!');
+                return;
+            }
+        } catch (e) {
+            console.warn("⚠️ API Local indisponível para REAP, usando fallback via Supabase...");
+        }
+
+        try {
+            const { error } = await supabase.from('system_settings').upsert({
+                key: 'reap_sync_task',
+                value: task
+            }, { onConflict: 'key' });
+
+            if (error) throw error;
+            showToast('success', `${clientList.length === 1 ? 'REAP' : 'REAP em massa'} enviado para a fila.`);
+        } catch (err) {
+            console.error("Erro ao disparar REAP sync:", err);
+            showToast('error', "Falha ao enviar comando para o robô REAP.");
+        }
+    }, [showToast]);
+
     const mergedPreferences = useMemo(() => {
         return { ...globalPreferences, ...(user?.preferences || {}) };
     }, [globalPreferences, user?.preferences]);
+
+    // --- EFEITO DE TEMA ---
+    useEffect(() => {
+        const theme = mergedPreferences.theme || 'standard';
+        document.documentElement.setAttribute('data-theme', theme);
+    }, [mergedPreferences.theme]);
 
     const contextValue = useMemo(() => ({
         user, login, logout, updateUserProfile, saveUserPreferences,
@@ -2190,11 +2250,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         reminders,
         toasts, showToast, isLoading,
         isNewCaseModalOpen, setIsNewCaseModalOpen,
+        isNewClientModalOpen, setIsNewClientModalOpen,
         newCaseParams, openNewCaseWithParams,
         caseToView, setCaseToView,
         clientDetailTab, setClientDetailTab,
         chats, chatMessages, fetchChatMessages, assumeChat, sendMessage, markChatAsRead, deleteChat, finishChat,
-        triggerRgpSync, refreshClient, reloadData
+        triggerRgpSync, triggerReapSync, refreshClient, reloadData,
+        isAssistantOpen, setIsAssistantOpen
     }), [
         user, login, logout, updateUserProfile, saveUserPreferences,
         globalPreferences, mergedPreferences, saveGlobalPreferences,
@@ -2218,11 +2280,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         reminders,
         toasts, showToast, isLoading,
         isNewCaseModalOpen, setIsNewCaseModalOpen,
+        isNewClientModalOpen, setIsNewClientModalOpen,
         newCaseParams, openNewCaseWithParams,
         caseToView, setCaseToView,
         clientDetailTab, setClientDetailTab,
         chats, chatMessages, fetchChatMessages, assumeChat, sendMessage, markChatAsRead, deleteChat, finishChat,
-        triggerRgpSync, refreshClient, reloadData
+        triggerRgpSync, triggerReapSync, refreshClient, reloadData,
+        isAssistantOpen, setIsAssistantOpen
     ]);
 
     return (

@@ -26,5 +26,31 @@ release/
 
 .env
 tokens/
-*.png
 .agent/
+
+# Debug e arquivos temporários
+debug_*.html
+debug_*.txt
+erro_*.png
+ultimo_qr_capturado.png
+
+# Chrome profiles (gerados automaticamente)
+chrome_profile_1/
+
+# Downloads temporários
+downloads/
+
+# Release artifacts
+release.rar
+
+# Cache Python
+__pycache__/
+*.pyc
+.venv/
+
+# Logs de erro dos robos
+robos/*/erros_robo/*.png
+robos/*/erros_robo/*.html
+
+# Excel temporários
+~$*.xlsx

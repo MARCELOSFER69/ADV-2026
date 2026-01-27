@@ -5,6 +5,8 @@ import {
     Calendar, MapPin, RefreshCw, Clock, ExternalLink,
     FileText, ShieldCheck, Eye, EyeOff, Shield, Terminal, Loader2
 } from 'lucide-react';
+import BotExecutionModal from '../modals/BotExecutionModal';
+import ReapConfigModal from '../modals/ReapConfigModal';
 import { formatDateDisplay } from '../../utils/dateUtils';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../services/supabaseClient';
@@ -19,6 +21,12 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
     const { showToast, triggerRgpSync } = useApp();
     const [isHeadless, setIsHeadless] = useState<boolean>(true);
     const [isRunning, setIsRunning] = useState(false);
+    const [modalConfig, setModalConfig] = useState<{
+        type: 'rgp' | 'reap';
+        isOpen: boolean;
+    }>({ type: 'rgp', isOpen: false });
+    const [reapConfigOpen, setReapConfigOpen] = useState(false);
+    const [fishingData, setFishingData] = useState<any[]>([]);
 
     // Carregar configuração de headless do robô
     useEffect(() => {
@@ -66,125 +74,42 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
         }
     };
 
-    const handleConsultation = async () => {
+    const handleConsultation = () => {
         if (!client.cpf_cnpj) {
             showToast('error', 'Cliente sem CPF cadastrado.');
             return;
         }
+        setModalConfig({ type: 'rgp', isOpen: true });
+    };
 
-        setIsRunning(true);
-        showToast('success', 'Iniciando consulta ao robô...');
+    const handleReapProcess = () => {
+        if (!client.cpf_cnpj) {
+            showToast('error', 'Cliente sem CPF cadastrado.');
+            return;
+        }
+        if (!client.senha_gov) {
+            showToast('error', 'Senha Gov.br necessária para o REAP.');
+            return;
+        }
+        // Abre modal de configuração PRIMEIRO
+        setReapConfigOpen(true);
+    };
 
-        const cpf = client.cpf_cnpj.replace(/\D/g, '');
-        const id = client.id;
+    const handleReapConfigConfirm = (data: any[]) => {
+        setFishingData(data);
+        setReapConfigOpen(false);
+        setModalConfig({ type: 'reap', isOpen: true });
+    };
 
-        // TENTATIVA 1: Conexão Direta (Localhost)
-        // Ideal para quando o usuário está no mesmo PC do robô (Zero Latência)
-        try {
-            // Teste rápido de conexão
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2000);
-
-            // Só tenta conectar se estivermos em HTTP ou Localhost (evita erro Mixed Content imediato)
-            const isSecure = window.location.protocol === 'https:';
-            // Se estiver em HTTPS (Vercel), pular direto para o fallback para evitar bloqueio do navegador
-            if (isSecure && window.location.hostname !== 'localhost') {
-                throw new Error("HTTPS bloqueia Localhost (Mixed Content)");
-            }
-
-            const url = `http://localhost:3001/api/stream-rgp?id=${id}&cpf=${cpf}&headless=${isHeadless}&t=${new Date().getTime()}`;
-            const es = new EventSource(url);
-
-            es.onmessage = async (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === 'success') {
-                    es.close();
-                    setIsRunning(false);
-                    const { data: updated } = await supabase.from('clients').select('*').eq('id', id).single();
-                    if (updated) {
-                        if (onUpdate) await onUpdate(updated);
-                        if (setEditedClient) setEditedClient(prev => ({ ...prev, ...updated }));
-                        showToast('success', 'Consulta Finalizada! Dados atualizados.');
-                    }
-                } else if (data.type === 'error') {
-                    es.close();
-                    setIsRunning(false);
-                    showToast('error', `Erro no robô: ${data.message}`);
-                }
-            };
-
-            es.onerror = (err) => {
-                if (es.readyState === 0) {
-                    // Conexão recusada ou fechada. Forçar erro para ir pro fallback.
-                    es.close();
-                    console.log("⚠️ Conexão Localhost falhou, indo para Fallback (Nuvem -> Local)...");
-                    handleQueueFallback(id, cpf);
-                }
-            };
-
-            // Se conectar com sucesso, limpamos o timeout
-            es.onopen = () => clearTimeout(timeoutId);
-
-        } catch (e) {
-            console.log("⚠️ Erro ao tentar Localhost, usando modo fila...", e);
-            handleQueueFallback(id, cpf);
+    const handleModalSuccess = async () => {
+        const { data: updated } = await supabase.from('clients').select('*').eq('id', client.id).single();
+        if (updated) {
+            if (onUpdate) await onUpdate(updated);
+            if (setEditedClient) setEditedClient(prev => ({ ...prev, ...updated }));
+            showToast('success', 'Dados atualizados com sucesso!');
         }
     };
 
-    // MODO FILA: Envia comando pro banco e escuta logs via Realtime (Funciona na Nuvem)
-    const handleQueueFallback = async (id: string, cpf: string) => {
-        // triggerRgpSync vem do closure agora
-
-        // 1. Enviar para Fila
-        try {
-            const task = {
-                clients: [{ id, cpf }],
-                timestamp: new Date().toISOString()
-            };
-
-            const { error } = await supabase.from('system_settings').upsert({
-                key: 'rgp_sync_task',
-                value: task
-            }, { onConflict: 'key' });
-
-            if (error) throw error;
-            showToast('success', 'Comando enviado para o Robô (Via Nuvem). Aguardando execução...');
-
-            // 2. Escutar Logs do Robô via Supabase
-            const channel = supabase.channel(`rgp-${id}`)
-                .on('broadcast', { event: 'log' }, (payload) => {
-                    // O terminal do robô manda broadcast geral, precisamos filtrar?
-                    // O setupRealtimeTerminal no server manda tudo. 
-                    // Vamos assumir que logs importantes aparecerão aqui.
-                    // Mas para saber que TERMINOU, precisamos monitorar o cliente.
-                })
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'clients', filter: `id=eq.${id}` }, async (payload) => {
-                    const status = payload.new.rgp_status;
-                    // Se o status mudou para algo final, paramos o loading
-                    if (status && ['Ativo', 'Cancelado', 'Suspenso', 'Não Encontrado'].some(s => status.includes(s))) {
-                        setIsRunning(false);
-                        const updated = payload.new as Client;
-                        if (onUpdate) await onUpdate(updated);
-                        if (setEditedClient) setEditedClient(prev => ({ ...prev, ...updated }));
-                        showToast('success', 'Robô finalizou a tarefa!');
-                        channel.unsubscribe();
-                    }
-                })
-                .subscribe();
-
-            // Timeout de segurança para o loading (30s)
-            setTimeout(() => {
-                if (isRunning) {
-                    // setIsRunning(false); 
-                    // showToast('info', 'A tarefa está demorando, mas o robô continua rodando em segundo plano.');
-                }
-            }, 30000);
-
-        } catch (err) {
-            setIsRunning(false);
-            showToast('error', "Não foi possível contactar o robô (Nem local, nem nuvem). Verifique se o 'runner.cjs' está rodando no PC.");
-        }
-    };
 
     const getStatusColor = (status?: string) => {
         switch (status) {
@@ -326,7 +251,7 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
                             </button>
 
                             <button
-                                onClick={() => showToast('success', 'Automação de REAP Anual agendada para próxima atualização.')}
+                                onClick={handleReapProcess}
                                 className="w-full flex items-center justify-between p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 border border-slate-700 transition-all group"
                             >
                                 <div className="flex items-center gap-3">
@@ -358,6 +283,26 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
                     </div>
                 </div>
             </div>
+
+            <ReapConfigModal
+                isOpen={reapConfigOpen}
+                onClose={() => setReapConfigOpen(false)}
+                onConfirm={handleReapConfigConfirm}
+                clientName={client.nome_completo}
+                clientLocation={client.rgp_localidade}
+            />
+
+            <BotExecutionModal
+                isOpen={modalConfig.isOpen}
+                onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+                type={modalConfig.type}
+                clientId={client.id}
+                cpf={client.cpf_cnpj.replace(/\D/g, '')}
+                senha={client.senha_gov}
+                headless={isHeadless}
+                onSuccess={handleModalSuccess}
+                fishingData={modalConfig.type === 'reap' ? fishingData : undefined}
+            />
         </div>
     );
 };

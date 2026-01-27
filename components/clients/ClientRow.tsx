@@ -147,4 +147,4 @@ const ClientRow: React.FC<ClientRowProps> = ({
     );
 };
 
-export default ClientRow;
+export default React.memo(ClientRow);

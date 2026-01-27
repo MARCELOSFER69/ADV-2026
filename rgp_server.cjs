@@ -1,6 +1,8 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const { createClient } = require('@supabase/supabase-js');
 const { runRgpConsultation } = require('./services/rgpAutomation.cjs');
+const { runReapProcess } = require('./services/reapAutomation.cjs');
 const { exec } = require('child_process');
 const express = require('express');
 const cors = require('cors');
@@ -64,6 +66,122 @@ app.get('/api/stream-rgp', async (req, res) => {
 });
 
 // ===================================
+// 1.2 STREAMING REAP (Novo para Manutenção)
+// ===================================
+app.get('/api/stream-reap', async (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.flushHeaders();
+
+    const { id, cpf, senha, headless, fishing_data } = req.query;
+
+    if (!id || !cpf) {
+        res.write(`data: ${JSON.stringify({ type: 'error', message: 'ID e CPF obrigatórios' })}\n\n`);
+        res.end();
+        return;
+    }
+
+    // REAP geralmente precisa de assistente, então headless=false por padrão
+    const isHeadless = headless === 'true';
+
+    // Parse fishing_data se fornecido
+    let fishingData = null;
+    if (fishing_data) {
+        try {
+            fishingData = JSON.parse(fishing_data);
+            console.log(`🐟 [API] Recebidos ${fishingData.length} registros de pesca do frontend`);
+        } catch (e) {
+            console.error('❌ Erro ao parsear fishing_data:', e);
+        }
+    }
+
+    console.log(`🚀 [API] Iniciando REAP para ${cpf}...`);
+    res.write(`data: ${JSON.stringify({ type: 'log', message: `🚀 Iniciando Robô de Manutenção (REAP)...` })}\n\n`);
+
+    try {
+        const result = await runReapProcess(id, cpf, senha, isHeadless, (logMessage) => {
+            res.write(`data: ${JSON.stringify({ type: 'log', message: logMessage })}\n\n`);
+        }, fishingData);
+
+        if (result.success) {
+            res.write(`data: ${JSON.stringify({ type: 'success', data: result.data })}\n\n`);
+        } else {
+            res.write(`data: ${JSON.stringify({ type: 'error', message: result.error })}\n\n`);
+        }
+    } catch (error) {
+        res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+    }
+
+    res.end();
+});
+
+// ===================================
+// 1.3 STOP REAP (Cancelar Robô)
+// ===================================
+app.post('/api/stop-reap', async (req, res) => {
+    console.log('🛑 [API] Solicitação para parar robô REAP recebida.');
+    try {
+        // Mata processos Python que possam estar rodando o robo_reap.py
+        if (os.platform() === 'win32') {
+            exec('taskkill /F /IM python.exe /T', (err) => {
+                if (err) console.warn('⚠️ Nenhum processo Python encontrado ou erro ao matar:', err.message);
+            });
+            // Também mata o Chrome controlado pelo Selenium (atenção: mata TODOS os chrome)
+            exec('taskkill /F /IM chromedriver.exe /T', (err) => {
+                if (err) console.warn('⚠️ Nenhum ChromeDriver encontrado:', err.message);
+            });
+        } else {
+            exec('pkill -f robo_reap.py', (err) => {
+                if (err) console.warn('⚠️ pkill falhou:', err.message);
+            });
+        }
+        res.json({ success: true, message: 'Comando de parada enviado.' });
+    } catch (error) {
+        console.error('❌ Erro ao parar robô:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ===================================
+// 1.4 REAP CONFIG (Ler planilhas de configuração)
+// ===================================
+app.get('/api/reap-config', async (req, res) => {
+    const xlsx = require('xlsx');
+    const robosPath = path.join(__dirname, 'robos', 'robo reap');
+
+    let localidades = [];
+    let peixes = [];
+
+    try {
+        // Ler config_localidades.xlsx
+        const locPath = path.join(robosPath, 'config_localidades.xlsx');
+        if (require('fs').existsSync(locPath)) {
+            const workbook = xlsx.readFile(locPath);
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            localidades = xlsx.utils.sheet_to_json(sheet);
+            console.log(`📍 [CONFIG] Carregadas ${localidades.length} localidades`);
+        }
+
+        // Ler config_peixes.xlsx
+        const peixesPath = path.join(robosPath, 'config_peixes.xlsx');
+        if (require('fs').existsSync(peixesPath)) {
+            const workbook = xlsx.readFile(peixesPath);
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const data = xlsx.utils.sheet_to_json(sheet);
+            peixes = data.map(row => row.ESPECIE).filter(Boolean);
+            console.log(`🐟 [CONFIG] Carregadas ${peixes.length} espécies de peixes`);
+        }
+
+        res.json({ localidades, peixes });
+    } catch (error) {
+        console.error('❌ Erro ao carregar config REAP:', error);
+        res.status(500).json({ error: error.message, localidades: [], peixes: [] });
+    }
+});
+
+// ===================================
 // 1.1 API DE SYNC EM MASSA (Task)
 // ===================================
 app.post('/api/rgp-sync', async (req, res) => {
@@ -89,6 +207,28 @@ app.post('/api/rgp-sync', async (req, res) => {
             }
         }
         console.log("✅ Tarefa de massa finalizada.");
+    })();
+});
+
+app.post('/api/reap-sync', async (req, res) => {
+    const { clients } = req.body;
+    if (!clients || !Array.isArray(clients)) return res.status(400).json({ error: 'Lista inválida' });
+
+    console.log(`🤖 [API] Recebida tarefa de REAP em massa: ${clients.length} clientes.`);
+    res.json({ message: 'Processamento de REAP iniciado.' });
+
+    (async () => {
+        for (const item of clients) {
+            try {
+                await new Promise(r => setTimeout(r, 1000));
+                console.log(`🔄 Fazendo REAP de ${item.cpf}...`);
+                // No sync em massa, usamos headless false para que o assistente apareça
+                await runReapProcess(item.id, item.cpf, item.senha_gov, false);
+            } catch (err) {
+                console.error(`❌ Erro no REAP de ${item.cpf}:`, err);
+            }
+        }
+        console.log("✅ Tarefa de REAP finalizada.");
     })();
 });
 
@@ -231,6 +371,24 @@ async function startWorkers() {
                 // Limpa a task
                 // Usa key em vez de ID para garantir
                 await supabase.from('system_settings').delete().eq('key', 'rgp_sync_task');
+            }
+            // Tarefa de REAP em Massa
+            if (newRecord && newRecord.key === 'reap_sync_task') {
+                const task = newRecord.value;
+                if (!task || !task.clients) return;
+
+                console.log(`🤖 [TASK] Processando REAP para ${task.clients.length} clientes...`);
+
+                for (const item of task.clients) {
+                    try {
+                        await runReapProcess(item.id, item.cpf, item.senha_gov, false);
+                        await new Promise(r => setTimeout(r, 2000));
+                    } catch (err) {
+                        console.error(`❌ Erro no REAP:`, err);
+                    }
+                }
+
+                await supabase.from('system_settings').delete().eq('key', 'reap_sync_task');
             }
         })
         .subscribe();

@@ -8,7 +8,7 @@ import {
 import { supabase } from '../../services/supabaseClient';
 
 const Robots: React.FC = () => {
-    const { clients, showToast, triggerRgpSync, fetchClients, refreshClient, reloadData } = useApp();
+    const { clients, showToast, triggerRgpSync, triggerReapSync, fetchClients, refreshClient, reloadData } = useApp();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedClients, setSelectedClients] = useState<string[]>([]);
     const [isRunning, setIsRunning] = useState(false);
@@ -49,14 +49,22 @@ const Robots: React.FC = () => {
                 // Isso evita problemas de delay na propagação do Estado Global
                 const { data: statuses } = await supabase
                     .from('clients')
-                    .select('id, rgp_status')
+                    .select('id, rgp_status, reap_status')
                     .in('id', processingIds);
 
                 if (statuses) {
                     const finishedIds = statuses
                         .filter(c => {
-                            const finishedStatuses = ['Ativo', 'Cancelado', 'Suspenso', 'Não Encontrado', 'Inexistente'];
-                            return c.rgp_status && finishedStatuses.some(s => c.rgp_status?.includes(s));
+                            const finishedRgp = ['Ativo', 'Cancelado', 'Suspenso', 'Não Encontrado', 'Inexistente'];
+                            const isRgpDone = c.rgp_status && finishedRgp.some(s => c.rgp_status?.includes(s));
+
+                            // Para REAP, consideramos feito se tiver algo diferente de nulo e do estado anterior (se tivessemos)
+                            // Ou simplesmente se o status for finalizado. 
+                            // O robô de REAP salva 'Regular' ou 'Pendente Anual'.
+                            const finishedReap = ['Regular', 'Pendente Anual'];
+                            const isReapDone = c.reap_status && finishedReap.some(s => c.reap_status?.includes(s));
+
+                            return isRgpDone || isReapDone;
                         })
                         .map(c => c.id);
 
@@ -118,15 +126,19 @@ const Robots: React.FC = () => {
 
             triggerRgpSync(clientsToSync.map(c => ({ id: c.id, cpf_cnpj: c.cpf_cnpj })));
             setSelectedClients([]); // Limpa seleção
-        } else {
-            setIsRunning(true);
-            setActiveRobot(type);
+        } else if (type === 'reap') {
+            const clientsToSync = clients.filter(c => selectedClients.includes(c.id));
 
-            setTimeout(() => {
-                setIsRunning(false);
-                setActiveRobot(null);
-                showToast('success', `Robô ${type.toUpperCase()} finalizado para ${selectedClients.length} clientes.`);
-            }, 3000);
+            // Ativa loading visual
+            setProcessingIds(prev => [...prev, ...clientsToSync.map(c => c.id)]);
+
+            triggerReapSync(clientsToSync.map(c => ({
+                id: c.id,
+                cpf_cnpj: c.cpf_cnpj,
+                senha_gov: c.senha_gov
+            })));
+
+            setSelectedClients([]);
         }
     };
 
@@ -242,20 +254,28 @@ const Robots: React.FC = () => {
                                             <td className="px-6 py-4 text-center">
                                                 {isProcessing ? (
                                                     <span className="px-2 py-0.5 rounded text-[9px] font-bold border text-gold-500 border-gold-500/20 bg-gold-500/10 flex items-center justify-center gap-1">
-                                                        <Loader2 size={10} className="animate-spin" /> Carregando...
+                                                        <Loader2 size={10} className="animate-spin" /> Processando...
                                                     </span>
                                                 ) : (
                                                     <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${client.rgp_status === 'Ativo' ? 'text-emerald-500 border-emerald-500/20 bg-emerald-500/10' :
-                                                        'text-slate-500 border-slate-700 bg-slate-800'
+                                                        client.rgp_status === 'Pendente' || !client.rgp_status ? 'text-amber-500 border-amber-500/20 bg-amber-500/10' :
+                                                            'text-slate-500 border-slate-700 bg-slate-800'
                                                         }`}>
                                                         {client.rgp_status || 'Pendente'}
                                                     </span>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <span className="text-[10px] font-medium text-slate-400">
-                                                    {client.reap_ano_base ? `Ano ${client.reap_ano_base}` : '---'}
-                                                </span>
+                                                {isProcessing ? (
+                                                    <span className="text-gold-500 animate-pulse text-[10px]">Aguardando...</span>
+                                                ) : (
+                                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${client.reap_status === 'Regular' ? 'text-emerald-500 border-emerald-500/20 bg-emerald-500/10' :
+                                                        client.reap_status === 'Pendente Anual' ? 'text-rose-500 border-rose-500/20 bg-rose-500/10' :
+                                                            'text-slate-500 border-slate-800'
+                                                        }`}>
+                                                        {client.reap_status || '---'}
+                                                    </span>
+                                                )}
                                             </td>
                                         </tr>
                                     )

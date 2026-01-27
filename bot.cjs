@@ -6,6 +6,7 @@ const cron = require('node-cron');
 const dns = require('node:dns');
 const { startGovBrRecovery } = require('./services/govbrAutomation.cjs');
 const { runRgpConsultation } = require('./services/rgpAutomation.cjs');
+const { runReapProcess } = require('./services/reapAutomation.cjs');
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -16,12 +17,17 @@ const cors = require('cors');
 const app = express();
 const PORT = 3001;
 
-app.use(cors());
+app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type'] }));
 app.use(express.json());
 
-// Endpoint SSE para Streaming de Logs (Melhor experiência visual)
+// Log de depuração para todas as requisições
+app.use((req, res, next) => {
+    console.log(`🌐 [API] ${req.method} ${req.url} - From: ${req.ip}`);
+    next();
+});
+
+// --- 1.1 STREAMING RGP ---
 app.get('/api/stream-rgp', async (req, res) => {
-    // Cabeçalhos para Server-Sent Events
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -29,45 +35,196 @@ app.get('/api/stream-rgp', async (req, res) => {
     res.flushHeaders();
 
     const { id, cpf, headless } = req.query;
-
     if (!id || !cpf) {
         res.write(`data: ${JSON.stringify({ type: 'error', message: 'ID e CPF são obrigatórios' })}\n\n`);
         res.end();
         return;
     }
 
-    // Determina modo headless: preferencia para query param (string 'true'/'false'), fallback para config salva
     const isHeadless = headless !== undefined ? headless === 'true' : botConfig.headless;
-
-    console.log(`🚀 [API SSE] Iniciando stream para ${cpf} (Headless: ${isHeadless})...`);
-    // Envia evento inicial
-    res.write(`data: ${JSON.stringify({ type: 'log', message: `🚀 Conectado. Iniciando robô (Modo ${isHeadless ? 'Oculto' : 'Visível'})...` })}\n\n`);
+    console.log(`🚀 [API RGP] Iniciando para ${cpf}...`);
+    res.write(`data: ${JSON.stringify({ type: 'log', message: `🚀 Iniciando Robô de Consulta (RGP)...` })}\n\n`);
 
     try {
         const result = await runRgpConsultation(id, cpf, isHeadless, (logMessage) => {
-            // Envia cada log como um evento SSE
-            // Sanitiza msg para JSON
-            const safeMsg = JSON.stringify({ type: 'log', message: logMessage });
-            res.write(`data: ${safeMsg}\n\n`);
+            res.write(`data: ${JSON.stringify({ type: 'log', message: logMessage })}\n\n`);
         });
-
-        if (result.success) {
-            res.write(`data: ${JSON.stringify({ type: 'success', data: result.data })}\n\n`);
-        } else {
-            res.write(`data: ${JSON.stringify({ type: 'error', message: result.error })}\n\n`);
-        }
+        if (result.success) res.write(`data: ${JSON.stringify({ type: 'success', data: result.data })}\n\n`);
+        else res.write(`data: ${JSON.stringify({ type: 'error', message: result.error })}\n\n`);
     } catch (error) {
-        console.error('❌ Erro no stream:', error);
         res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
     }
-
-    // Fecha a conexão após terminar
     res.end();
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 API Local do Robô rodando na porta ${PORT}`);
+// --- 1.2 STREAMING REAP (Manutenção) ---
+app.get('/api/stream-reap', async (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.flushHeaders();
+
+    const { id, cpf, senha, headless, fishing_data } = req.query;
+    if (!id || !cpf) {
+        res.write(`data: ${JSON.stringify({ type: 'error', message: 'ID e CPF obrigatórios' })}\n\n`);
+        res.end();
+        return;
+    }
+
+    const isHeadless = headless === 'true';
+    let fishingData = null;
+    if (fishing_data) {
+        try { fishingData = JSON.parse(fishing_data); } catch (e) { console.error('❌ Erro parse fishing_data:', e); }
+    }
+
+    console.log(`🚀 [API REAP] Iniciando para ${cpf}...`);
+    res.write(`data: ${JSON.stringify({ type: 'log', message: `🚀 Iniciando Robô de Manutenção (REAP)...` })}\n\n`);
+
+    try {
+        const result = await runReapProcess(id, cpf, senha, isHeadless, (logMessage) => {
+            res.write(`data: ${JSON.stringify({ type: 'log', message: logMessage })}\n\n`);
+        }, fishingData);
+        if (result.success) res.write(`data: ${JSON.stringify({ type: 'success', data: result.data })}\n\n`);
+        else res.write(`data: ${JSON.stringify({ type: 'error', message: result.error })}\n\n`);
+    } catch (error) {
+        res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+    }
+    res.end();
 });
+
+// --- 1.3 CONFIGURAÇÃO REAP ---
+app.get('/api/reap-config', async (req, res) => {
+    const xlsx = require('xlsx');
+    const robosPath = path.join(__dirname, 'robos', 'robo reap');
+    let localidades = [];
+    let peixes = [];
+    try {
+        const locPath = path.join(robosPath, 'config_localidades.xlsx');
+        if (fs.existsSync(locPath)) {
+            const workbook = xlsx.readFile(locPath);
+            localidades = xlsx.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+        }
+        const peixesPath = path.join(robosPath, 'config_peixes.xlsx');
+        if (fs.existsSync(peixesPath)) {
+            const workbook = xlsx.readFile(peixesPath);
+            peixes = xlsx.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]).map(row => row.ESPECIE).filter(Boolean);
+        }
+        res.json({ localidades, peixes });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- 1.5 AI COPILOT (Assistente do Sistema) ---
+app.post('/api/ai-copilot', async (req, res) => {
+    const { message, context } = req.body;
+    if (!message) return res.status(400).json({ error: 'Mensagem vazia' });
+
+    try {
+        console.log(`🧠 [IA COPILOT] Processando pergunta: "${message.slice(0, 50)}..."`);
+
+        // Capturar contexto dinâmico do banco (Resumo do Escritório)
+        const systemContext = await getSystemSummaryContext();
+
+        const prompt = `Você é a Clara, a assistente inteligente oficial do Escritório de Advocacia Noleto & Macedo.
+        Seu objetivo é ajudar o advogado a gerir o escritório com eficiência e precisão.
+
+        CONTEXTO ATUAL DO ESCRITÓRIO:
+        ${JSON.stringify(systemContext, null, 2)}
+        
+        CONTEXTO DA TELA ATUAL DO USUÁRIO:
+        ${JSON.stringify(context || {}, null, 2)}
+
+        INSTRUÇÕES:
+        1. Baseie suas respostas nos dados fornecidos no contexto acima.
+        2. Seja profissional, mas amigável e proativa.
+        3. Se o usuário perguntar sobre faturamento, prazos ou clientes, use os números do contexto.
+        4. Mantenha as respostas concisas e formate-as em Markdown.
+        5. Se não souber algo, sugira que ele verifique no banco de dados.
+
+        PERGUNTA DO USUÁRIO:
+        "${message}"`;
+
+        const result = await aiModel.generateContent(prompt);
+        const responseText = result.response.text();
+
+        res.json({ response: responseText });
+    } catch (error) {
+        console.error('❌ Erro no Copilot:', error);
+        // Tentar enviar uma resposta amigável mesmo em caso de erro da IA, se possível
+        res.status(500).json({
+            error: 'Falha ao processar inteligência',
+            details: error.message,
+            status: error.status
+        });
+    }
+});
+
+async function getSystemSummaryContext() {
+    try {
+        console.log('📊 [IA CONTEXT] Buscando dados para resumo...');
+        const [
+            clientsRes,
+            casesRes,
+            eventsRes,
+            financialRes
+        ] = await Promise.all([
+            supabase.from('clients').select('*', { count: 'exact', head: true }),
+            supabase.from('cases').select('*', { count: 'exact', head: true }),
+            supabase.from('events').select('*, cases(titulo)').gte('data_hora', new Date().toISOString()).order('data_hora').limit(10),
+            supabase.from('financial').select('valor, tipo, status_pagamento').eq('status_pagamento', false)
+        ]);
+
+        if (clientsRes?.error) console.error('❌ Erro clients:', clientsRes.error);
+        if (casesRes?.error) console.error('❌ Erro cases:', casesRes.error);
+        if (eventsRes?.error) console.error('❌ Erro events:', eventsRes.error);
+        if (financialRes?.error) console.error('❌ Erro financial:', financialRes.error);
+
+        return {
+            total_clientes: clientsRes.count || 0,
+            total_processos: casesRes.count || 0,
+            eventos_proximos: eventsRes.data?.map(e => ({ data: e.data_hora, titulo: e.titulo, processo: e.cases?.titulo })) || [],
+            financeiro_pendente: financialRes.data?.reduce((acc, current) => {
+                if (current.tipo === 'Receita') acc.entrar += current.valor;
+                else acc.sair += current.valor;
+                return acc;
+            }, { entrar: 0, sair: 0 }) || { entrar: 0, sair: 0 }
+        };
+    } catch (e) {
+        console.error('❌ Erro fatal getSystemSummaryContext:', e);
+        return { error: 'Não foi possível carregar contexto completo', details: e.message };
+    }
+}
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n===================================================`);
+    console.log(`🚀 API UNIFICADA (BOT + RGP) RODANDO EM 0.0.0.0:${PORT}`);
+    console.log(`===================================================\n`);
+    setupRealtimeTerminal();
+});
+
+async function setupRealtimeTerminal() {
+    console.log('📡 Configurando Terminal Real-time via Supabase...');
+    const channel = supabase.channel('bot_terminal');
+
+    channel.subscribe(() => {
+        const originalLog = console.log;
+        const originalError = console.error;
+
+        function broadcast(type, args) {
+            const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+            channel.send({
+                type: 'broadcast',
+                event: 'log',
+                payload: { type, message, timestamp: new Date().toISOString() }
+            });
+        }
+
+        console.log = (...args) => { originalLog(...args); broadcast('info', args); };
+        console.error = (...args) => { originalError(...args); broadcast('error', args); };
+    });
+}
 
 // --- CORREÇÃO DE REDE ---
 try {
@@ -90,7 +247,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // IA GEMINI CONFIG
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+const aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 let botConfig = {
     headless: true
@@ -275,9 +432,10 @@ setupRemoteControl().catch(console.error);
 // 2. INICIALIZAÇÃO DO BOT
 // ============================================================
 wppconnect.create({
-    session: 'adv-bot',
+    session: 'adv-bot-new',
     headless: true,
     logQR: true,
+    catchQR: (base64Qr, asciiQR, attempts, urlCode) => { }, // Adicionado para evitar conflito de trava
     browserArgs: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -547,10 +705,39 @@ function iniciarAgendadores(client) {
         await enviarRelatorioFinanceiro(client);
     });
 
+    // Alerta Estratégico da Inteligência (09:30) - NOVO: IA avisa sobre gargalos
+    cron.schedule('30 9 * * 1-5', async () => {
+        await enviarAlertaEstrategicoIA(client);
+    });
+
     // Cobrança de documentos pendentes (Segunda a Sexta às 10h, 14h e 16h)
     cron.schedule('0 10,14,16 * * 1-5', async () => {
         await cobrarPendenciasClientes(client);
     });
+}
+
+async function enviarAlertaEstrategicoIA(client) {
+    try {
+        console.log('🤖 [IA ALERT] Gerando insight estratégico para o advogado...');
+        const context = await getSystemSummaryContext();
+
+        const prompt = `Gere um alerta curto e motivacional (máximo 60 palavras) para o dono do escritório de advocacia baseado nestes números:
+        - Clientes: ${context.total_clientes}
+        - Processos: ${context.total_processos}
+        - Prazos Próximos: ${context.eventos_proximos?.length || 0}
+        - Financeiro a Entrar: R$ ${context.financeiro_pendente?.entrar || 0}
+        
+        Destaque uma coisa positiva e um ponto de atenção. Use emojis e tom de parceiro de negócios.`;
+
+        const result = await aiModel.generateContent(prompt);
+        const alertMsg = result.response.text();
+
+        for (const n of LISTA_NUMEROS) {
+            await client.sendText(n, `💡 *Insight da Clara*\n\n${alertMsg}`);
+        }
+    } catch (err) {
+        console.error("Erro no alerta estratégico IA:", err.message);
+    }
 }
 
 async function enviarRelatorioFinanceiro(client) {
