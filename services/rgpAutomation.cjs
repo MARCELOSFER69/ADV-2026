@@ -105,6 +105,10 @@ async function runRgpConsultation(clientId, cpf, headless = true, onLog = null) 
                         if (onLog) onLog(warn);
                     }
 
+                    if (onLog) onLog(`💾 Tentando salvar: ${JSON.stringify(updateData)}`);
+                    console.log(`[RGP DEBUG] Update Payload for ${clientId}:`, updateData);
+
+                    // --- UPDATE COM RETRY DEFENSIVO ---
                     const { data: savedData, error: dbError } = await supabase
                         .from('clients')
                         .update(updateData)
@@ -112,10 +116,29 @@ async function runRgpConsultation(clientId, cpf, headless = true, onLog = null) 
                         .select();
 
                     if (dbError) {
-                        const dbErrMsg = `Erro ao salvar no banco: ${dbError.message}`;
-                        console.error(`[RGP DB ERROR]`, dbError);
-                        if (onLog) onLog(`❌ ${dbErrMsg}`);
-                        return resolve({ success: false, error: dbError.message });
+                        console.warn("⚠️ [RGP] Erro no update primário:", dbError.message);
+                        // Se falhar por colunas inexistentes, tenta salvar um subset (menos agressivo)
+                        if (dbError.message.includes('column') || dbError.message.includes('rgp_')) {
+                            if (onLog) onLog("⚠️ Algumas colunas RGP não foram encontradas no banco. Tentando salvamento básico...");
+
+                            // Tenta apenas rgp_status e rgp_numero que são os mais básicos
+                            const basicUpdate = {
+                                rgp_status: updateData.rgp_status,
+                                rgp_numero: updateData.rgp_numero
+                            };
+
+                            const { data: retryData, error: retryError } = await supabase
+                                .from('clients')
+                                .update(basicUpdate)
+                                .eq('id', clientId)
+                                .select();
+
+                            if (retryError) throw retryError;
+                            if (onLog) onLog(`✅ Salvamento básico concluído.`);
+                            return resolve({ success: true, data: d });
+                        }
+
+                        throw dbError;
                     }
 
                     console.log(`[RGP DB SUCCESS] Saved row:`, savedData);

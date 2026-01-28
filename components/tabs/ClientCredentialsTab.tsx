@@ -38,12 +38,22 @@ const ClientCredentialsTab: React.FC<ClientCredentialsTabProps> = ({
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Senha Gov.br</label>
                         {isEditMode ? (
-                            <input
-                                className="w-full bg-navy-950 border border-slate-700 rounded-lg px-4 py-3 text-white outline-none focus:border-gold-500"
-                                value={editedClient.senha_gov || ''}
-                                onChange={(e) => setEditedClient({ ...editedClient, senha_gov: e.target.value })}
-                                placeholder="Digite a senha..."
-                            />
+                            <div className="relative group">
+                                <input
+                                    type={showGovPassword ? "text" : "password"}
+                                    className="w-full bg-navy-950 border border-slate-700 rounded-lg px-4 py-3 text-white outline-none focus:border-gold-500 pr-10"
+                                    value={editedClient.senha_gov || ''}
+                                    onChange={(e) => setEditedClient({ ...editedClient, senha_gov: e.target.value })}
+                                    placeholder="Digite a senha..."
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowGovPassword(!showGovPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                                >
+                                    {showGovPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
                         ) : (
                             <div className="bg-navy-950 border border-slate-700 rounded-lg px-4 py-3 text-white font-mono flex justify-between items-center group">
                                 <span>
@@ -87,12 +97,22 @@ const ClientCredentialsTab: React.FC<ClientCredentialsTabProps> = ({
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Senha Meu INSS</label>
                         {isEditMode ? (
-                            <input
-                                className="w-full bg-navy-950 border border-slate-700 rounded-lg px-4 py-3 text-white outline-none focus:border-gold-500"
-                                value={editedClient.senha_inss || ''}
-                                onChange={(e) => setEditedClient({ ...editedClient, senha_inss: e.target.value })}
-                                placeholder="Digite a senha..."
-                            />
+                            <div className="relative group">
+                                <input
+                                    type={showInssPassword ? "text" : "password"}
+                                    className="w-full bg-navy-950 border border-slate-700 rounded-lg px-4 py-3 text-white outline-none focus:border-gold-500 pr-10"
+                                    value={editedClient.senha_inss || ''}
+                                    onChange={(e) => setEditedClient({ ...editedClient, senha_inss: e.target.value })}
+                                    placeholder="Digite a senha..."
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowInssPassword(!showInssPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                                >
+                                    {showInssPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
                         ) : (
                             <div className="bg-navy-950 border border-slate-700 rounded-lg px-4 py-3 text-white font-mono flex justify-between items-center group">
                                 <span>

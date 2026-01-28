@@ -9,6 +9,7 @@ import { supabase } from '../services/supabaseClient';
 import { getTodayBrasilia } from '../utils/dateUtils';
 import { listClientFilesFromR2 } from '../services/storageService';
 import { whatsappService } from '../services/whatsappService';
+import { encryptData, decryptData } from '../utils/cryptoUtils';
 
 // Chave para salvar permissões no cache local
 const PERMISSIONS_KEY = 'app_user_permissions';
@@ -480,13 +481,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                     }
                 }
 
-                const mapped = data.map((c: any) => ({
+                const mapped = await Promise.all(data.map(async (c: any) => ({
                     ...c,
                     cases: casesMap.get(c.id) || [], // Attach cases manually
                     interviewStatus: c.interview_status || 'Pendente',
                     interviewDate: c.interview_date,
-                    documentos: c.documentos || []
-                }));
+                    documentos: c.documentos || [],
+                    // --- SEGURANÇA: DESCRIPTOGRAFIA ---
+                    senha_gov: await decryptData(c.senha_gov),
+                    senha_inss: await decryptData(c.senha_inss)
+                })));
                 // console.log('fetchClients mapped[0] docs:', mapped[0]?.documentos);
                 // console.log('fetchClients mapped results (first few):', mapped.slice(0, 5));
                 setPaginatedClients(mapped);
@@ -584,12 +588,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 const { data: credsData } = await supabase.from('personal_credentials').select('*').order('created_at', { ascending: false });
 
                 if (clientsData) {
-                    const mappedClients = clientsData.map((c: any) => ({
+                    const mappedClients = await Promise.all(clientsData.map(async (c: any) => ({
                         ...c,
                         interviewStatus: c.interview_status || 'Pendente',
                         interviewDate: c.interview_date,
-                        documentos: c.documentos || []
-                    }));
+                        documentos: c.documentos || [],
+                        // --- SEGURANÇA: DESCRIPTOGRAFIA ---
+                        senha_gov: await decryptData(c.senha_gov),
+                        senha_inss: await decryptData(c.senha_inss)
+                    })));
                     setClients(mappedClients);
                 }
 
@@ -666,7 +673,31 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 supabase.channel('clients-realtime')
                     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'clients' }, payload => {
                         console.log("👥 [Realtime] Client Update:", payload.new.id);
-                        setClients(prev => prev.map(c => c.id === payload.new.id ? { ...c, ...payload.new } : c));
+                        const updatedClient = payload.new as Client;
+                        setClients(prev => prev.map(c => c.id === updatedClient.id ? { ...c, ...updatedClient } : c));
+                        setPaginatedClients(prev => prev.map(c => c.id === updatedClient.id ? { ...c, ...updatedClient } : c));
+                    })
+                    .subscribe();
+
+                // Realtime subscription for cases
+                supabase.channel('cases-realtime')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'cases' }, payload => {
+                        console.log("📂 [Realtime] Case Update:", payload.eventType, (payload.new as any)?.id);
+                        if (payload.eventType === 'INSERT') {
+                            const newCase = payload.new as Case;
+                            setCases(prev => [newCase, ...prev]);
+                            setPaginatedCases(prev => [newCase, ...prev]);
+                        } else if (payload.eventType === 'UPDATE') {
+                            const updatedCase = payload.new as Case;
+                            setCases(prev => prev.map(c => c.id === updatedCase.id ? { ...c, ...updatedCase } : c));
+                            setPaginatedCases(prev => prev.map(c => c.id === updatedCase.id ? { ...c, ...updatedCase } : c));
+                        } else if (payload.eventType === 'DELETE') {
+                            const deletedId = (payload.old as { id: string }).id;
+                            if (deletedId) {
+                                setCases(prev => prev.filter(c => c.id !== deletedId));
+                                setPaginatedCases(prev => prev.filter(c => c.id !== deletedId));
+                            }
+                        }
                     })
                     .subscribe();
 
@@ -702,7 +733,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                     cases: data.cases || [],
                     interviewStatus: data.interview_status || 'Pendente',
                     interviewDate: data.interview_date,
-                    documentos: data.documentos || []
+                    documentos: data.documentos || [],
+                    // --- SEGURANÇA: DESCRIPTOGRAFIA ---
+                    senha_gov: await decryptData(data.senha_gov),
+                    senha_inss: await decryptData(data.senha_inss)
                 };
 
                 // Updates BOTH states to ensure consistency across views
@@ -988,11 +1022,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             const eventDate = new Date(ev.data_hora);
             const diffDays = Math.ceil((new Date(eventDateStr).getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
 
-            if (ev.tipo === EventType.PERICIA) {
-                // Lógica especial para Perícias:
-                // 1. Um mês antes, uma vez por semana (8 a 30 dias)
-                // 2. 7 dias antes, todos os dias (0 a 7 dias)
+            const relatedCase = cases.find(k => k.id === ev.case_id);
+            const client = clients.find(c => c.id === relatedCase?.client_id);
+            const clientName = client?.nome_completo || 'Cliente';
 
+            if (ev.tipo === EventType.PERICIA) {
                 let shouldNotify = false;
                 if (diffDays >= 0 && diffDays <= 7) {
                     shouldNotify = true;
@@ -1001,12 +1035,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 }
 
                 if (shouldNotify) {
-                    const client = clients.find(c => {
-                        const relatedCase = cases.find(k => k.id === ev.case_id);
-                        return c.id === relatedCase?.client_id;
-                    });
-
-                    const clientName = client?.nome_completo || 'Cliente';
                     const dayLabel = diffDays === 0 ? 'HOJE' : diffDays === 1 ? 'AMANHÃ' : `em ${diffDays} dias`;
                     const urgency = diffDays === 0 ? 'today' : diffDays === 1 ? 'tomorrow' : 'upcoming';
 
@@ -1019,30 +1047,89 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                         date: eventDateStr,
                         urgency: urgency,
                         clientName: clientName,
+                        clientId: client?.id,
+                        caseId: ev.case_id,
                         status: 'unread'
                     });
                 }
             } else {
-                // Lógica padrão para outros eventos (Aviso de 7 dias)
                 if (diffDays >= 0 && diffDays <= 7) {
-                    const clientName = clients.find(c => {
-                        const relatedCase = cases.find(k => k.id === ev.case_id);
-                        return c.id === relatedCase?.client_id;
-                    })?.nome_completo || 'Cliente';
-
                     const dayLabel = diffDays === 0 ? 'HOJE' : diffDays === 1 ? 'AMANHÃ' : `em ${diffDays} dias`;
                     const urgency = diffDays === 0 ? 'today' : diffDays === 1 ? 'tomorrow' : 'upcoming';
 
-                    const message = ev.tipo === ev.titulo ? ev.titulo : `${ev.tipo}: ${ev.titulo}`;
+                    const messageContent = ev.tipo === ev.titulo ? ev.titulo : `${ev.tipo}: ${ev.titulo}`;
                     newNotifications.push({
                         id: `event-${ev.id}`,
                         type: 'reminder',
                         title: `Evento ${dayLabel}`,
-                        message: `${message}${ev.cidade ? ` (${ev.cidade})` : ''}`,
+                        message: `${messageContent}${ev.cidade ? ` (${ev.cidade})` : ''}`,
                         amount: 0,
                         date: eventDateStr,
                         urgency: urgency,
                         clientName: clientName,
+                        clientId: client?.id,
+                        caseId: ev.case_id,
+                        status: 'unread'
+                    });
+                }
+            }
+        });
+
+        // --- NOVO: NOTIFICAÇÕES DE PRAZOS E ESTAGNAÇÃO ---
+        cases.forEach(c => {
+            // Filtro rigoroso: apenas excluir se for um destes status finais exatos
+            const isConcluded = c.status === CaseStatus.ARQUIVADO ||
+                c.status === CaseStatus.CONCLUIDO_CONCEDIDO ||
+                c.status === CaseStatus.CONCLUIDO_INDEFERIDO;
+
+            if (isConcluded) return;
+
+            const client = clients.find(cl => cl.id === c.client_id);
+            const clientName = client?.nome_completo || 'Cliente Desconhecido';
+
+            // 1. Check for Fatal Deadlines (data_fatal) in the next 7 days
+            if (c.data_fatal) {
+                const fatalDateStr = c.data_fatal.split('T')[0];
+                const diffDays = Math.ceil((new Date(fatalDateStr).getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+
+                if (diffDays >= 0 && diffDays <= 7) {
+                    const dayLabel = diffDays === 0 ? 'HOJE' : diffDays === 1 ? 'AMANHÃ' : `em ${diffDays} dias`;
+                    const urgency = diffDays === 0 ? 'today' : diffDays === 1 ? 'tomorrow' : 'upcoming';
+
+                    newNotifications.push({
+                        id: `fatal-${c.id}-${diffDays}`,
+                        type: 'expense', // Using expense for red icon
+                        title: `PRAZO FATAL ${dayLabel}`,
+                        message: `O processo "${c.titulo}" vence em breve!`,
+                        amount: 0,
+                        date: fatalDateStr,
+                        urgency: urgency,
+                        clientName: clientName,
+                        clientId: c.client_id,
+                        caseId: c.id,
+                        status: 'unread'
+                    });
+                }
+            }
+
+            // 2. Check for Stagnation (15 days - Reduced from 60 to show more alerts)
+            const lastUpdate = c.updated_at || c.data_abertura;
+            if (lastUpdate) {
+                const lastUpdateDate = new Date(lastUpdate);
+                const diffDaysStagnant = Math.ceil((todayDate.getTime() - lastUpdateDate.getTime()) / (1000 * 60 * 60 * 24));
+
+                if (diffDaysStagnant >= 15) {
+                    newNotifications.push({
+                        id: `stagnant-${c.id}`,
+                        type: 'benefit', // Using benefit for blue/neutral alert
+                        title: 'Processo Estagnado',
+                        message: `Sem movimentação há ${diffDaysStagnant} dias: "${c.titulo}"`,
+                        amount: 0,
+                        date: today,
+                        urgency: 'upcoming',
+                        clientName: clientName,
+                        clientId: c.client_id,
+                        caseId: c.id,
                         status: 'unread'
                     });
                 }
@@ -1161,6 +1248,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             interview_date: client.interviewDate,
             documentos: client.documentos || []
         };
+
+        // --- SEGURANÇA: CRIPTOGRAFIA ---
+        if (payload.senha_gov) payload.senha_gov = await encryptData(payload.senha_gov);
+        if (payload.senha_inss) payload.senha_inss = await encryptData(payload.senha_inss);
         // registered_by might be missing in schema
         // payload.registered_by = user?.name || 'Usuário';
 
@@ -1217,6 +1308,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             interview_date: interviewDate,
             documentos: updatedClient.documentos || []
         };
+
+        // --- SEGURANÇA: CRIPTOGRAFIA ---
+        if (dbPayload.senha_gov) dbPayload.senha_gov = await encryptData(dbPayload.senha_gov);
+        if (dbPayload.senha_inss) dbPayload.senha_inss = await encryptData(dbPayload.senha_inss);
         // updated_by is missing in schema
         // dbPayload.updated_by = user?.name || 'Usuário'
 
@@ -1294,7 +1389,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }, [clients, updateClient, showToast]);
 
     const addCase = useCallback(async (newCase: Case) => {
-        const finalCase = { ...newCase, registered_by: user?.name || 'Usuário' };
+        const finalCase = {
+            ...newCase,
+            registered_by: user?.name || 'Usuário',
+            updated_at: new Date().toISOString()
+        };
         if (usingDb) {
             await supabase.from('cases').insert([finalCase]);
             const historyEntry = {
@@ -1400,7 +1499,11 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             details += ' (Honorários lançados).';
         }
 
-        const finalCase = { ...updatedCase, updated_by: user?.name || 'Usuário' };
+        const finalCase = {
+            ...updatedCase,
+            updated_by: user?.name || 'Usuário',
+            updated_at: new Date().toISOString()
+        };
 
         if (usingDb) {
             const { error } = await supabase.from('cases').update(finalCase).eq('id', updatedCase.id);
@@ -1608,7 +1711,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 if (usingDb) {
                     await supabase.from('cases').update({
                         valor_honorarios_pagos: totalFees,
-                        status_pagamento: nextStatus
+                        status_pagamento: nextStatus,
+                        updated_at: new Date().toISOString()
                     }).eq('id', r.case_id);
                 }
                 setCases(prev => prev.map(item => item.id === r.case_id ? { ...item, valor_honorarios_pagos: totalFees, status_pagamento: nextStatus } : item));
@@ -1650,7 +1754,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 if (usingDb) {
                     await supabase.from('cases').update({
                         valor_honorarios_pagos: totalFees,
-                        status_pagamento: nextStatus
+                        status_pagamento: nextStatus,
+                        updated_at: new Date().toISOString()
                     }).eq('id', record.case_id);
                 }
                 setCases(prev => prev.map(item => item.id === record.case_id ? { ...item, valor_honorarios_pagos: totalFees, status_pagamento: nextStatus } : item));
@@ -1900,7 +2005,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const updateGPS = useCallback(async (caseId: string, gpsList: GPS[]) => {
         const oldCase = cases.find(c => c.id === caseId);
         if (usingDb) {
-            await supabase.from('cases').update({ gps_lista: gpsList }).eq('id', caseId);
+            await supabase.from('cases').update({
+                gps_lista: gpsList,
+                updated_at: new Date().toISOString()
+            }).eq('id', caseId);
 
             // Compare for changes in status or value
             if (oldCase) {

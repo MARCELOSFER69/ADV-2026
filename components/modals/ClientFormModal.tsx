@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, X, FileText, CreditCard, Search, Loader2, Calendar, Heart, Globe, Briefcase, Check, Phone, Mail, Lock, MapPin, Building2, Share2, AlertTriangle, CheckSquare, Plus } from 'lucide-react';
+import { User, X, FileText, CreditCard, Search, Loader2, Calendar, Heart, Globe, Briefcase, Check, Phone, Mail, Lock, MapPin, Building2, Share2, AlertTriangle, CheckSquare, Plus, Eye, EyeOff } from 'lucide-react';
 import { Client, Branch, Captador } from '../../types';
 import CustomSelect from '../ui/CustomSelect';
 
@@ -58,6 +58,7 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
     formatCPFOrCNPJ,
     formatPhone
 }) => {
+    const [showGovPassword, setShowGovPassword] = React.useState(false);
     if (!isOpen) return null;
 
     return (
@@ -251,17 +252,28 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
                                 <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">
                                     Senha Gov.br {newClient.pendencias?.includes('Senha') ? '(Pendente)' : <span className="text-red-500">*</span>}
                                 </label>
-                                <input
-                                    type="text"
-                                    className={`w-full bg-[#0f1014] border px-4 py-2.5 rounded-xl outline-none transition-all placeholder:text-zinc-600 ${!newClient.senha_gov && !newClient.pendencias?.includes('Senha')
-                                        ? 'border-red-500/50 focus:border-red-500'
-                                        : 'border-zinc-800 focus:border-yellow-600'
-                                        }`}
-                                    value={newClient.senha_gov || ''}
-                                    onChange={e => setNewClient({ ...newClient, senha_gov: e.target.value })}
-                                    placeholder={newClient.pendencias?.includes('Senha') ? "Senha marcada como pendente" : "Digite a senha do Gov.br"}
-                                    disabled={newClient.pendencias?.includes('Senha')}
-                                />
+                                <div className="relative group">
+                                    <input
+                                        type={showGovPassword ? "text" : "password"}
+                                        className={`w-full bg-[#0f1014] border pr-10 py-2.5 px-4 rounded-xl outline-none transition-all placeholder:text-zinc-600 ${!newClient.senha_gov && !newClient.pendencias?.includes('Senha')
+                                            ? 'border-red-500/50 focus:border-red-500'
+                                            : 'border-zinc-800 focus:border-yellow-600'
+                                            }`}
+                                        value={newClient.senha_gov || ''}
+                                        onChange={e => setNewClient({ ...newClient, senha_gov: e.target.value })}
+                                        placeholder={newClient.pendencias?.includes('Senha') ? "Senha marcada como pendente" : "Digite a senha do Gov.br"}
+                                        disabled={newClient.pendencias?.includes('Senha')}
+                                    />
+                                    {!newClient.pendencias?.includes('Senha') && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowGovPassword(!showGovPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                                        >
+                                            {showGovPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    )}
+                                </div>
                                 {newClient.pendencias?.includes('Senha') && (
                                     <p className="text-[10px] text-yellow-500 mt-1">
                                         * Cadastro permitido sem senha pois a pendência "Senha" foi marcada abaixo.

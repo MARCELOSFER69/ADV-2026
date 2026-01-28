@@ -3,6 +3,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const { createClient } = require('@supabase/supabase-js');
 const { runRgpConsultation } = require('./services/rgpAutomation.cjs');
 const { runReapProcess } = require('./services/reapAutomation.cjs');
+const { decryptData } = require('./utils/cryptoUtils.cjs');
 const { exec } = require('child_process');
 const express = require('express');
 const cors = require('cors');
@@ -101,7 +102,8 @@ app.get('/api/stream-reap', async (req, res) => {
     res.write(`data: ${JSON.stringify({ type: 'log', message: `🚀 Iniciando Robô de Manutenção (REAP)...` })}\n\n`);
 
     try {
-        const result = await runReapProcess(id, cpf, senha, isHeadless, (logMessage) => {
+        const decryptedPassword = await decryptData(senha);
+        const result = await runReapProcess(id, cpf, decryptedPassword, isHeadless, (logMessage) => {
             res.write(`data: ${JSON.stringify({ type: 'log', message: logMessage })}\n\n`);
         }, fishingData);
 
@@ -223,7 +225,8 @@ app.post('/api/reap-sync', async (req, res) => {
                 await new Promise(r => setTimeout(r, 1000));
                 console.log(`🔄 Fazendo REAP de ${item.cpf}...`);
                 // No sync em massa, usamos headless false para que o assistente apareça
-                await runReapProcess(item.id, item.cpf, item.senha_gov, false);
+                const decryptedPassword = await decryptData(item.senha_gov);
+                await runReapProcess(item.id, item.cpf, decryptedPassword, false);
             } catch (err) {
                 console.error(`❌ Erro no REAP de ${item.cpf}:`, err);
             }
@@ -381,7 +384,8 @@ async function startWorkers() {
 
                 for (const item of task.clients) {
                     try {
-                        await runReapProcess(item.id, item.cpf, item.senha_gov, false);
+                        const decryptedPassword = await decryptData(item.senha_gov);
+                        await runReapProcess(item.id, item.cpf, decryptedPassword, false);
                         await new Promise(r => setTimeout(r, 2000));
                     } catch (err) {
                         console.error(`❌ Erro no REAP:`, err);

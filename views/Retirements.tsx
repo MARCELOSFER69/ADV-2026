@@ -2,7 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { CaseType, CaseStatus, Client, Case } from '../types';
-import { Hourglass, ChevronRight, User, Eye, Briefcase, Phone, MessageCircle, AlertCircle, X, MapPin, Calculator, Check, Clock, AlertTriangle, FileText } from 'lucide-react';
+import { Hourglass, ChevronRight, User, Eye, Briefcase, Phone, MessageCircle, AlertCircle, X, MapPin, Calculator, Check, Clock, AlertTriangle, FileText, Search, Filter } from 'lucide-react';
+import { motion } from 'framer-motion';
 import CaseDetailsModal from '../components/modals/CaseDetailsModal';
 
 interface RetirementCandidate {
@@ -99,101 +100,112 @@ const RetirementCard: React.FC<{
     };
 
     return (
-        <div
-            onClick={(e) => {
-                // Evita abrir o modal se clicar nos botões de toggle ou link de cnis
-                if ((e.target as HTMLElement).closest('.mode-toggle') || (e.target as HTMLElement).closest('.cnis-link')) return;
-                onClick();
-            }}
-            className={`
-            relative rounded-xl p-5 cursor-pointer transition-all group overflow-hidden bg-[#0f1014]
-            ${isEligible
-                    ? 'border-2 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-                    : 'border border-zinc-800 hover:border-zinc-700 hover:shadow-lg'
-                }
-        `}
+        <motion.div
+            initial={false}
+            animate={{ scale: isEligible ? 1.02 : 1 }}
+            className={`relative p-[1.5px] rounded-xl overflow-hidden group/card ${isEligible ? 'shadow-[0_10px_30px_rgba(16,185,129,0.2)]' : ''}`}
         >
-            {/* Progress Bar Background */}
-            <div className="absolute bottom-0 left-0 h-1 w-full bg-zinc-800">
-                <div
-                    className={`h-full transition-all duration-1000 ${getProgressBarColor(displayRemaining)}`}
-                    style={{ width: `${Math.max(5, isEligible ? 100 : (100 - (displayRemaining * 20)))}%` }}
-                ></div>
-            </div>
+            {/* Efeito de Borda Animada (Tracing Border) - Apenas se Elegível */}
+            {isEligible && (
+                <div className="absolute inset-[-100%] bg-[conic-gradient(from_0deg,transparent_25%,#10b981_50%,transparent_75%)] animate-[spin_4s_linear_infinite] opacity-50 blur-[1px]" />
+            )}
 
-            <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold border-2 border-transparent shadow-sm ${avatarClass}`}>
-                        {candidate.client.nome_completo.substring(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-zinc-100 text-base group-hover:text-white transition-colors line-clamp-1">
-                            {candidate.client.nome_completo}
-                        </h4>
-                        <p className="text-xs text-zinc-500 mt-0.5">{candidate.age.years} anos • {candidate.client.sexo}</p>
-                    </div>
+            <div
+                onClick={(e) => {
+                    // Evita abrir o modal se clicar nos botões de toggle ou link de cnis
+                    if ((e.target as HTMLElement).closest('.mode-toggle') || (e.target as HTMLElement).closest('.cnis-link')) return;
+                    onClick();
+                }}
+                className={`
+                    relative rounded-xl p-5 cursor-pointer transition-all group overflow-hidden bg-[#0f1014] h-full
+                    ${isEligible
+                        ? 'border border-emerald-500/30'
+                        : 'border border-zinc-800 hover:border-zinc-700 hover:shadow-lg'
+                    }
+                `}
+            >
+                {/* Progress Bar Background */}
+                <div className="absolute bottom-0 left-0 h-1 w-full bg-zinc-800">
+                    <div
+                        className={`h-full transition-all duration-1000 ${getProgressBarColor(displayRemaining)}`}
+                        style={{ width: `${Math.max(5, isEligible ? 100 : (100 - (displayRemaining * 20)))}%` }}
+                    ></div>
                 </div>
-                {isEligible && (
-                    <span className="text-[10px] font-bold bg-emerald-500 text-black px-2 py-1 rounded shadow-[0_0_10px_rgba(16,185,129,0.6)]">
-                        ELEGÍVEL
-                    </span>
-                )}
-            </div>
 
-            <div className="flex items-center gap-2 mb-3 mode-toggle bg-black/40 p-1 rounded-lg border border-white/5 w-fit">
-                <button
-                    onClick={(e) => { e.stopPropagation(); handleModeChange('Rural'); }}
-                    className={`px-3 py-1 text-[10px] font-bold rounded transition-colors ${mode === 'Rural' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                >
-                    RURAL
-                </button>
-                <button
-                    onClick={(e) => { e.stopPropagation(); handleModeChange('Urbana'); }}
-                    className={`px-3 py-1 text-[10px] font-bold rounded transition-colors ${mode === 'Urbana' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                >
-                    URBANA
-                </button>
-            </div>
-
-            <div className="bg-[#09090b] rounded-lg p-3 border border-zinc-800 group-hover:border-zinc-700 transition-colors">
-                <div className="flex justify-between items-end mb-1">
-                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Modalidade {mode}</span>
-                    <span className={`text-sm font-bold ${isEligible ? 'text-emerald-400' : 'text-zinc-200'}`}>
-                        {formatTimeRemaining(displayRemaining)}
-                    </span>
+                <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold border-2 border-transparent shadow-sm ${avatarClass}`}>
+                            {candidate.client.nome_completo.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-zinc-100 text-base group-hover:text-white transition-colors line-clamp-1">
+                                {candidate.client.nome_completo}
+                            </h4>
+                            <p className="text-xs text-zinc-500 mt-0.5">{candidate.age.years} anos • {candidate.client.sexo}</p>
+                        </div>
+                    </div>
+                    {isEligible && (
+                        <span className="text-[10px] font-bold bg-emerald-500 text-black px-2 py-1 rounded shadow-[0_0_10px_rgba(16,185,129,0.6)]">
+                            ELEGÍVEL
+                        </span>
+                    )}
                 </div>
-                <div className="flex justify-between items-center">
-                    <p className="text-[10px] text-zinc-600">
-                        Meta: {targetAge} anos {mode === 'Urbana' ? '+ 180 contrib.' : ''}
-                    </p>
-                    {mode === 'Urbana' && (
-                        <div className="text-[10px] font-mono cnis-link">
-                            {cnisData ? (
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); onOpenCnisDetails(candidate.client, calculation); }}
-                                    className={`flex items-center gap-1 hover:underline ${isContributionEligible ? 'text-emerald-500' : 'text-yellow-500'}`}
-                                >
-                                    <Calculator size={10} /> {totalMonths} meses
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); onAddCnis(candidate.client); }}
-                                    className="text-red-500 hover:underline flex items-center gap-1"
-                                >
-                                    <AlertCircle size={10} /> S/ CNIS
-                                </button>
-                            )}
+
+                <div className="flex items-center gap-2 mb-3 mode-toggle bg-black/40 p-1 rounded-lg border border-white/5 w-fit">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleModeChange('Rural'); }}
+                        className={`px-3 py-1 text-[10px] font-bold rounded transition-colors ${mode === 'Rural' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    >
+                        RURAL
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleModeChange('Urbana'); }}
+                        className={`px-3 py-1 text-[10px] font-bold rounded transition-colors ${mode === 'Urbana' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    >
+                        URBANA
+                    </button>
+                </div>
+
+                <div className="bg-[#09090b] rounded-lg p-3 border border-zinc-800 group-hover:border-zinc-700 transition-colors">
+                    <div className="flex justify-between items-end mb-1">
+                        <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Modalidade {mode}</span>
+                        <span className={`text-sm font-bold ${isEligible ? 'text-emerald-400' : 'text-zinc-200'}`}>
+                            {formatTimeRemaining(displayRemaining)}
+                        </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <p className="text-[10px] text-zinc-600">
+                            Meta: {targetAge} anos {mode === 'Urbana' ? '+ 180 contrib.' : ''}
+                        </p>
+                        {mode === 'Urbana' && (
+                            <div className="text-[10px] font-mono cnis-link">
+                                {cnisData ? (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onOpenCnisDetails(candidate.client, calculation); }}
+                                        className={`flex items-center gap-1 hover:underline ${isContributionEligible ? 'text-emerald-500' : 'text-yellow-500'}`}
+                                    >
+                                        <Calculator size={10} /> {totalMonths} meses
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onAddCnis(candidate.client); }}
+                                        className="text-red-500 hover:underline flex items-center gap-1"
+                                    >
+                                        <AlertCircle size={10} /> S/ CNIS
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    {isHybridCandidate && (
+                        <div className="mt-2 pt-2 border-t border-zinc-800 flex items-center gap-1 animate-pulse">
+                            <span className="text-[9px] font-bold text-yellow-500 uppercase">Sugestão: Híbrida?</span>
+                            <Briefcase size={8} className="text-yellow-500" />
                         </div>
                     )}
                 </div>
-                {isHybridCandidate && (
-                    <div className="mt-2 pt-2 border-t border-zinc-800 flex items-center gap-1 animate-pulse">
-                        <span className="text-[9px] font-bold text-yellow-500 uppercase">Sugestão: Híbrida?</span>
-                        <Briefcase size={8} className="text-yellow-500" />
-                    </div>
-                )}
             </div>
-        </div>
+        </motion.div>
     );
 };
 
@@ -202,6 +214,28 @@ const Retirements: React.FC = () => {
     const [selectedCase, setSelectedCase] = useState<Case | null>(null);
     const [selectedCandidate, setSelectedCandidate] = useState<RetirementCandidate | null>(null);
     const [calculationDetail, setCalculationDetail] = useState<{ client: Client, calc: DetailedCalculation } | null>(null);
+
+    // Estados dos Filtros
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterGender, setFilterGender] = useState<'Todos' | 'Masculino' | 'Feminino'>('Todos');
+    const [filterModality, setFilterModality] = useState<'Todas' | 'Rural' | 'Urbana'>('Todas');
+    const [filterStatus, setFilterStatus] = useState<'Todos' | 'Elegíveis' | 'Pendentes'>('Todos');
+    const [filterPeriod, setFilterPeriod] = useState<number>(60); // Default 5 anos (60 meses)
+
+    const periodOptions = [
+        { label: '1 mês', value: 1 },
+        { label: '2 meses', value: 2 },
+        { label: '3 meses', value: 3 },
+        { label: '4 meses', value: 4 },
+        { label: '6 meses', value: 6 },
+        { label: '8 meses', value: 8 },
+        { label: '10 meses', value: 10 },
+        { label: '1 ano', value: 12 },
+        { label: '2 anos', value: 24 },
+        { label: '3 anos', value: 36 },
+        { label: '5 anos', value: 60 },
+        { label: '10 anos', value: 120 },
+    ];
 
     // 1. Filtrar Processos de Aposentadoria em Andamento
     const activeRetirements = cases.filter(c =>
@@ -232,6 +266,10 @@ const Retirements: React.FC = () => {
                 }
 
                 const isMale = client.sexo === 'Masculino';
+
+                // Usamos a modalidade preferida do cliente se existir, senão calculamos a melhor chance
+                const preferredMode = client.aposentadoria_modalidade;
+
                 const ruralTarget = isMale ? 60 : 55;
                 const urbanTarget = isMale ? 65 : 62;
 
@@ -239,7 +277,10 @@ const Retirements: React.FC = () => {
                 const urbanRemaining = Math.max(0, urbanTarget - years - (months / 12));
 
                 const bestChance = ruralRemaining <= urbanRemaining ? 'Rural' : 'Urbana';
-                const yearsRemaining = bestChance === 'Rural' ? ruralRemaining : urbanRemaining;
+
+                // Se o cliente já tem uma modalidade definida no banco, usamos ela para o filtro de tempo
+                const activeMode = preferredMode || bestChance;
+                const yearsRemaining = activeMode === 'Rural' ? ruralRemaining : urbanRemaining;
 
                 return {
                     client,
@@ -251,9 +292,44 @@ const Retirements: React.FC = () => {
                 };
             })
             .filter((c): c is RetirementCandidate => c !== null)
-            .filter(c => c.yearsRemaining <= 5)
+            // Aplicação dos Filtros
+            .filter(c => {
+                // Filtro de Busca (Nome ou CPF)
+                const searchLower = searchTerm.toLowerCase();
+                const matchesSearch = c.client.nome_completo.toLowerCase().includes(searchLower) ||
+                    c.client.cpf_cnpj?.includes(searchTerm);
+
+                // Filtro de Gênero
+                const matchesGender = filterGender === 'Todos' || c.client.sexo === filterGender;
+
+                // Filtro de Modalidade
+                const modalidadeAtual = c.client.aposentadoria_modalidade || c.bestChance;
+                const matchesModality = filterModality === 'Todas' || modalidadeAtual === filterModality;
+
+                // Filtro de Status (Elegíveis / Pendentes)
+                const totalMonths = (c.client.cnis_data?.totalTime?.years * 12 || 0) +
+                    (c.client.cnis_data?.totalTime?.months || 0);
+                const targetAge = (c.client.aposentadoria_modalidade || c.bestChance) === 'Rural'
+                    ? (c.client.sexo === 'Masculino' ? 60 : 55)
+                    : (c.client.sexo === 'Masculino' ? 65 : 62);
+                const contributionTarget = (c.client.aposentadoria_modalidade || c.bestChance) === 'Urbana' ? 180 : 0;
+
+                const isAgeEligible = (c.age.years + c.age.months / 12) >= targetAge;
+                const isContrEligible = (c.client.aposentadoria_modalidade || c.bestChance) === 'Rural' || totalMonths >= contributionTarget;
+                const isEligible = isAgeEligible && isContrEligible;
+                const hasPendencias = c.client.pendencias && c.client.pendencias.length > 0;
+
+                const matchesStatus = filterStatus === 'Todos' ||
+                    (filterStatus === 'Elegíveis' && isEligible) ||
+                    (filterStatus === 'Pendentes' && hasPendencias);
+
+                // Filtro de Período
+                const matchesPeriod = c.yearsRemaining <= filterPeriod / 12;
+
+                return matchesSearch && matchesGender && matchesModality && matchesStatus && matchesPeriod;
+            })
             .sort((a, b) => a.yearsRemaining - b.yearsRemaining);
-    }, [clients, cases]);
+    }, [clients, cases, searchTerm, filterGender, filterModality, filterStatus, filterPeriod]);
 
     const handleWhatsAppClick = (phone: string | undefined) => {
         if (!phone) return;
@@ -291,9 +367,100 @@ const Retirements: React.FC = () => {
                         <AlertCircle size={20} className="text-blue-400" />
                         Próximas Aposentadorias (Projeção)
                     </h3>
-                    <span className="text-xs bg-zinc-900 text-zinc-400 px-3 py-1 rounded-full border border-zinc-800">
-                        Faltando até 5 anos
-                    </span>
+                </div>
+
+                {/* BARRA DE FILTROS */}
+                <div className="bg-zinc-900/50 border border-white/5 rounded-xl p-4 space-y-4">
+                    <div className="flex flex-col lg:flex-row gap-4">
+                        {/* Busca */}
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Buscar por nome ou CPF..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full bg-black/40 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-gold-500/50 transition-colors"
+                            />
+                        </div>
+
+                        <div className="flex flex-wrap gap-3">
+                            {/* Gênero */}
+                            <select
+                                value={filterGender}
+                                onChange={(e) => setFilterGender(e.target.value as any)}
+                                className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-medium focus:outline-none focus:border-gold-500/50 cursor-pointer"
+                            >
+                                <option value="Todos" className="bg-[#18181b]">Todos Gêneros</option>
+                                <option value="Masculino" className="bg-[#18181b]">Masculino</option>
+                                <option value="Feminino" className="bg-[#18181b]">Feminino</option>
+                            </select>
+
+                            {/* Modalidade */}
+                            <select
+                                value={filterModality}
+                                onChange={(e) => setFilterModality(e.target.value as any)}
+                                className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-medium focus:outline-none focus:border-gold-500/50 cursor-pointer"
+                            >
+                                <option value="Todas" className="bg-[#18181b]">Todas Modalidades</option>
+                                <option value="Urbana" className="bg-[#18181b]">Urbana</option>
+                                <option value="Rural" className="bg-[#18181b]">Rural</option>
+                            </select>
+
+                            {/* Status */}
+                            <select
+                                value={filterStatus}
+                                onChange={(e) => setFilterStatus(e.target.value as any)}
+                                className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-medium focus:outline-none focus:border-gold-500/50 cursor-pointer"
+                            >
+                                <option value="Todos" className="bg-[#18181b]">Todos Status</option>
+                                <option value="Elegíveis" className="bg-[#18181b]">Elegíveis</option>
+                                <option value="Pendentes" className="bg-[#18181b]">Com Pendências</option>
+                            </select>
+
+                            {/* Período */}
+                            <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-lg px-3 py-2">
+                                <Clock size={14} className="text-zinc-500" />
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase mr-1">Faltando:</span>
+                                <select
+                                    value={filterPeriod}
+                                    onChange={(e) => setFilterPeriod(Number(e.target.value))}
+                                    className="bg-transparent text-xs text-white font-medium focus:outline-none cursor-pointer"
+                                >
+                                    {periodOptions.map(opt => (
+                                        <option key={opt.value} value={opt.value} className="bg-[#18181b]">{opt.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Limpar Filtros */}
+                            {(searchTerm !== '' || filterGender !== 'Todos' || filterModality !== 'Todas' || filterStatus !== 'Todos' || filterPeriod !== 60) && (
+                                <button
+                                    onClick={() => {
+                                        setSearchTerm('');
+                                        setFilterGender('Todos');
+                                        setFilterModality('Todas');
+                                        setFilterStatus('Todos');
+                                        setFilterPeriod(60);
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-400 hover:text-red-300 bg-red-400/10 rounded-lg border border-red-400/20 transition-colors"
+                                >
+                                    <X size={14} /> Limpar
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                        <p className="text-[10px] text-zinc-500 font-medium">
+                            Mostrando <span className="text-zinc-300">{candidates.length}</span> prospectos encontrados
+                        </p>
+                        <div className="flex items-center gap-2 text-[10px]">
+                            <span className="flex items-center gap-1 text-emerald-500"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Elegíveis</span>
+                            <span className="flex items-center gap-1 text-red-500"><div className="w-1.5 h-1.5 rounded-full bg-red-500" /> Pendentes</span>
+                            <span className="flex items-center gap-1 text-zinc-500"><div className="w-1.5 h-1.5 rounded-full bg-zinc-500" /> Normal</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

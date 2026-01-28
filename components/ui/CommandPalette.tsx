@@ -15,7 +15,8 @@ interface CommandPaletteProps {
 const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
   const {
     clients, cases, setCurrentView,
-    setIsNewClientModalOpen, setIsNewCaseModalOpen
+    setIsNewClientModalOpen, setIsNewCaseModalOpen,
+    setClientToView, setCaseToView
   } = useApp();
 
   const [query, setQuery] = useState('');
@@ -42,7 +43,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
     );
 
     const filteredClients = clients
-      .filter(c => c.nome_completo.toLowerCase().includes(lowQuery) || c.cpf_cnpj?.includes(lowQuery))
+      .filter(c =>
+        (c.nome_completo || '').toLowerCase().includes(lowQuery) ||
+        (c.cpf_cnpj || '').includes(lowQuery)
+      )
       .slice(0, 5)
       .map(c => ({
         id: `client-${c.id}`,
@@ -50,23 +54,43 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
         icon: User,
         category: 'Clientes',
         subtitle: c.cpf_cnpj,
-        action: () => setCurrentView('clients')
+        action: () => {
+          setCurrentView('clients');
+          setClientToView(c.id);
+        }
       }));
 
     const filteredCases = cases
-      .filter(c => c.titulo.toLowerCase().includes(lowQuery) || c.numero_processo?.includes(lowQuery))
+      .filter(c =>
+        (c.titulo || '').toLowerCase().includes(lowQuery) ||
+        (c.numero_processo || '').includes(lowQuery)
+      )
       .slice(0, 8)
-      .map(c => ({
-        id: `case-${c.id}`,
-        label: c.titulo,
-        icon: Scale,
-        category: 'Processos',
-        subtitle: c.numero_processo,
-        action: () => setCurrentView('cases')
-      }));
+      .map(c => {
+        // Determine the correct view for the case
+        let targetView: any = 'cases';
+        const isSeguro = c.tipo === 'Seguro Defeso';
+        const isJudicial = c.tribunal && c.tribunal.toUpperCase() !== 'INSS' && c.tribunal.trim() !== '';
+
+        if (isSeguro) targetView = 'cases-insurance';
+        else if (isJudicial) targetView = 'cases-judicial';
+        else targetView = 'cases-administrative';
+
+        return {
+          id: `case-${c.id}`,
+          label: c.titulo,
+          icon: Scale,
+          category: 'Processos',
+          subtitle: c.numero_processo,
+          action: () => {
+            setCurrentView(targetView);
+            setCaseToView(c.id);
+          }
+        };
+      });
 
     return [...filteredActions, ...filteredClients, ...filteredCases];
-  }, [query, clients, cases, setCurrentView, setIsNewClientModalOpen, setIsNewCaseModalOpen]);
+  }, [query, clients, cases, setCurrentView, setIsNewClientModalOpen, setIsNewCaseModalOpen, setClientToView, setCaseToView]);
 
   useEffect(() => {
     if (isOpen) {

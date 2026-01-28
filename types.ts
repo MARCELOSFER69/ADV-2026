@@ -181,6 +181,7 @@ export interface Case {
 
   registered_by?: string;
   updated_by?: string;
+  updated_at?: string;
 }
 
 export interface CaseInstallment {
@@ -346,6 +347,8 @@ export interface AppNotification {
   amount: number;
   urgency: 'today' | 'tomorrow' | 'upcoming';
   clientName?: string;
+  clientId?: string;
+  caseId?: string;
   status: 'unread' | 'read';
 }
 
