@@ -5,7 +5,10 @@ import {
     ArrowDownCircle, ArrowUpCircle, Filter, Search, Download, Calendar, DollarSign,
     Eye, ChevronDown, ChevronRight, Trash2, Building, HandCoins, ChevronLeft,
     CalendarRange, Infinity, FileText, CheckSquare, Square, FileCheck, Paperclip,
-    CheckCircle, ExternalLink, Clock, FilePlus, Wallet, CreditCard, User, Building2, Plus, X
+    CheckCircle, ExternalLink, Clock, FilePlus, Wallet, CreditCard, User, Building2, Plus, X,
+    RefreshCcw, MoreVertical, MapPin, Phone, Mail,
+    MessageSquare, Gavel, BookOpen, AlertCircle, Info, Menu,
+    LayoutDashboard, LogOut, DownloadIcon, Share2, Send
 } from 'lucide-react';
 import CaseDetailsModal from '../components/modals/CaseDetailsModal';
 import CommissionReceiptModal from '../components/modals/CommissionReceiptModal';
@@ -340,33 +343,62 @@ const Financial: React.FC = () => {
     const renderOverview = () => (
         <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div className="bg-[#0f1014] p-5 rounded-xl border border-zinc-800 hover:border-emerald-500/20 transition-all relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><ArrowUpCircle size={60} className="text-emerald-500" /></div>
-                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Receitas (Visíveis)</p>
-                    <h3 className="text-2xl font-bold text-emerald-400">+ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.income)}</h3>
+                <div className="bg-[#090b0a] p-6 rounded-2xl border-2 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.05)] relative overflow-hidden group hover:border-emerald-500/80 hover:shadow-[0_0_30px_rgba(16,185,129,0.1)] transition-all duration-300">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-700"></div>
+                    <div className="relative z-10 flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] text-emerald-400/80 font-black uppercase tracking-[0.2em] mb-1">Receitas (Visíveis)</p>
+                            <h3 className="text-3xl font-black text-white tracking-tight">
+                                + {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.income)}
+                            </h3>
+                        </div>
+                        <div className="p-3 bg-emerald-500/20 shadow-sm rounded-xl text-emerald-500 transition-all duration-300 group-hover:scale-105">
+                            <ArrowUpCircle size={24} strokeWidth={2.5} />
+                        </div>
+                    </div>
                 </div>
-                <div className="bg-[#0f1014] p-5 rounded-xl border border-zinc-800 hover:border-red-500/20 transition-all relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><ArrowDownCircle size={60} className="text-red-500" /></div>
-                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Despesas + Comissões</p>
-                    <h3 className="text-2xl font-bold text-red-400">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.expense)}</h3>
+
+                <div className="bg-[#0b0909] p-6 rounded-2xl border-2 border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.05)] relative overflow-hidden group hover:border-red-500/80 hover:shadow-[0_0_30px_rgba(239,68,68,0.1)] transition-all duration-300">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-3xl -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-700"></div>
+                    <div className="relative z-10 flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] text-red-400/80 font-black uppercase tracking-[0.2em] mb-1">Despesas + Comissões</p>
+                            <h3 className="text-3xl font-black text-white tracking-tight">
+                                - {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.expense)}
+                            </h3>
+                        </div>
+                        <div className="p-3 bg-red-500/20 shadow-sm rounded-xl text-red-500 transition-all duration-300 group-hover:scale-105">
+                            <ArrowDownCircle size={24} strokeWidth={2.5} />
+                        </div>
+                    </div>
                 </div>
-                <div className="bg-[#0f1014] p-5 rounded-xl border border-zinc-800 hover:border-gold-500/20 transition-all relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><DollarSign size={60} className="text-gold-500" /></div>
-                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Saldo Líquido</p>
-                    <h3 className={`text-2xl font-bold ${totals.balance >= 0 ? 'text-blue-400' : 'text-red-400'}`}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.balance)}</h3>
+
+                <div className="bg-[#090a0b] p-6 rounded-2xl border-2 border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.05)] relative overflow-hidden group hover:border-blue-500/80 hover:shadow-[0_0_30px_rgba(59,130,246,0.1)] transition-all duration-300">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-700"></div>
+                    <div className="relative z-10 flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] text-blue-400/80 font-black uppercase tracking-[0.2em] mb-1">Saldo Líquido</p>
+                            <h3 className={`text-3xl font-black tracking-tight ${totals.balance >= 0 ? 'text-white' : 'text-red-400'}`}>
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totals.balance)}
+                            </h3>
+                        </div>
+                        <div className="p-3 bg-blue-500/20 shadow-sm rounded-xl text-blue-500 transition-all duration-300 group-hover:scale-105">
+                            <DollarSign size={28} strokeWidth={2.5} />
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div className="bg-[#0f1014] rounded-xl border border-zinc-800 overflow-hidden flex flex-col shadow-2xl">
+            <div className="bg-[#0f1014] rounded-xl border border-white/10 overflow-hidden flex flex-col shadow-2xl">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
-                        <thead className="bg-white/5 border-b border-zinc-800 text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                        <thead className="bg-[#131418] border-b border-white/5 shadow-md">
                             <tr>
-                                <th className="px-6 py-4 cursor-pointer hover:text-white">Descrição / Cliente</th>
-                                <th className="px-6 py-4 text-center">Tipo / Status</th>
-                                <th className="px-6 py-4">Detalhes Pagamento</th>
-                                <th className="px-6 py-4 text-right">Valor Líquido</th>
-                                <th className="px-6 py-4 text-right">Ações</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-white transition-colors">Descrição / Cliente</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Tipo / Status</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Detalhes Pagamento</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Valor Líquido</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-800">
@@ -378,7 +410,7 @@ const Financial: React.FC = () => {
                                             <tr className={`group cursor-pointer transition-colors ${isExpanded ? 'bg-zinc-800/50' : 'hover:bg-zinc-900'}`} onClick={() => toggleGroup(item.id)}>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`p-1.5 rounded-md transition-colors ${isExpanded ? 'bg-gold-500/20 text-gold-500' : 'bg-zinc-800 text-zinc-500 group-hover:text-zinc-300'}`}>{isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</div>
+                                                        <div className={`p-1.5 rounded-md transition-colors border ${isExpanded ? 'bg-transparent border-gold-500 text-gold-500 shadow-[0_0_10px_rgba(234,179,8,0.2)]' : 'bg-transparent border-zinc-700 text-zinc-500 group-hover:text-zinc-300 group-hover:border-zinc-500'}`}>{isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</div>
                                                         <div><span className="font-bold text-zinc-200 block group-hover:text-gold-500 transition-colors text-sm">{item.title}</span><span className="text-[10px] text-zinc-500 flex items-center gap-1"><Calendar size={10} /> Ref: {formatDateDisplay(item.dataReferencia)}</span></div>
                                                     </div>
                                                 </td>
@@ -424,7 +456,7 @@ const Financial: React.FC = () => {
                                         <tr key={record.id} className="group hover:bg-zinc-900 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`p-1.5 rounded-md bg-zinc-800 text-zinc-500`}>{record.is_office_expense ? <Building size={16} /> : <DollarSign size={16} />}</div>
+                                                    <div className={`p-1.5 rounded-md bg-transparent border border-white/10 text-zinc-500`}>{record.is_office_expense ? <Building size={16} /> : <DollarSign size={16} />}</div>
                                                     <div>
                                                         <span className="font-medium text-zinc-300 block group-hover:text-white transition-colors text-sm">{record.descricao}</span>
                                                         <span className="text-[10px] text-zinc-500 flex items-center gap-1 mt-0.5"><Calendar size={10} /> {formatDateDisplay(record.data_vencimento)}</span>
@@ -457,15 +489,24 @@ const Financial: React.FC = () => {
     const renderCommissions = () => (
         <>
             <div className="mb-6 flex gap-4">
-                <div className="bg-[#0f1014] p-5 rounded-xl border border-purple-500/20 hover:border-purple-500/40 transition-all relative overflow-hidden group max-w-sm flex-1">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none"><HandCoins size={60} className="text-purple-500" /></div>
-                    <p className="text-xs font-bold text-purple-300 uppercase tracking-wider mb-1">Total Comissões Pagas</p>
-                    <h3 className="text-2xl font-bold text-white">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCommissions)}</h3>
+                <div className="bg-[#0a090b] p-6 rounded-2xl border-2 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.05)] relative overflow-hidden group max-w-sm flex-1 hover:border-purple-500/80 hover:shadow-[0_0_30px_rgba(168,85,247,0.1)] transition-all duration-300">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-700"></div>
+                    <div className="relative z-10 flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] text-purple-400/80 font-black uppercase tracking-[0.2em] mb-1">Total Comissões Pagas</p>
+                            <h3 className="text-3xl font-black text-white tracking-tight">
+                                - {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCommissions)}
+                            </h3>
+                        </div>
+                        <div className="p-3 bg-transparent rounded-xl text-purple-500 border-2 border-purple-500/80 transition-all duration-300 group-hover:scale-105">
+                            <HandCoins size={28} strokeWidth={2} />
+                        </div>
+                    </div>
                 </div>
-                <div className="bg-[#0f1014] p-5 rounded-xl border border-zinc-800 flex-1 flex flex-col justify-center">
-                    <div className="flex gap-2 bg-zinc-900 p-1 rounded-lg w-fit">
-                        <button onClick={() => setSubTab('list')} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${subTab === 'list' ? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-white'}`}>Lista de Comissões</button>
-                        <button onClick={() => setSubTab('receipts')} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${subTab === 'receipts' ? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-white'}`}>Recibos Gerados</button>
+                <div className="bg-[#0f1014] p-5 rounded-xl border border-white/10 flex-1 flex flex-col justify-center">
+                    <div className="flex gap-2 bg-[#18181b] p-1.5 rounded-xl w-fit border border-white/5">
+                        <button onClick={() => setSubTab('list')} className={`px-4 py-2 text-xs font-black rounded-lg transition-all ${subTab === 'list' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-slate-400 hover:text-white'}`}>Lista de Comissões</button>
+                        <button onClick={() => setSubTab('receipts')} className={`px-4 py-2 text-xs font-black rounded-lg transition-all ${subTab === 'receipts' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-slate-400 hover:text-white'}`}>Recibos Gerados</button>
                     </div>
                 </div>
             </div>
@@ -481,7 +522,7 @@ const Financial: React.FC = () => {
                     )}
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-white/5 border-b border-zinc-800 text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                            <thead className="bg-[#131418] border-b border-white/5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                 <tr><th className="px-6 py-4 w-12 text-center"><CheckSquare size={16} /></th><th className="px-6 py-4">Captador</th><th className="px-6 py-4">Cliente / Processo</th><th className="px-6 py-4">Data Pagamento</th><th className="px-6 py-4 text-right">Valor</th><th className="px-6 py-4 text-center">Status Recibo</th><th className="px-6 py-4 text-right">Ação</th></tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-800">
@@ -540,54 +581,64 @@ const Financial: React.FC = () => {
             )}
         </>
     );
-
     return (
-        <div className="space-y-6 pb-20 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div><h2 className="text-2xl font-bold text-white font-serif">Financeiro</h2><p className="text-zinc-500">Gestão agrupada de honorários e despesas.</p></div>
-                <div className="flex gap-2">
-                    <button onClick={() => setIsModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg shadow-emerald-900/20 transition-all"><Plus size={18} /> Novo Lançamento</button>
+        <div className="space-y-8 pb-20 animate-in fade-in duration-500">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-4">
+                <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-gold-500/10 rounded-2xl text-gold-500 border border-gold-500/20 shadow-lg shadow-gold-500/5 transition-transform hover:scale-105">
+                        <HandCoins size={24} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-white font-serif tracking-tight">
+                            Gestão Financeira
+                        </h1>
+                        <p className="text-slate-400 text-[11px] md:text-xs font-medium mt-0.5 opacity-80 uppercase tracking-widest">
+                            Controle total de honorários, comissões e despesas administrativas.
+                        </p>
+                    </div>
                 </div>
             </div>
 
-            <div className="flex border-b border-zinc-800"><button onClick={() => { setCurrentView('financial'); setActiveTab('overview'); }} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'overview' ? 'border-gold-500 text-gold-500' : 'border-transparent text-zinc-400 hover:text-white'}`}>Visão Geral</button><button onClick={() => setCurrentView('office-expenses')} className={`px-6 py-3 text-sm font-bold border-b-2 border-transparent text-zinc-400 hover:text-white transition-colors`}>Despesas Fixas</button><button onClick={() => { setCurrentView('commissions'); setActiveTab('commissions'); }} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'commissions' ? 'border-purple-500 text-purple-400' : 'border-transparent text-zinc-400 hover:text-white'}`}>Comissões</button></div>
-
             <div className="flex flex-col gap-4">
-                <div className="bg-[#0f1014] p-2 rounded-xl border border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div className="flex bg-zinc-900 rounded-lg p-1"><button onClick={() => setPeriodMode('month')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${periodMode === 'month' ? 'bg-gold-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'}`}>Mês</button><button onClick={() => setPeriodMode('year')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${periodMode === 'year' ? 'bg-gold-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'}`}>Ano</button><button onClick={() => setPeriodMode('all')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${periodMode === 'all' ? 'bg-gold-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'}`}><Infinity size={12} /> Tudo</button></div>
-                    {periodMode !== 'all' && (<div className="flex items-center gap-4 bg-zinc-900/50 px-2 py-1 rounded-lg border border-zinc-800"><button onClick={() => navigatePeriod('prev')} className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded transition-colors"><ChevronLeft size={18} /></button><div className="text-sm font-bold text-white min-w-[120px] text-center capitalize flex items-center justify-center gap-2"><CalendarRange size={14} className="text-gold-500" />{getPeriodLabel()}</div><button onClick={() => navigatePeriod('next')} className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded transition-colors"><ChevronRight size={18} /></button></div>)}
+                <div className="bg-[#0f1014] p-3 rounded-2xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+                    <div className="flex bg-[#18181b] rounded-xl p-1.5 border border-white/5">
+                        <button onClick={() => setPeriodMode('month')} className={`px-5 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${periodMode === 'month' ? 'bg-gold-600 text-black shadow-lg shadow-gold-600/20' : 'text-slate-400 hover:text-white'}`}>Mês</button>
+                        <button onClick={() => setPeriodMode('year')} className={`px-5 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${periodMode === 'year' ? 'bg-gold-600 text-black shadow-lg shadow-gold-600/20' : 'text-slate-400 hover:text-white'}`}>Ano</button>
+                        <button onClick={() => setPeriodMode('all')} className={`px-5 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1 ${periodMode === 'all' ? 'bg-gold-600 text-black shadow-lg shadow-gold-600/20' : 'text-slate-400 hover:text-white'}`}><Infinity size={14} /> Tudo</button>
+                    </div>
+                    {periodMode !== 'all' && (<div className="flex items-center gap-4 bg-[#18181b] px-3 py-2 rounded-xl border border-white/5 shadow-inner"><button onClick={() => navigatePeriod('prev')} className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all active:scale-95"><ChevronLeft size={18} /></button><div className="text-sm font-black text-white min-w-[140px] text-center capitalize flex items-center justify-center gap-2 tracking-wide"><CalendarRange size={16} className="text-gold-500" />{getPeriodLabel()}</div><button onClick={() => navigatePeriod('next')} className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all active:scale-95"><ChevronRight size={18} /></button></div>)}
                     <div className="flex items-center gap-2 w-full md:w-auto">
-                        <div className="relative flex-1 md:w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
+                        <div className="relative flex-1 md:w-72 group">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-gold-500 transition-colors" size={16} />
                             <input
-                                className="w-full bg-[#09090b] border border-zinc-800 rounded-lg pl-9 pr-9 py-1.5 text-sm text-zinc-100 outline-none focus:border-gold-500 placeholder:text-zinc-600 transition-colors"
-                                placeholder="Buscar..."
+                                className="w-full bg-[#18181b] border border-white/10 rounded-xl pl-11 pr-10 py-3 text-sm text-white outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/20 placeholder:text-slate-600 transition-all"
+                                placeholder="Buscar lançamentos..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                             {searchTerm && (
                                 <button
                                     onClick={() => setSearchTerm('')}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
                                     title="Limpar busca"
                                 >
                                     <X size={14} />
                                 </button>
                             )}
                         </div>
-                        <button onClick={() => setShowFilters(!showFilters)} className={`p-2 rounded-lg border transition-all ${showFilters ? 'bg-zinc-900 border-gold-500 text-gold-500' : 'bg-[#09090b] border-zinc-800 text-zinc-400 hover:text-white'}`}><Filter size={16} /></button>
-                        <button onClick={handleExportCSV} className="p-2 rounded-lg border border-zinc-800 bg-[#09090b] text-zinc-400 hover:text-white hover:border-zinc-700 transition-all"><Download size={16} /></button>
+                        <button onClick={() => setShowFilters(!showFilters)} className={`p-3 rounded-xl border transition-all ${showFilters ? 'bg-gold-500/10 border-gold-500/50 text-gold-500' : 'bg-[#18181b] border-white/10 text-slate-400 hover:text-white hover:bg-white/5'}`}><Filter size={18} /></button>
+                        <button onClick={handleExportCSV} className="p-3 rounded-xl border border-white/10 bg-[#18181b] text-slate-400 hover:text-white hover:bg-white/5 transition-all"><Download size={18} /></button>
                     </div>
                 </div>
 
                 {/* NOVOS FILTROS */}
                 {showFilters && (
-                    <div className="bg-[#0f1014] p-3 rounded-xl border border-zinc-800 animate-in slide-in-from-top-2 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-[#0f1014] p-4 rounded-xl border border-white/10 animate-in slide-in-from-top-2 grid grid-cols-2 md:grid-cols-4 gap-4 shadow-xl">
                         {activeTab === 'overview' && (
                             <>
                                 <div>
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Tipo</label>
-                                    <select className="w-full bg-[#09090b] border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200 outline-none" value={filterType} onChange={(e) => setFilterType(e.target.value as any)}>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Tipo</label>
+                                    <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterType} onChange={(e) => setFilterType(e.target.value as any)}>
                                         <option value="all">Todos</option>
                                         <option value={FinancialType.RECEITA}>Receita</option>
                                         <option value={FinancialType.DESPESA}>Despesa</option>
@@ -595,16 +646,16 @@ const Financial: React.FC = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Status</label>
-                                    <select className="w-full bg-[#09090b] border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200 outline-none" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Status</label>
+                                    <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
                                         <option value="all">Todos</option>
                                         <option value="paid">Pago</option>
                                         <option value="pending">Pendente</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Forma</label>
-                                    <select className="w-full bg-[#09090b] border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200 outline-none" value={filterMethod} onChange={(e) => setFilterMethod(e.target.value)}>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Forma</label>
+                                    <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterMethod} onChange={(e) => setFilterMethod(e.target.value)}>
                                         <option value="all">Todas</option>
                                         <option value="Especie">Espécie</option>
                                         <option value="Conta">Conta</option>
@@ -614,21 +665,21 @@ const Financial: React.FC = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Conta</label>
-                                    <select className="w-full bg-[#09090b] border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200 outline-none" value={filterAccount} onChange={(e) => setFilterAccount(e.target.value)}>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Conta</label>
+                                    <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterAccount} onChange={(e) => setFilterAccount(e.target.value)}>
                                         <option value="all">Todas</option>
                                         {uniqueAccounts.map(a => <option key={a} value={a}>{a}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Recebedor</label>
-                                    <select className="w-full bg-[#09090b] border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200 outline-none" value={filterReceiver} onChange={(e) => setFilterReceiver(e.target.value)}>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Recebedor</label>
+                                    <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterReceiver} onChange={(e) => setFilterReceiver(e.target.value)}>
                                         <option value="all">Todos</option>
                                         {uniqueReceivers.map(r => <option key={r} value={r}>{r}</option>)}
                                     </select>
                                 </div>
-                                <div className="flex items-end col-span-2 md:col-span-4">
-                                    <button onClick={() => { setFilterType('all'); setFilterStatus('all'); setFilterMethod('all'); setFilterReceiver('all'); setFilterAccount('all'); setSearchTerm(''); }} className="text-xs text-zinc-500 hover:text-white underline pb-2">Limpar Todos os Filtros</button>
+                                <div className="flex items-end col-span-2 md:col-span-3">
+                                    <button onClick={() => { setFilterType('all'); setFilterStatus('all'); setFilterMethod('all'); setFilterReceiver('all'); setFilterAccount('all'); setSearchTerm(''); }} className="text-xs text-slate-500 hover:text-white underline pb-4 transition-colors">Limpar Todos os Filtros</button>
                                 </div>
                             </>
                         )}
@@ -638,18 +689,20 @@ const Financial: React.FC = () => {
 
             {activeTab === 'overview' ? renderOverview() : renderCommissions()}
 
-            {selectedCase && (
-                <CaseDetailsModal
-                    caseItem={selectedCase}
-                    onClose={() => setSelectedCase(null)}
-                    onSelectCase={setSelectedCase}
-                    onViewClient={(clientId) => {
-                        setClientToView(clientId);
-                        setCurrentView('clients');
-                        setSelectedCase(null);
-                    }}
-                />
-            )}
+            {
+                selectedCase && (
+                    <CaseDetailsModal
+                        caseItem={selectedCase}
+                        onClose={() => setSelectedCase(null)}
+                        onSelectCase={setSelectedCase}
+                        onViewClient={(clientId) => {
+                            setClientToView(clientId);
+                            setCurrentView('clients');
+                            setSelectedCase(null);
+                        }}
+                    />
+                )
+            }
 
             <CommissionReceiptModal
                 isOpen={receiptModalOpen}
@@ -660,35 +713,37 @@ const Financial: React.FC = () => {
             />
 
             {/* Modal Add Avulso */}
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-[#09090b] border border-zinc-800 rounded-xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in duration-200">
-                        <h3 className="text-xl font-bold text-white mb-4">Novo Lançamento Avulso</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Descrição</label>
-                                <input className="w-full bg-black border border-zinc-700 rounded p-2 text-white outline-none focus:border-emerald-500" value={newRecord.descricao} onChange={e => setNewRecord({ ...newRecord, descricao: e.target.value })} autoFocus />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
+            {
+                isModalOpen && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                        <div className="bg-[#09090b] border border-zinc-800 rounded-xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in duration-200">
+                            <h3 className="text-xl font-bold text-white mb-4">Novo Lançamento Avulso</h3>
+                            <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Valor</label>
-                                    <input className="w-full bg-black border border-zinc-700 rounded p-2 text-white outline-none focus:border-emerald-500" value={amountStr} onChange={handleAmountChange} placeholder="R$ 0,00" />
+                                    <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Descrição</label>
+                                    <input className="w-full bg-black border border-zinc-700 rounded p-2 text-white outline-none focus:border-emerald-500" value={newRecord.descricao} onChange={e => setNewRecord({ ...newRecord, descricao: e.target.value })} autoFocus />
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Tipo</label>
-                                    <select className="w-full bg-black border border-zinc-700 rounded p-2 text-white outline-none focus:border-emerald-500" value={newRecord.tipo} onChange={e => setNewRecord({ ...newRecord, tipo: e.target.value as any })}>
-                                        <option value={FinancialType.RECEITA}>Receita</option>
-                                        <option value={FinancialType.DESPESA}>Despesa</option>
-                                    </select>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Valor</label>
+                                        <input className="w-full bg-black border border-zinc-700 rounded p-2 text-white outline-none focus:border-emerald-500" value={amountStr} onChange={handleAmountChange} placeholder="R$ 0,00" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Tipo</label>
+                                        <select className="w-full bg-black border border-zinc-700 rounded p-2 text-white outline-none focus:border-emerald-500" value={newRecord.tipo} onChange={e => setNewRecord({ ...newRecord, tipo: e.target.value as any })}>
+                                            <option value={FinancialType.RECEITA}>Receita</option>
+                                            <option value={FinancialType.DESPESA}>Despesa</option>
+                                        </select>
+                                    </div>
                                 </div>
+                                <button onClick={handleAddAvulso} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg mt-2">Salvar</button>
+                                <button onClick={() => setIsModalOpen(false)} className="w-full text-zinc-500 hover:text-white py-2 text-sm">Cancelar</button>
                             </div>
-                            <button onClick={handleAddAvulso} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg mt-2">Salvar</button>
-                            <button onClick={() => setIsModalOpen(false)} className="w-full text-zinc-500 hover:text-white py-2 text-sm">Cancelar</button>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

@@ -109,35 +109,44 @@ const WhatsApp: React.FC = () => {
                         <div
                             key={chat.id}
                             onClick={() => setSelectedChatId(chat.id)}
-                            className={`w-full p-4 flex items-start gap-3 border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-all text-left relative group cursor-pointer ${selectedChatId === chat.id ? 'bg-zinc-800/50' : ''}`}
+                            className={`w-full p-4 flex items-start gap-3 border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-all text-left relative group cursor-pointer overflow-hidden ${selectedChatId === chat.id ? 'bg-zinc-800/50' : ''}`}
                             role="button"
                             tabIndex={0}
                         >
-                            <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center shrink-0 border border-zinc-700">
-                                <User size={20} className="text-zinc-500" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-start mb-1">
-                                    <span className="font-bold text-zinc-100 text-sm truncate">{chat.client_name}</span>
-                                    <span className="text-[10px] text-zinc-500">
-                                        {chat.last_message_at ? formatTime(chat.last_message_at) : ''}
-                                    </span>
+                            {/* Destaque Refinado para Fila */}
+                            {chat.status === 'waiting' && (
+                                <>
+                                    <div className="absolute inset-0 bg-emerald-500/5 pulse-subtle" />
+                                    <div className="absolute inset-0 border-l-4 border-emerald-500 shadow-[inset_4px_0_10px_-4px_rgba(16,185,129,0.4)]" />
+                                </>
+                            )}
+
+                            <div className="relative z-10 flex items-start gap-3 w-full">
+                                <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center shrink-0 border border-zinc-700">
+                                    <User size={20} className="text-zinc-500" />
                                 </div>
-                                <p className="text-xs text-zinc-500 truncate">{chat.last_message || 'Nenhuma mensagem'}</p>
-                                {chat.assigned_to && (
-                                    <div className="mt-2 flex items-center gap-1">
-                                        <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1">
-                                            <UserCheck size={10} /> {chat.assigned_to}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className="font-bold text-zinc-100 text-sm truncate">{chat.client_name}</span>
+                                        <span className="text-[10px] text-zinc-500">
+                                            {chat.last_message_at ? formatTime(chat.last_message_at) : ''}
                                         </span>
+                                    </div>
+                                    <p className="text-xs text-zinc-500 truncate">{chat.last_message || 'Nenhuma mensagem'}</p>
+                                    {chat.assigned_to && (
+                                        <div className="mt-2 flex items-center gap-1">
+                                            <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1">
+                                                <UserCheck size={10} /> {chat.assigned_to}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                                {chat.unread_count > 0 && (
+                                    <div className="absolute top-0 right-[-8px] min-w-[18px] h-[18px] bg-emerald-500 rounded-full flex items-center justify-center text-[10px] text-white font-bold px-1 shadow-lg shadow-emerald-500/20">
+                                        {chat.unread_count}
                                     </div>
                                 )}
                             </div>
-                            {chat.unread_count > 0 && (
-                                <div className="absolute top-4 right-2 min-w-[18px] h-[18px] bg-emerald-500 rounded-full flex items-center justify-center text-[10px] text-white font-bold px-1 shadow-lg shadow-emerald-500/20">
-                                    {chat.unread_count}
-                                </div>
-                            )}
-
                         </div>
                     ))}
                 </div>

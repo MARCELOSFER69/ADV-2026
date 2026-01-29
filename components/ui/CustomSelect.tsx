@@ -15,16 +15,18 @@ interface CustomSelectProps {
   icon?: LucideIcon;
   required?: boolean;
   placeholder?: string;
+  disabled?: boolean;
 }
 
-const CustomSelect: React.FC<CustomSelectProps> = ({ 
-  label, 
-  value, 
-  onChange, 
-  options, 
-  icon: Icon, 
+const CustomSelect: React.FC<CustomSelectProps> = ({
+  label,
+  value,
+  onChange,
+  options,
+  icon: Icon,
   required,
-  placeholder = "Selecione"
+  placeholder = "Selecione",
+  disabled
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -44,29 +46,32 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
 
   return (
     <div className="relative" ref={containerRef}>
-      <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      
+      {label && (
+        <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+      )}
+
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between bg-[#0f1014] border ${isOpen ? 'border-yellow-600 ring-1 ring-yellow-600/20' : 'border-zinc-800'} text-zinc-200 px-3 py-2.5 rounded-xl transition-all outline-none group`}
+        disabled={disabled}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between bg-[#0f1014] border ${isOpen ? 'border-yellow-600 ring-1 ring-yellow-600/20' : 'border-zinc-800'} text-zinc-200 px-3 py-2.5 rounded-xl transition-all outline-none group ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <div className="flex items-center gap-3 overflow-hidden">
           {Icon && (
-            <Icon 
-              size={18} 
-              className={`shrink-0 transition-colors ${isOpen || value ? 'text-yellow-600' : 'text-zinc-600 group-hover:text-zinc-400'}`} 
+            <Icon
+              size={18}
+              className={`shrink-0 transition-colors ${isOpen || value ? 'text-yellow-600' : 'text-zinc-600 group-hover:text-zinc-400'}`}
             />
           )}
           <span className={`text-sm truncate ${!selectedOption ? 'text-zinc-600' : 'text-zinc-200'}`}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
         </div>
-        <ChevronDown 
-          size={16} 
-          className={`text-zinc-500 transition-transform duration-300 ${isOpen ? 'rotate-180 text-yellow-600' : ''}`} 
+        <ChevronDown
+          size={16}
+          className={`text-zinc-500 transition-transform duration-300 ${isOpen ? 'rotate-180 text-yellow-600' : ''}`}
         />
       </button>
 
@@ -82,20 +87,19 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                   onChange(option.value);
                   setIsOpen(false);
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors text-left ${
-                  value === option.value 
-                    ? 'bg-yellow-600/10 text-yellow-600 font-medium' 
-                    : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
-                }`}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors text-left ${value === option.value
+                  ? 'bg-yellow-600/10 text-yellow-600 font-medium'
+                  : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                  }`}
               >
                 <span>{option.label}</span>
                 {value === option.value && <Check size={14} />}
               </button>
             ))}
             {options.length === 0 && (
-                <div className="px-3 py-4 text-center text-xs text-zinc-500">
-                    Nenhuma opção disponível
-                </div>
+              <div className="px-3 py-4 text-center text-xs text-zinc-500">
+                Nenhuma opção disponível
+              </div>
             )}
           </div>
         </div>

@@ -146,6 +146,22 @@
       border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
+    @keyframes pulse-subtle {
+
+      0%,
+      100% {
+        opacity: 0.1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    .pulse-subtle {
+      animation: pulse-subtle 3s ease-in-out infinite;
+    }
+
     @keyframes shine {
       from {
         transform: translateX(-100%);

@@ -1,7 +1,9 @@
 import React from 'react';
-import { Phone, Building2, AlertTriangle, MessageCircle, Edit2, Archive, RefreshCw, Trash2, Copy } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import { Phone, Building2, AlertTriangle, MessageCircle, Edit2, Archive, RefreshCw, Trash2, Copy, Check } from 'lucide-react';
 import { Client, ColumnConfig } from '../../types';
 import { formatDateDisplay } from '../../utils/dateUtils';
+import PendencyIndicator from '../ui/PendencyIndicator';
 
 interface ClientRowProps {
     client: Client;
@@ -14,6 +16,9 @@ interface ClientRowProps {
     handleArchiveClick: (client: Client) => void;
     handleDeleteClick: (client: Client) => void;
     handleCopyPhone: (phone: string) => void;
+    isSelected: boolean;
+    anySelected: boolean;
+    onToggleSelect: () => void;
 }
 
 const ClientRow: React.FC<ClientRowProps> = ({
@@ -26,34 +31,63 @@ const ClientRow: React.FC<ClientRowProps> = ({
     handleWhatsAppClick,
     handleArchiveClick,
     handleDeleteClick,
-    handleCopyPhone
+    handleCopyPhone,
+    isSelected,
+    anySelected,
+    onToggleSelect
 }) => {
     return (
-        <tr className="hover:bg-white/5 transition-colors cursor-pointer group" onClick={() => setSelectedClient(client)}>
+        <tr
+            className={`transition-colors cursor-pointer group border-l-2 ${isSelected
+                ? 'bg-gold-500/10 border-gold-500 hover:bg-gold-500/15'
+                : 'hover:bg-white/5 border-transparent'
+                }`}
+            onClick={() => setSelectedClient(client)}
+        >
+            <td className="px-6 py-4 align-middle" onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}>
+                <div className="relative flex items-center justify-center w-5 h-5">
+                    {/* Small Dot (Visible when nothing is selected and not hovered) */}
+                    <div className={`w-1.5 h-1.5 rounded-full bg-slate-700 transition-all duration-300 ${(anySelected || isSelected) ? 'opacity-0 scale-0' : 'group-hover:opacity-0 group-hover:scale-0'
+                        }`} />
+
+                    {/* Checkbox (Visible on hover or when something is selected) */}
+                    <div
+                        className={`absolute inset-0 rounded border-2 flex items-center justify-center transition-all duration-300 ${isSelected
+                            ? 'bg-gold-500 border-gold-500 text-black translate-y-0 opacity-100 scale-100'
+                            : (anySelected || isSelected)
+                                ? 'border-slate-600 bg-white/5 opacity-100 scale-100'
+                                : 'border-slate-700 bg-white/5 opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100'
+                            }`}
+                    >
+                        {isSelected && <Check size={14} className="stroke-[4]" />}
+                    </div>
+                </div>
+            </td>
             {columns.filter(c => c.visible).map(col => (
                 <td key={`${client.id}-${col.id}`} className="px-6 py-4 align-middle">
                     {col.id === 'nome' && (
-                        <div className="flex items-center gap-3">
-                            {client.foto ? <img src={client.foto} alt={client.nome_completo} className="w-8 h-8 rounded-full border border-slate-700 object-cover" /> : (
-                                <div className={`w-8 h-8 rounded-full border border-white/10 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm ${hasPendencias
-                                    ? 'bg-red-600 text-white animate-pulse'
-                                    : 'bg-zinc-300 text-zinc-900'
-                                    }`}>
-                                    {String(client.nome_completo || '').substring(0, 2).toUpperCase()}
+                        <PendencyIndicator pendencies={client.pendencias} align="left" className="w-full">
+                            <div className="flex items-center gap-3 cursor-help">
+                                {client.foto ? <img src={client.foto} alt={client.nome_completo} className="w-8 h-8 rounded-full border border-slate-700 object-cover" /> : (
+                                    <div className={`w-8 h-8 rounded-full border border-white/10 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm relative transition-all duration-300 ${hasPendencias
+                                        ? 'bg-rose-600 text-white border-rose-500/50 shadow-[0_0_10px_rgba(225,29,72,0.2)]'
+                                        : 'bg-zinc-300 text-zinc-900'
+                                        }`}>
+                                        {String(client.nome_completo || '').substring(0, 2).toUpperCase()}
+                                    </div>
+                                )}
+                                <div>
+                                    <p className="font-semibold text-slate-200 group-hover:text-amber-500 transition-colors flex items-center gap-2">
+                                        {String(client.nome_completo)}
+                                    </p>
+                                    <p className="opacity-50 text-[0.85em]">{String(client.cpf_cnpj || '')}</p>
                                 </div>
-                            )}
-                            <div>
-                                <p className="font-semibold text-slate-200 group-hover:text-amber-500 transition-colors text-sm flex items-center gap-2">
-                                    {String(client.nome_completo)}
-                                    {hasPendencias && <span title="Possui Pendências"><AlertTriangle size={12} className="text-red-500" /></span>}
-                                </p>
-                                <p className="text-[10px] text-slate-500">{String(client.cpf_cnpj || '')}</p>
                             </div>
-                        </div>
+                        </PendencyIndicator>
                     )}
                     {col.id === 'contato' && (
                         <div className="flex items-center gap-2 group/phone">
-                            <span className="text-sm text-slate-400 flex items-center gap-1">
+                            <span className="text-slate-400 flex items-center gap-1">
                                 <Phone size={12} /> {String(client.telefone || '-')}
                             </span>
                             {client.telefone && (
@@ -82,6 +116,7 @@ const ClientRow: React.FC<ClientRowProps> = ({
                             })()
                     )}
                     {col.id === 'gps' && (() => {
+                        const { isStatusBlinking } = useApp();
                         const clientCases = client.cases || [];
                         const activeCases = clientCases.filter(c => c.status?.toLowerCase() !== 'arquivado');
                         if (activeCases.length === 0) return <span className="text-zinc-600">-</span>;
@@ -99,9 +134,23 @@ const ClientRow: React.FC<ClientRowProps> = ({
                             }
                         });
 
-                        if (hasPuxada) return <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full">Puxada</span>;
-                        if (hasPendente) return <span className="text-[10px] font-bold px-2 py-0.5 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-full">Pendente</span>;
-                        return <span className="text-[10px] font-medium px-2 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded-full">Regular</span>;
+                        if (hasPuxada) return (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all duration-500 ${isStatusBlinking
+                                ? 'bg-blue-500/20 text-blue-400 border-blue-500/40 shadow-[0_0_10px_rgba(59,130,246,0.3)]'
+                                : 'bg-white/5 text-slate-500 border-white/10'
+                                }`}>
+                                Puxada
+                            </span>
+                        );
+                        if (hasPendente) return (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all duration-500 ${isStatusBlinking
+                                ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+                                : 'bg-white/5 text-slate-500 border-white/10'
+                                }`}>
+                                Pendente
+                            </span>
+                        );
+                        return <span className="text-[10px] font-medium px-2 py-0.5 bg-green-500/5 text-green-500/40 border border-green-500/10 rounded-full">Regular</span>;
                     })()}
                     {col.id === 'endereco' && <span className="text-xs text-slate-400 truncate max-w-[200px] block" title={client.endereco}>{client.endereco || '-'}</span>}
                     {col.id === 'nascimento' && <span className="text-xs text-slate-400">{formatDateDisplay(client.data_nascimento)}</span>}

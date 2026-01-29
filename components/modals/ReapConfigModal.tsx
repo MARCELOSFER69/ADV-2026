@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Fish, MapPin, CalendarDays, ChevronRight, Loader2 } from 'lucide-react';
 
 interface ReapConfigModalProps {
@@ -120,20 +121,22 @@ const ReapConfigModal: React.FC<ReapConfigModalProps> = ({
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-navy-900 border border-slate-700 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden">
+    if (!isOpen) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-[#18181b] border border-white/10 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-gold-600 to-gold-500 px-5 py-4 flex justify-between items-center">
+                <div className="bg-[#131418] border-b border-white/5 px-6 py-4 flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                        <Fish className="text-navy-900" size={24} />
+                        <Fish className="text-gold-500" size={24} />
                         <div>
-                            <h3 className="font-bold text-navy-900 text-lg">Configurar Dados de Pesca</h3>
-                            <p className="text-navy-800 text-xs">{clientName}</p>
+                            <h3 className="font-bold text-white text-lg">Configurar Dados de Pesca</h3>
+                            <p className="text-gray-400 text-xs">{clientName}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-navy-900 hover:text-navy-700 transition-colors">
-                        <X size={24} />
+                    <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors p-1 hover:bg-white/5 rounded-lg">
+                        <X size={20} />
                     </button>
                 </div>
 
@@ -147,12 +150,12 @@ const ReapConfigModal: React.FC<ReapConfigModalProps> = ({
                         {/* Form */}
                         <div className="p-5 space-y-5">
                             {/* Período */}
-                            <div className="bg-navy-800/50 border border-slate-700 rounded-lg p-4">
+                            <div className="bg-[#131418] border border-white/5 rounded-lg p-4">
                                 <div className="flex items-center gap-2 text-gold-500 mb-3">
                                     <CalendarDays size={18} />
                                     <span className="font-bold text-sm">Período de Pesca: Abril a Novembro (8 meses)</span>
                                 </div>
-                                <p className="text-slate-400 text-xs">
+                                <p className="text-zinc-400 text-xs">
                                     Janeiro, Fevereiro, Março e Dezembro são meses de defeso (sem pesca).
                                 </p>
                             </div>
@@ -162,14 +165,14 @@ const ReapConfigModal: React.FC<ReapConfigModalProps> = ({
                                 <div className="flex-1 bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 flex items-center gap-3">
                                     <MapPin className="text-emerald-500" size={20} />
                                     <div>
-                                        <p className="text-xs text-slate-400">Localidade Pesqueira</p>
+                                        <p className="text-xs text-zinc-400">Localidade Pesqueira</p>
                                         <p className="text-white font-bold">{clientLocation || 'Não definida'}</p>
                                     </div>
                                 </div>
                                 <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4 flex items-center gap-3">
                                     <span className="text-xl">🎣</span>
                                     <div>
-                                        <p className="text-xs text-slate-400">Petrecho (sortido)</p>
+                                        <p className="text-xs text-zinc-400">Petrecho (sortido)</p>
                                         <p className="text-white font-bold">{petrecho}</p>
                                     </div>
                                 </div>
@@ -178,7 +181,7 @@ const ReapConfigModal: React.FC<ReapConfigModalProps> = ({
                             {/* Dados Mensais */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-slate-300 text-sm font-medium mb-2 block">
+                                    <label className="text-zinc-400 text-sm font-medium mb-2 block">
                                         Dias trabalhados/mês
                                     </label>
                                     <input
@@ -187,11 +190,11 @@ const ReapConfigModal: React.FC<ReapConfigModalProps> = ({
                                         onChange={(e) => setDiasPorMes(Number(e.target.value))}
                                         min={1}
                                         max={30}
-                                        className="w-full bg-navy-800 border border-slate-600 rounded-lg px-4 py-2.5 text-white focus:border-gold-500 focus:outline-none"
+                                        className="w-full bg-[#131418] border border-white/10 rounded-lg px-4 py-2.5 text-white focus:border-gold-500 focus:outline-none transition-colors"
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-slate-300 text-sm font-medium mb-2 block">
+                                    <label className="text-zinc-400 text-sm font-medium mb-2 block">
                                         Kg de peixe/mês
                                     </label>
                                     <input
@@ -199,11 +202,11 @@ const ReapConfigModal: React.FC<ReapConfigModalProps> = ({
                                         value={kgPorMes}
                                         onChange={(e) => setKgPorMes(Number(e.target.value))}
                                         min={1}
-                                        className="w-full bg-navy-800 border border-slate-600 rounded-lg px-4 py-2.5 text-white focus:border-gold-500 focus:outline-none"
+                                        className="w-full bg-[#131418] border border-white/10 rounded-lg px-4 py-2.5 text-white focus:border-gold-500 focus:outline-none transition-colors"
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-slate-300 text-sm font-medium mb-2 block">
+                                    <label className="text-zinc-400 text-sm font-medium mb-2 block">
                                         Preço médio (R$/kg)
                                     </label>
                                     <input
@@ -211,11 +214,11 @@ const ReapConfigModal: React.FC<ReapConfigModalProps> = ({
                                         value={precoMedio}
                                         onChange={(e) => setPrecoMedio(e.target.value)}
                                         placeholder="8,00"
-                                        className="w-full bg-navy-800 border border-slate-600 rounded-lg px-4 py-2.5 text-white focus:border-gold-500 focus:outline-none"
+                                        className="w-full bg-[#131418] border border-white/10 rounded-lg px-4 py-2.5 text-white focus:border-gold-500 focus:outline-none transition-colors"
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-slate-300 text-sm font-medium mb-2 block">
+                                    <label className="text-zinc-400 text-sm font-medium mb-2 block">
                                         Espécies por mês
                                     </label>
                                     <input
@@ -224,21 +227,21 @@ const ReapConfigModal: React.FC<ReapConfigModalProps> = ({
                                         onChange={(e) => setEspeciesPorMes(Math.max(1, Number(e.target.value)))}
                                         min={1}
                                         max={5}
-                                        className="w-full bg-navy-800 border border-slate-600 rounded-lg px-4 py-2.5 text-white focus:border-gold-500 focus:outline-none"
+                                        className="w-full bg-[#131418] border border-white/10 rounded-lg px-4 py-2.5 text-white focus:border-gold-500 focus:outline-none transition-colors"
                                     />
                                 </div>
                             </div>
 
                             {/* Peixes */}
                             <div>
-                                <label className="text-slate-300 text-sm font-medium mb-2 flex items-center gap-2">
+                                <label className="text-zinc-400 text-sm font-medium mb-2 flex items-center gap-2">
                                     <Fish size={16} className="text-gold-500" />
                                     Espécies de Peixes (máximo {maxPeixesSelecionaveis})
                                 </label>
-                                <p className="text-slate-500 text-xs mb-2">
+                                <p className="text-zinc-500 text-xs mb-2">
                                     Serão distribuídas pelos 8 meses • {especiesPorMes} espécie(s) por mês
                                 </p>
-                                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-navy-800 border border-slate-600 rounded-lg">
+                                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-[#131418] border border-white/5 rounded-lg custom-scrollbar">
                                     {peixes.map((peixe, i) => (
                                         <button
                                             key={i}
@@ -262,10 +265,10 @@ const ReapConfigModal: React.FC<ReapConfigModalProps> = ({
                         </div>
 
                         {/* Footer */}
-                        <div className="px-5 py-4 border-t border-slate-700 flex justify-end gap-3">
+                        <div className="px-5 py-4 border-t border-white/5 flex justify-end gap-3 bg-[#131418]">
                             <button
                                 onClick={onClose}
-                                className="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold rounded-lg transition-colors"
+                                className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold rounded-lg transition-colors border border-white/5"
                             >
                                 Cancelar
                             </button>
@@ -281,7 +284,8 @@ const ReapConfigModal: React.FC<ReapConfigModalProps> = ({
                     </>
                 )}
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

@@ -49,17 +49,17 @@ const ExpenseTable: React.FC<ExpenseTableProps> = ({
     getExpenseStatus
 }) => {
     return (
-        <div className="bg-navy-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg flex flex-col h-full animate-in fade-in duration-300">
+        <div className="bg-[#0f1014] border border-white/10 rounded-xl overflow-hidden shadow-2xl flex flex-col h-full animate-in fade-in duration-300">
             {/* Toolbar de Filtros */}
-            <div className="p-4 border-b border-slate-800 bg-navy-950/50 space-y-3">
+            <div className="p-4 border-b border-white/10 bg-[#0f1014] space-y-3">
                 {/* Linha 1: Mes e Busca */}
                 <div className="flex flex-col md:flex-row gap-3">
-                    <div className="flex items-center gap-2 bg-navy-800 border border-slate-700 rounded-lg px-3 py-1.5 flex-1 relative">
+                    <div className="flex items-center gap-2 bg-[#18181b] border border-white/5 rounded-xl px-4 py-2 flex-1 relative transition-colors focus-within:border-white/20">
                         <Search size={16} className="text-slate-400" />
                         <input
                             type="text"
                             placeholder="Buscar despesa ou obs..."
-                            className="bg-transparent border-none text-sm text-white outline-none w-full pr-8 placeholder:text-slate-600"
+                            className="bg-transparent border-none text-sm text-white outline-none w-full pr-8 placeholder:text-slate-600 font-medium"
                             value={searchTerm}
                             onChange={(e) => onSearchChange(e.target.value)}
                         />
@@ -77,7 +77,7 @@ const ExpenseTable: React.FC<ExpenseTableProps> = ({
                         <Filter size={16} />
                         <input
                             type="month"
-                            className="bg-navy-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-gold-500 [color-scheme:dark]"
+                            className="bg-[#18181b] border border-white/5 rounded-xl px-4 py-2 text-sm text-white outline-none focus:border-gold-500/50 [color-scheme:dark] transition-all font-medium"
                             value={filterMonth}
                             onChange={(e) => onFilterMonthChange(e.target.value)}
                         />
@@ -85,9 +85,9 @@ const ExpenseTable: React.FC<ExpenseTableProps> = ({
                 </div>
 
                 {/* Linha 2: Filtros Select */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-3">
                     <select
-                        className="bg-navy-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none"
+                        className="bg-[#18181b] border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-300 outline-none focus:border-white/20 transition-all cursor-pointer font-medium"
                         value={filterPayer}
                         onChange={(e) => onFilterPayerChange(e.target.value)}
                     >
@@ -95,7 +95,7 @@ const ExpenseTable: React.FC<ExpenseTableProps> = ({
                         {existingPayers.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                     <select
-                        className="bg-navy-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none"
+                        className="bg-[#18181b] border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-300 outline-none focus:border-white/20 transition-all cursor-pointer font-medium"
                         value={filterAccount}
                         onChange={(e) => onFilterAccountChange(e.target.value)}
                     >
@@ -103,7 +103,7 @@ const ExpenseTable: React.FC<ExpenseTableProps> = ({
                         {existingAccounts.map(a => <option key={a} value={a}>{a}</option>)}
                     </select>
                     <select
-                        className="bg-navy-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none"
+                        className="bg-[#18181b] border border-white/5 rounded-xl px-3 py-2 text-xs text-slate-300 outline-none focus:border-white/20 transition-all cursor-pointer font-medium"
                         value={filterStatus}
                         onChange={(e) => onFilterStatusChange(e.target.value)}
                     >
@@ -116,18 +116,18 @@ const ExpenseTable: React.FC<ExpenseTableProps> = ({
 
             {/* Tabela */}
             <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                    <thead className="bg-white/5 border-b border-white/5">
+                <table className="w-full text-left border-collapse">
+                    <thead className="bg-[#131418] border-b border-white/5 sticky top-0 z-10 shadow-md">
                         <tr>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Data</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Detalhes</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Pagamento</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">Valor</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Status</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Ação</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Data</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Detalhes</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Pagamento</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Valor</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Ação</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
+                    <tbody className="divide-y divide-white/5">
                         {groupedList.length > 0 ? (
                             groupedList.map((item, index) => {
                                 // --- RENDERIZAÇÃO DE GRUPO ---
@@ -138,7 +138,7 @@ const ExpenseTable: React.FC<ExpenseTableProps> = ({
                                             {/* Linha do Grupo */}
                                             <tr
                                                 onClick={() => onToggleGroup(item.balanceId)}
-                                                className={`cursor-pointer transition-colors border-l-2 ${isExpanded ? 'bg-navy-800 border-l-gold-500' : 'hover:bg-white/5 border-l-transparent'}`}
+                                                className={`cursor-pointer transition-all border-l-2 ${isExpanded ? 'bg-white/5 border-l-gold-500 shadow-inner' : 'hover:bg-white/5 border-l-transparent'}`}
                                             >
                                                 <td className="px-6 py-4 text-sm text-slate-300 font-mono flex items-center gap-2">
                                                     <button className="text-slate-500 hover:text-white transition-colors">
@@ -172,7 +172,7 @@ const ExpenseTable: React.FC<ExpenseTableProps> = ({
 
                                             {/* Itens do Grupo (Expandido) */}
                                             {isExpanded && item.expenses.map(expense => (
-                                                <tr key={expense.id} className="bg-navy-950/50 hover:bg-navy-950 transition-colors animate-in fade-in slide-in-from-top-1">
+                                                <tr key={expense.id} className="bg-black/20 hover:bg-white/5 transition-colors animate-in fade-in slide-in-from-top-1 border-l-2 border-l-transparent hover:border-l-white/10">
                                                     <td className="px-6 py-3 text-xs text-slate-500 font-mono pl-12">
                                                         {formatDateDisplay(expense.data_despesa)}
                                                     </td>
@@ -208,7 +208,7 @@ const ExpenseTable: React.FC<ExpenseTableProps> = ({
                                 const expense = item as OfficeExpense;
                                 const status = getExpenseStatus(expense);
                                 return (
-                                    <tr key={expense.id} className="group hover:bg-white/5 transition-colors">
+                                    <tr key={expense.id} className="group hover:bg-white/5 transition-all duration-200 border-l-2 border-l-transparent hover:border-l-gold-500/50">
                                         <td className="px-6 py-4 text-sm text-slate-300 whitespace-nowrap font-mono">
                                             <div className="flex items-center gap-2">
                                                 {formatDateDisplay(expense.data_despesa)}
@@ -258,21 +258,21 @@ const ExpenseTable: React.FC<ExpenseTableProps> = ({
                                         <td className="px-6 py-4 text-center">
                                             <button
                                                 onClick={() => onStatusClick(expense)}
-                                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase transition-all
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all shadow-md active:scale-95
                                                         ${status === 'pago'
-                                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
+                                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 hover:shadow-emerald-500/10'
                                                         : status === 'vencido'
-                                                            ? 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]'
+                                                            ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 hover:shadow-red-500/10 animate-pulse'
                                                             : status === 'hoje'
-                                                                ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20 shadow-[0_0_10px_rgba(234,179,8,0.2)]'
-                                                                : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
+                                                                ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20 hover:shadow-yellow-500/10 animate-bounce'
+                                                                : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-white'
                                                     }
                                                     `}
                                             >
-                                                {status === 'pago' && <CheckCircle2 size={12} />}
-                                                {status === 'vencido' && <AlertTriangle size={12} />}
-                                                {status === 'hoje' && <Clock size={12} />}
-                                                {status === 'pendente' && <Circle size={12} />}
+                                                {status === 'pago' && <CheckCircle2 size={12} strokeWidth={3} />}
+                                                {status === 'vencido' && <AlertTriangle size={12} strokeWidth={3} />}
+                                                {status === 'hoje' && <Clock size={12} strokeWidth={3} />}
+                                                {status === 'pendente' && <Circle size={12} strokeWidth={3} />}
 
                                                 {status === 'pago' ? 'Pago' : status === 'vencido' ? 'Vencido' : status === 'hoje' ? 'Hoje' : 'Pendente'}
                                             </button>
@@ -280,7 +280,7 @@ const ExpenseTable: React.FC<ExpenseTableProps> = ({
                                         <td className="px-6 py-4 text-center">
                                             <button
                                                 onClick={() => onDelete(expense.id)}
-                                                className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                className="p-2 text-slate-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                                                 title="Excluir"
                                             >
                                                 <Trash2 size={16} />

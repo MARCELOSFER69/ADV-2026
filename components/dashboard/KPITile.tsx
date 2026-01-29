@@ -16,6 +16,7 @@ interface KPITileProps {
         isPositive: boolean;
     };
     format?: 'number' | 'currency' | 'percentage';
+    outline?: boolean;
 }
 
 const KPITile: React.FC<KPITileProps> = ({
@@ -27,7 +28,8 @@ const KPITile: React.FC<KPITileProps> = ({
     colorClass,
     bgColorClass,
     trend,
-    format = 'number'
+    format = 'number',
+    outline = false
 }) => {
     const formattedValue = React.useMemo(() => {
         if (format === 'currency' && typeof value === 'number') {
@@ -49,9 +51,13 @@ const KPITile: React.FC<KPITileProps> = ({
             <div className="flex justify-between items-start">
                 <motion.div
                     whileHover={{ rotate: 15, scale: 1.1 }}
-                    className={`p-2 rounded-lg ${bgColorClass} ${colorClass} transition-colors`}
+                    className={`p-2 rounded-lg 
+                        ${bgColorClass.includes('/10') ? bgColorClass.replace('/10', '/20') : bgColorClass + '/20'} 
+                        ${colorClass} 
+                        group-hover:text-gold-500 group-hover:bg-gold-500/20
+                        transition-all duration-300 shadow-sm border border-transparent group-hover:border-gold-500/20`}
                 >
-                    <Icon size={18} />
+                    <Icon size={18} strokeWidth={2.5} />
                 </motion.div>
                 {trend && (
                     <motion.span

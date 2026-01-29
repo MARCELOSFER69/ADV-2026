@@ -264,10 +264,10 @@ const ClientCnisTab: React.FC<ClientCnisTabProps> = ({ client, onUpdate }) => {
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
             {/* Header / Actions */}
-            <div className="flex justify-between items-center bg-zinc-900/50 p-4 rounded-xl border border-zinc-800">
+            <div className="flex justify-between items-center bg-[#18181b] p-4 rounded-xl border border-white/5">
                 <div>
-                    <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
-                        <FileText size={16} className="text-orange-500" />
+                    <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2 font-serif">
+                        <FileText size={16} className="text-gold-500" />
                         Dados do CNIS
                     </h3>
                     <p className="text-xs text-zinc-500">
@@ -276,7 +276,7 @@ const ClientCnisTab: React.FC<ClientCnisTabProps> = ({ client, onUpdate }) => {
                 </div>
                 <div className="flex gap-2">
                     {bonds.length > 0 && (
-                        <button onClick={handleClear} className="text-xs text-zinc-400 hover:text-red-400 px-3 py-2 rounded hover:bg-zinc-800 transition-colors">
+                        <button onClick={handleClear} className="text-xs text-zinc-400 hover:text-red-400 px-3 py-2 rounded hover:bg-[#131418] transition-colors">
                             Limpar
                         </button>
                     )}
@@ -291,7 +291,7 @@ const ClientCnisTab: React.FC<ClientCnisTabProps> = ({ client, onUpdate }) => {
             {/* Upload Area (only if empty) */}
             {bonds.length === 0 && (
                 <div
-                    className={`bg-[#0f1014] border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all cursor-pointer group ${isDragging ? 'border-orange-500 bg-zinc-900' : 'border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/30'}`}
+                    className={`bg-[#18181b] border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all cursor-pointer group ${isDragging ? 'border-orange-500 bg-[#131418]' : 'border-white/5 hover:border-gold-500/30 hover:bg-[#131418]'}`}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
@@ -301,13 +301,13 @@ const ClientCnisTab: React.FC<ClientCnisTabProps> = ({ client, onUpdate }) => {
 
                     {isLoading ? (
                         <div className="flex flex-col items-center animate-pulse">
-                            <Loader2 size={32} className="text-orange-500 animate-spin mb-2" />
+                            <Loader2 size={32} className="text-gold-500 animate-spin mb-2" />
                             <p className="text-zinc-500 text-xs">Lendo PDF...</p>
                         </div>
                     ) : (
                         <>
-                            <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform border border-zinc-800">
-                                <UploadCloud size={20} className="text-zinc-500 group-hover:text-orange-500 transition-colors" />
+                            <div className="w-12 h-12 bg-[#131418] rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform border border-white/5 group-hover:border-gold-500/30">
+                                <UploadCloud size={20} className="text-zinc-500 group-hover:text-gold-500 transition-colors" />
                             </div>
                             <h3 className="text-sm font-bold text-white mb-1">Upload do CNIS (PDF)</h3>
                             <p className="text-zinc-500 max-w-xs text-xs">Arraste o arquivo ou clique para selecionar. Extração automática de vínculos.</p>
@@ -321,7 +321,7 @@ const ClientCnisTab: React.FC<ClientCnisTabProps> = ({ client, onUpdate }) => {
             {bonds.length > 0 && (
                 <div className="space-y-4">
                     {/* Summary Card */}
-                    <div className="bg-[#0f1014] border border-zinc-800 rounded-xl p-4 flex items-center justify-between shadow-lg relative overflow-hidden">
+                    <div className="bg-[#18181b] border border-white/5 rounded-xl p-4 flex items-center justify-between shadow-lg relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-2 opacity-5 pointer-events-none"><Calculator size={80} /></div>
                         <div className="z-10">
                             <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Tempo Total Contribuição</h4>
@@ -338,18 +338,18 @@ const ClientCnisTab: React.FC<ClientCnisTabProps> = ({ client, onUpdate }) => {
                     </div>
 
                     {/* Table */}
-                    <div className="border border-zinc-800 rounded-xl overflow-hidden">
+                    <div className="border border-white/5 rounded-xl overflow-hidden">
                         <table className="w-full text-left text-xs">
-                            <thead className="bg-zinc-900/50 text-zinc-500 font-medium border-b border-zinc-800">
+                            <thead className="bg-[#131418] text-zinc-500 font-medium border-b border-white/5">
                                 <tr>
                                     <th className="px-4 py-3">Empresa</th>
                                     <th className="px-4 py-3">Período</th>
                                     <th className="px-4 py-3 text-right">Tempo</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-zinc-800 bg-[#0f1014]">
+                            <tbody className="divide-y divide-white/5 bg-[#18181b]">
                                 {bonds.map(bond => (
-                                    <tr key={bond.id} className="hover:bg-zinc-900/50 transition-colors">
+                                    <tr key={bond.id} className="hover:bg-white/5 transition-colors">
                                         <td className="px-4 py-3 font-medium text-zinc-300">{bond.company}</td>
                                         <td className="px-4 py-3 text-zinc-400">
                                             {bond.startDate} <span className="text-zinc-600 px-1">➜</span> <span className={bond.isActive ? 'text-emerald-500 font-bold' : ''}>{bond.endDate}</span>

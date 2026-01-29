@@ -21,15 +21,15 @@ const ClientCredentialsTab: React.FC<ClientCredentialsTabProps> = ({
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="bg-navy-900 border border-slate-800 rounded-xl p-6 shadow-lg">
-                <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+            <div className="bg-[#18181b] border border-white/5 rounded-xl p-6 shadow-lg">
+                <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2 font-serif">
                     <Lock size={20} className="text-gold-500" /> Acesso Gov.br
                 </h3>
 
                 <div className="grid grid-cols-1 gap-6 max-w-md">
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">CPF (Login)</label>
-                        <div className="bg-navy-950 border border-slate-700 rounded-lg px-4 py-3 text-white font-mono flex justify-between items-center">
+                        <div className="bg-[#131418] border border-white/5 rounded-lg px-4 py-3 text-white font-mono flex justify-between items-center">
                             <span>{client.cpf_cnpj}</span>
                             <button onClick={() => { navigator.clipboard.writeText(client.cpf_cnpj); showToast('success', 'CPF Copiado'); }} className="text-zinc-500 hover:text-white" title="Copiar"><Check size={14} /></button>
                         </div>
@@ -41,7 +41,7 @@ const ClientCredentialsTab: React.FC<ClientCredentialsTabProps> = ({
                             <div className="relative group">
                                 <input
                                     type={showGovPassword ? "text" : "password"}
-                                    className="w-full bg-navy-950 border border-slate-700 rounded-lg px-4 py-3 text-white outline-none focus:border-gold-500 pr-10"
+                                    className="w-full bg-[#131418] border border-white/5 rounded-lg px-4 py-3 text-white outline-none focus:border-gold-500 pr-10"
                                     value={editedClient.senha_gov || ''}
                                     onChange={(e) => setEditedClient({ ...editedClient, senha_gov: e.target.value })}
                                     placeholder="Digite a senha..."
@@ -55,7 +55,7 @@ const ClientCredentialsTab: React.FC<ClientCredentialsTabProps> = ({
                                 </button>
                             </div>
                         ) : (
-                            <div className="bg-navy-950 border border-slate-700 rounded-lg px-4 py-3 text-white font-mono flex justify-between items-center group">
+                            <div className="bg-[#131418] border border-white/5 rounded-lg px-4 py-3 text-white font-mono flex justify-between items-center group">
                                 <span>
                                     {client.senha_gov
                                         ? (showGovPassword ? client.senha_gov : '••••••••••••')
@@ -88,8 +88,8 @@ const ClientCredentialsTab: React.FC<ClientCredentialsTabProps> = ({
                 </div>
             </div>
 
-            <div className="bg-navy-900 border border-slate-800 rounded-xl p-6 shadow-lg">
-                <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+            <div className="bg-[#18181b] border border-white/5 rounded-xl p-6 shadow-lg">
+                <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2 font-serif">
                     <Lock size={20} className="text-blue-500" /> Acesso Meu INSS
                 </h3>
 
@@ -100,7 +100,7 @@ const ClientCredentialsTab: React.FC<ClientCredentialsTabProps> = ({
                             <div className="relative group">
                                 <input
                                     type={showInssPassword ? "text" : "password"}
-                                    className="w-full bg-navy-950 border border-slate-700 rounded-lg px-4 py-3 text-white outline-none focus:border-gold-500 pr-10"
+                                    className="w-full bg-[#131418] border border-white/5 rounded-lg px-4 py-3 text-white outline-none focus:border-gold-500 pr-10"
                                     value={editedClient.senha_inss || ''}
                                     onChange={(e) => setEditedClient({ ...editedClient, senha_inss: e.target.value })}
                                     placeholder="Digite a senha..."
@@ -114,7 +114,7 @@ const ClientCredentialsTab: React.FC<ClientCredentialsTabProps> = ({
                                 </button>
                             </div>
                         ) : (
-                            <div className="bg-navy-950 border border-slate-700 rounded-lg px-4 py-3 text-white font-mono flex justify-between items-center group">
+                            <div className="bg-[#131418] border border-white/5 rounded-lg px-4 py-3 text-white font-mono flex justify-between items-center group">
                                 <span>
                                     {client.senha_inss
                                         ? (showInssPassword ? client.senha_inss : '••••••••••••')

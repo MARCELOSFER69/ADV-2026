@@ -65,12 +65,12 @@ const ExpenseBalanceModal: React.FC<ExpenseBalanceModalProps> = ({
 
     return (
         <div className="fixed inset-0 bg-black/80 z-[80] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
-            <div className="bg-navy-900 border border-slate-700 rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh]">
-                <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-navy-950 rounded-t-xl">
+            <div className="bg-[#0f1014] border border-white/10 rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh]">
+                <div className="p-5 border-b border-white/10 flex justify-between items-center bg-[#131418] rounded-t-xl">
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         <PiggyBank size={24} className="text-emerald-500" /> Gerenciar Saldo
                     </h3>
-                    <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={24} /></button>
+                    <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
@@ -80,7 +80,7 @@ const ExpenseBalanceModal: React.FC<ExpenseBalanceModalProps> = ({
                         <h4 className="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
                             <Plus size={16} /> Adicionar Novo Saldo
                         </h4>
-                        <form onSubmit={handleBalanceSubmit} className="bg-navy-950 p-4 rounded-xl border border-slate-800 space-y-4">
+                        <form onSubmit={handleBalanceSubmit} className="bg-black/20 p-4 rounded-xl border border-white/10 space-y-4">
                             {/* Linha 1: Valor, Data, Descrição */}
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                                 <div className="md:col-span-1">
@@ -88,7 +88,7 @@ const ExpenseBalanceModal: React.FC<ExpenseBalanceModalProps> = ({
                                     <div className="relative">
                                         <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                                         <input
-                                            className="w-full bg-navy-900 border border-slate-700 rounded-lg pl-8 pr-2 py-2 text-white text-sm outline-none focus:border-emerald-500"
+                                            className="w-full bg-[#18181b] border border-white/5 rounded-lg pl-8 pr-2 py-2 text-white text-sm outline-none focus:border-emerald-500 transition-all"
                                             placeholder="0,00"
                                             value={newBalanceAmount}
                                             onChange={(e) => setNewBalanceAmount(formatCurrencyInput(e.target.value))}
@@ -100,7 +100,7 @@ const ExpenseBalanceModal: React.FC<ExpenseBalanceModalProps> = ({
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Data</label>
                                     <input
                                         type="date"
-                                        className="w-full bg-navy-900 border border-slate-700 rounded-lg px-2 py-2 text-white text-sm outline-none focus:border-emerald-500 [color-scheme:dark]"
+                                        className="w-full bg-[#18181b] border border-white/5 rounded-lg px-2 py-2 text-white text-sm outline-none focus:border-emerald-500 [color-scheme:dark] transition-all"
                                         value={newBalanceDate}
                                         onChange={(e) => setNewBalanceDate(e.target.value)}
                                         required
@@ -109,7 +109,7 @@ const ExpenseBalanceModal: React.FC<ExpenseBalanceModalProps> = ({
                                 <div className="md:col-span-2">
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Ref / Descrição</label>
                                     <input
-                                        className="w-full bg-navy-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-emerald-500"
+                                        className="w-full bg-[#18181b] border border-white/5 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-emerald-500 transition-all"
                                         placeholder="Ex: Aporte Inicial..."
                                         value={newBalanceDesc}
                                         onChange={(e) => setNewBalanceDesc(e.target.value)}
@@ -122,7 +122,7 @@ const ExpenseBalanceModal: React.FC<ExpenseBalanceModalProps> = ({
                                 {/* Método */}
                                 <div className="md:col-span-1">
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Forma de Entrada</label>
-                                    <div className="flex bg-navy-900 p-1 rounded-lg border border-slate-700">
+                                    <div className="flex bg-[#18181b] p-1 rounded-lg border border-white/5">
                                         <button
                                             type="button"
                                             onClick={() => setNewBalanceMethod('Pix')}
@@ -146,7 +146,7 @@ const ExpenseBalanceModal: React.FC<ExpenseBalanceModalProps> = ({
                                     <div className={newBalanceMethod === 'Pix' ? 'col-span-1' : 'col-span-3'}>
                                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Quem Pagou?</label>
                                         <input
-                                            className="w-full bg-navy-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-emerald-500"
+                                            className="w-full bg-[#18181b] border border-white/5 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-emerald-500 transition-all"
                                             placeholder="Nome do pagador..."
                                             value={newBalancePayer}
                                             onChange={(e) => setNewBalancePayer(e.target.value)}
@@ -159,7 +159,7 @@ const ExpenseBalanceModal: React.FC<ExpenseBalanceModalProps> = ({
                                             <div className="col-span-1">
                                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tipo Conta</label>
                                                 <select
-                                                    className="w-full bg-navy-900 border border-slate-700 rounded-lg px-2 py-2 text-white text-sm outline-none focus:border-emerald-500"
+                                                    className="w-full bg-[#18181b] border border-white/5 rounded-lg px-2 py-2 text-white text-sm outline-none focus:border-emerald-500 transition-all"
                                                     value={newBalanceAccountType}
                                                     onChange={(e) => setNewBalanceAccountType(e.target.value as 'PF' | 'PJ')}
                                                 >
@@ -170,7 +170,7 @@ const ExpenseBalanceModal: React.FC<ExpenseBalanceModalProps> = ({
                                             <div className="col-span-1">
                                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Conta</label>
                                                 <input
-                                                    className="w-full bg-navy-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-emerald-500"
+                                                    className="w-full bg-[#18181b] border border-white/5 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-emerald-500 transition-all"
                                                     placeholder="Ex: Nubank..."
                                                     value={newBalanceAccount}
                                                     onChange={(e) => setNewBalanceAccount(e.target.value)}
@@ -201,7 +201,7 @@ const ExpenseBalanceModal: React.FC<ExpenseBalanceModalProps> = ({
                                     <div
                                         key={bal.id}
                                         onClick={() => setExpandedBalanceId(expandedBalanceId === bal.id ? null : bal.id)}
-                                        className={`bg-navy-950 border rounded-xl overflow-hidden transition-all cursor-pointer ${expandedBalanceId === bal.id ? 'border-emerald-500/50 shadow-lg shadow-emerald-500/10' : 'border-slate-800 hover:border-slate-600'}`}
+                                        className={`bg-[#131418] border rounded-xl overflow-hidden transition-all cursor-pointer ${expandedBalanceId === bal.id ? 'border-emerald-500/50 shadow-lg shadow-emerald-500/10' : 'border-white/10 hover:border-white/20'}`}
                                     >
                                         {/* Cabeçalho do Card */}
                                         <div className="p-4 flex justify-between items-center">
@@ -237,7 +237,7 @@ const ExpenseBalanceModal: React.FC<ExpenseBalanceModalProps> = ({
 
                                         {/* Detalhes Expandidos (Gastos) */}
                                         {expandedBalanceId === bal.id && (
-                                            <div className="border-t border-slate-800 bg-black/20 p-4 animate-in slide-in-from-top-2">
+                                            <div className="border-t border-white/10 bg-black/20 p-4 animate-in slide-in-from-top-2">
                                                 <h5 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
                                                     <TrendingDown size={14} /> Histórico de uso
                                                 </h5>

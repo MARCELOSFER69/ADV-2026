@@ -1,10 +1,12 @@
 
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import { CaseType, CaseStatus, Client, Case } from '../types';
 import { Hourglass, ChevronRight, User, Eye, Briefcase, Phone, MessageCircle, AlertCircle, X, MapPin, Calculator, Check, Clock, AlertTriangle, FileText, Search, Filter } from 'lucide-react';
 import { motion } from 'framer-motion';
 import CaseDetailsModal from '../components/modals/CaseDetailsModal';
+import PendencyIndicator from '../components/ui/PendencyIndicator';
 
 interface RetirementCandidate {
     client: Client;
@@ -32,7 +34,19 @@ const RetirementCard: React.FC<{
     onUpdateClient: (client: Client) => void;
     onOpenCnisDetails: (client: Client, calculation: DetailedCalculation) => void;
     onAddCnis: (client: Client) => void;
-}> = ({ candidate, onClick, onUpdateClient, onOpenCnisDetails, onAddCnis }) => {
+    globalTrigger: number;
+    activeHoverId: string | null;
+    setActiveHoverId: (id: string | null) => void;
+}> = ({ candidate, onClick, onUpdateClient, onOpenCnisDetails, onAddCnis, globalTrigger, activeHoverId, setActiveHoverId }) => {
+    const [localTrigger, setLocalTrigger] = useState(0);
+    const isHovered = activeHoverId === candidate.client.id;
+
+    React.useEffect(() => {
+        if (!isHovered) {
+            setLocalTrigger(globalTrigger);
+        }
+    }, [globalTrigger]);
+
     // Inicializa com o valor do banco SE existir, senão usa o bestChance
     const initialMode = candidate.client.aposentadoria_modalidade || candidate.bestChance;
     const [mode, setMode] = useState<'Rural' | 'Urbana'>(initialMode);
@@ -82,11 +96,14 @@ const RetirementCard: React.FC<{
         return `${years} anos e ${months} meses`;
     };
 
-    const getProgressBarColor = (years: number) => {
-        if (isEligible) return 'bg-emerald-500 shadow-[0_0_10px_#10b981]';
-        if (years <= 1) return 'bg-gold-500';
-        if (years <= 3) return 'bg-orange-500';
-        return 'bg-blue-500';
+
+
+    const getThematicColor = () => {
+        if (isEligible) return '#10b981';
+        if (displayRemaining <= 1) return '#84cc16'; // Lime
+        if (displayRemaining <= 3) return '#eab308'; // Yellow/Gold
+        if (displayRemaining <= 5) return '#f97316'; // Orange
+        return '#64748b'; // Slate
     };
 
     const calculation: DetailedCalculation = {
@@ -103,11 +120,15 @@ const RetirementCard: React.FC<{
         <motion.div
             initial={false}
             animate={{ scale: isEligible ? 1.02 : 1 }}
-            className={`relative p-[1.5px] rounded-xl overflow-hidden group/card ${isEligible ? 'shadow-[0_10px_30px_rgba(16,185,129,0.2)]' : ''}`}
+            className={`relative p-[1.5px] rounded-xl group/card transition-all ${isEligible ? 'shadow-[0_10px_30px_rgba(16,185,129,0.2)]' : ''}`}
+            onMouseEnter={() => setActiveHoverId(candidate.client.id)}
+            onMouseLeave={() => setActiveHoverId(null)}
         >
-            {/* Efeito de Borda Animada (Tracing Border) - Apenas se Elegível */}
+            {/* Tracing Border for Eligible - Slow and Elegant */}
             {isEligible && (
-                <div className="absolute inset-[-100%] bg-[conic-gradient(from_0deg,transparent_25%,#10b981_50%,transparent_75%)] animate-[spin_4s_linear_infinite] opacity-50 blur-[1px]" />
+                <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
+                    <div className="absolute inset-[-100%] bg-[conic-gradient(from_0deg,transparent_25%,#10b981_50%,transparent_75%)] animate-[spin_8s_linear_infinite] opacity-30 blur-[2px]" />
+                </div>
             )}
 
             <div
@@ -117,33 +138,56 @@ const RetirementCard: React.FC<{
                     onClick();
                 }}
                 className={`
-                    relative rounded-xl p-5 cursor-pointer transition-all group overflow-hidden bg-[#0f1014] h-full
+                    relative rounded-xl p-5 cursor-pointer transition-all group bg-[#0f1014] h-full
                     ${isEligible
                         ? 'border border-emerald-500/30'
                         : 'border border-zinc-800 hover:border-zinc-700 hover:shadow-lg'
                     }
                 `}
             >
-                {/* Progress Bar Background */}
-                <div className="absolute bottom-0 left-0 h-1 w-full bg-zinc-800">
-                    <div
-                        className={`h-full transition-all duration-1000 ${getProgressBarColor(displayRemaining)}`}
-                        style={{ width: `${Math.max(5, isEligible ? 100 : (100 - (displayRemaining * 20)))}%` }}
-                    ></div>
+                {/* Progress Bar Background - Premium Animated Line */}
+                <div className="absolute bottom-0 left-0 right-0 h-[3px] overflow-visible rounded-b-xl bg-zinc-800/30">
+                    <svg key={localTrigger} className="absolute inset-0 w-full h-full overflow-visible pointer-events-none">
+                        <motion.line
+                            x1="0"
+                            y1="1.5"
+                            x2="100%"
+                            y2="1.5"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            initial={{ pathLength: 0, stroke: "rgba(113, 113, 122, 0.5)" }}
+                            animate={{
+                                pathLength: (isEligible ? 100 : Math.max(5, (100 - (displayRemaining * 20)))) / 100,
+                                stroke: isHovered
+                                    ? getThematicColor()
+                                    : (isEligible
+                                        ? ["rgba(113, 113, 122, 0.5)", "#10b981", "rgba(113, 113, 122, 0.5)", "#10b981", "rgba(113, 113, 122, 0.5)", "#10b981", "#10b981"]
+                                        : "rgba(113, 113, 122, 0.5)")
+                            }}
+                            transition={{
+                                pathLength: { duration: 2, ease: "easeInOut" },
+                                stroke: isHovered
+                                    ? { duration: 0.2 }
+                                    : { duration: 3, delay: 2, times: [0, 0.16, 0.33, 0.5, 0.66, 0.83, 1] }
+                            }}
+                        />
+                    </svg>
                 </div>
 
                 <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold border-2 border-transparent shadow-sm ${avatarClass}`}>
-                            {candidate.client.nome_completo.substring(0, 2).toUpperCase()}
+                    <PendencyIndicator pendencies={candidate.client.pendencias} align="left">
+                        <div className="flex items-center gap-4 cursor-help">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold border-2 border-transparent shadow-sm relative transition-all duration-300 ${avatarClass} ${hasPendencias ? 'shadow-[0_0_15px_rgba(225,29,72,0.2)]' : ''}`}>
+                                {candidate.client.nome_completo.substring(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-zinc-100 text-base group-hover:text-white transition-colors line-clamp-1">
+                                    {candidate.client.nome_completo}
+                                </h4>
+                                <p className="text-xs text-zinc-500 mt-0.5">{candidate.age.years} anos • {candidate.client.sexo}</p>
+                            </div>
                         </div>
-                        <div>
-                            <h4 className="font-bold text-zinc-100 text-base group-hover:text-white transition-colors line-clamp-1">
-                                {candidate.client.nome_completo}
-                            </h4>
-                            <p className="text-xs text-zinc-500 mt-0.5">{candidate.age.years} anos • {candidate.client.sexo}</p>
-                        </div>
-                    </div>
+                    </PendencyIndicator>
                     {isEligible && (
                         <span className="text-[10px] font-bold bg-emerald-500 text-black px-2 py-1 rounded shadow-[0_0_10px_rgba(16,185,129,0.6)]">
                             ELEGÍVEL
@@ -221,6 +265,15 @@ const Retirements: React.FC = () => {
     const [filterModality, setFilterModality] = useState<'Todas' | 'Rural' | 'Urbana'>('Todas');
     const [filterStatus, setFilterStatus] = useState<'Todos' | 'Elegíveis' | 'Pendentes'>('Todos');
     const [filterPeriod, setFilterPeriod] = useState<number>(60); // Default 5 anos (60 meses)
+    const [globalTrigger, setGlobalTrigger] = useState(0);
+    const [activeHoverId, setActiveHoverId] = useState<string | null>(null);
+
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            setGlobalTrigger(prev => prev + 1);
+        }, 60000);
+        return () => clearInterval(interval);
+    }, []);
 
     const periodOptions = [
         { label: '1 mês', value: 1 },
@@ -353,18 +406,27 @@ const Retirements: React.FC = () => {
 
     return (
         <div className="space-y-8 pb-10">
-            <div>
-                <h2 className="text-2xl font-bold text-white font-serif flex items-center gap-2">
-                    <Hourglass className="text-gold-500" /> Gestão de Aposentadorias
-                </h2>
-                <p className="text-zinc-400">Acompanhamento de processos e prospecção de futuros aposentados.</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-4">
+                <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-gold-500/10 rounded-2xl text-gold-500 border border-gold-500/20 shadow-lg shadow-gold-500/5 transition-transform hover:scale-105">
+                        <Hourglass size={24} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-white font-serif tracking-tight">
+                            Gestão de Aposentadorias
+                        </h1>
+                        <p className="text-slate-400 text-[11px] md:text-xs font-medium mt-0.5 opacity-80 uppercase tracking-widest">
+                            Acompanhamento de processos e prospecção de futuros aposentados.
+                        </p>
+                    </div>
+                </div>
             </div>
 
             {/* SEÇÃO 1: FUTURAS APOSENTADORIAS (FUNIL) */}
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <AlertCircle size={20} className="text-blue-400" />
+                        <AlertCircle size={20} className="text-gold-500" />
                         Próximas Aposentadorias (Projeção)
                     </h3>
                 </div>
@@ -455,11 +517,6 @@ const Retirements: React.FC = () => {
                         <p className="text-[10px] text-zinc-500 font-medium">
                             Mostrando <span className="text-zinc-300">{candidates.length}</span> prospectos encontrados
                         </p>
-                        <div className="flex items-center gap-2 text-[10px]">
-                            <span className="flex items-center gap-1 text-emerald-500"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Elegíveis</span>
-                            <span className="flex items-center gap-1 text-red-500"><div className="w-1.5 h-1.5 rounded-full bg-red-500" /> Pendentes</span>
-                            <span className="flex items-center gap-1 text-zinc-500"><div className="w-1.5 h-1.5 rounded-full bg-zinc-500" /> Normal</span>
-                        </div>
                     </div>
                 </div>
 
@@ -472,6 +529,9 @@ const Retirements: React.FC = () => {
                             onUpdateClient={updateClient}
                             onOpenCnisDetails={(client, calc) => setCalculationDetail({ client, calc })}
                             onAddCnis={(client) => handleViewFullProfile(client.id, 'cnis')}
+                            globalTrigger={globalTrigger}
+                            activeHoverId={activeHoverId}
+                            setActiveHoverId={setActiveHoverId}
                         />
                     )) : (
                         <div className="col-span-full py-16 text-center text-zinc-500 bg-[#0f1014] border border-dashed border-zinc-800 rounded-xl">
@@ -491,137 +551,211 @@ const Retirements: React.FC = () => {
                     Processos em Andamento
                 </h3>
 
-                <div className="bg-zinc-900/60 backdrop-blur-md border border-white/5 rounded-xl overflow-hidden shadow-2xl">
-                    {activeRetirements.length > 0 ? (
-                        <table className="w-full text-left">
-                            <thead className="bg-white/5 border-b border-white/5">
-                                <tr>
-                                    <th className="px-6 py-4 text-xs font-medium text-zinc-500 uppercase tracking-wider">Cliente</th>
-                                    <th className="px-6 py-4 text-xs font-medium text-zinc-500 uppercase tracking-wider">Título / Número</th>
-                                    <th className="px-6 py-4 text-xs font-medium text-zinc-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-4 text-xs font-medium text-zinc-500 uppercase tracking-wider text-right">Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {activeRetirements.map(caseItem => {
-                                    const client = clients.find(c => c.id === caseItem.client_id);
-                                    const hasPendencias = client?.pendencias && client.pendencias.length > 0;
-                                    const avatarClass = hasPendencias ? 'bg-red-600 text-white animate-pulse' : 'bg-zinc-700 text-zinc-300';
+                <div className="bg-[#0f1117] border border-white/5 rounded-2xl shadow-2xl relative">
+                    {/* Subtle gradient overlay to match premium look */}
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-gold-500/20 to-transparent" />
 
-                                    return (
-                                        <tr key={caseItem.id} className="hover:bg-zinc-800/50 transition-colors group">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border border-transparent shadow-sm ${avatarClass}`}>
-                                                        {client?.nome_completo.substring(0, 1)}
+                    {activeRetirements.length > 0 ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-white/[0.02] border-b border-white/5">
+                                        <th className="px-8 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Cliente / Identificação</th>
+                                        <th className="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Processo / Detalhes</th>
+                                        <th className="px-6 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Status Atual</th>
+                                        <th className="px-8 py-5 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] text-right">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/[0.03]">
+                                    {activeRetirements.map(caseItem => {
+                                        const client = clients.find(c => c.id === caseItem.client_id);
+                                        const hasPendencias = client?.pendencias && client.pendencias.length > 0;
+
+                                        // Status Configuration
+                                        const getStatusConfig = (status: CaseStatus) => {
+                                            switch (status) {
+                                                case CaseStatus.ANALISE:
+                                                    return { color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-500/20', dot: 'bg-blue-400' };
+                                                case CaseStatus.CONCLUIDO_CONCEDIDO:
+                                                    return { color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-500/20', dot: 'bg-emerald-400' };
+                                                case CaseStatus.CONCLUIDO_INDEFERIDO:
+                                                    return { color: 'text-rose-400', bg: 'bg-rose-400/10', border: 'border-rose-500/20', dot: 'bg-rose-400' };
+                                                default:
+                                                    return { color: 'text-gold-500', bg: 'bg-gold-500/10', border: 'border-gold-500/20', dot: 'bg-gold-500' };
+                                            }
+                                        };
+                                        const sCfg = getStatusConfig(caseItem.status);
+
+                                        return (
+                                            <tr key={caseItem.id} className="hover:bg-white/[0.02] transition-all duration-300 group">
+                                                <td className="px-8 py-5">
+                                                    <PendencyIndicator pendencies={client?.pendencias} align="left">
+                                                        <div className="flex items-center gap-4 cursor-help">
+                                                            <div className={`
+                                                                w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold transition-all duration-500 relative
+                                                                ${hasPendencias
+                                                                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-[0_0_10px_rgba(225,29,72,0.1)]'
+                                                                    : 'bg-zinc-800 text-zinc-300 border border-zinc-700/50 group-hover:border-gold-500/30'
+                                                                }
+                                                            `}>
+                                                                {client?.nome_completo.substring(0, 2).toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-bold text-zinc-100 group-hover:text-gold-500 transition-colors duration-300 tracking-tight flex items-center gap-2">
+                                                                    {client?.nome_completo}
+                                                                </p>
+                                                                <p className="text-[11px] text-zinc-500 font-mono mt-0.5 tracking-tighter">{client?.cpf_cnpj}</p>
+                                                            </div>
+                                                        </div>
+                                                    </PendencyIndicator>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="p-2 rounded-lg bg-white/5 border border-white/5 text-zinc-400 group-hover:text-gold-500 transition-colors">
+                                                            {caseItem.titulo.toLowerCase().includes('rural') ? <MapPin size={14} /> : <Briefcase size={14} />}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-semibold text-zinc-200">{caseItem.titulo}</p>
+                                                            <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{caseItem.numero_processo || 'S/N'}</p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors">{client?.nome_completo}</p>
-                                                        <p className="text-xs text-zinc-500">{client?.cpf_cnpj}</p>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <div className={`
+                                                        inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-xl
+                                                        ${sCfg.bg} ${sCfg.color} ${sCfg.border} backdrop-blur-sm
+                                                    `}>
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${sCfg.dot} shadow-[0_0_8px_currentColor] animate-pulse`} />
+                                                        {caseItem.status}
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <p className="text-sm font-medium text-zinc-300">{caseItem.titulo}</p>
-                                                <p className="text-xs text-zinc-500 font-mono">{caseItem.numero_processo}</p>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase border ${caseItem.status === CaseStatus.ANALISE ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                    caseItem.status === CaseStatus.CONCLUIDO_CONCEDIDO ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                        caseItem.status === CaseStatus.CONCLUIDO_INDEFERIDO ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                                                            'bg-gold-500/10 text-gold-500 border-gold-500/20'
-                                                    }`}>
-                                                    {caseItem.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button
-                                                    onClick={() => setSelectedCase(caseItem)}
-                                                    className="text-yellow-500 hover:text-white p-2 hover:bg-yellow-500/10 rounded-lg transition-colors"
-                                                    title="Ver Detalhes"
-                                                >
-                                                    <Eye size={18} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                                                </td>
+                                                <td className="px-8 py-5 text-right">
+                                                    <button
+                                                        onClick={() => setSelectedCase(caseItem)}
+                                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800/50 hover:bg-gold-500 text-zinc-400 hover:text-black font-bold text-[10px] uppercase tracking-widest transition-all duration-300 border border-white/5 hover:border-gold-400 group/btn"
+                                                    >
+                                                        <span>Detalhes</span>
+                                                        <ChevronRight size={14} className="group-hover/btn:translate-x-0.5 transition-transform" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     ) : (
-                        <div className="p-12 text-center text-zinc-500">
-                            Nenhum processo de aposentadoria em andamento no momento.
+                        <div className="p-20 text-center flex flex-col items-center justify-center gap-4 bg-white/[0.01]">
+                            <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-zinc-700">
+                                <Hourglass size={32} />
+                            </div>
+                            <div>
+                                <h4 className="text-white font-bold opacity-80">Nenhuma Aposentadoria</h4>
+                                <p className="text-zinc-500 text-sm mt-1">Não há processos de aposentadoria em andamento no momento.</p>
+                            </div>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* MODAL DETALHES CANDIDATO */}
-            {selectedCandidate && (
-                <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl max-w-md w-full p-6 shadow-2xl">
-                        <div className="flex justify-between items-start mb-6 border-b border-zinc-800 pb-4">
-                            <div className="flex items-center gap-4">
-                                <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center text-2xl font-bold shadow-inner ${selectedCandidate.yearsRemaining <= 0
-                                    ? 'bg-emerald-500 text-black border-emerald-400'
-                                    : (selectedCandidate.client.pendencias && selectedCandidate.client.pendencias.length > 0 ? 'bg-red-600 text-white animate-pulse border-transparent' : 'bg-zinc-700 text-zinc-300 border-zinc-600')
-                                    }`}>
-                                    {selectedCandidate.client.nome_completo.substring(0, 2).toUpperCase()}
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-white">{selectedCandidate.client.nome_completo}</h3>
-                                    <p className="text-sm text-zinc-400">{selectedCandidate.client.cpf_cnpj}</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setSelectedCandidate(null)} className="text-zinc-500 hover:text-white transition-colors">
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        <div className="space-y-4 mb-8">
-                            <div className="p-4 bg-[#09090b] rounded-lg border border-zinc-800">
-                                <div className="flex justify-between mb-2">
-                                    <span className="text-sm text-zinc-400">Idade Atual</span>
-                                    <span className="text-sm font-bold text-white">{selectedCandidate.age.years} anos</span>
-                                </div>
-                                <div className="flex justify-between mb-2">
-                                    <span className="text-sm text-zinc-400">Modalidade</span>
-                                    <span className="text-sm font-bold text-gold-500">{selectedCandidate.bestChance}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-zinc-400">Falta</span>
-                                    <span className="text-sm font-bold text-emerald-400">{formatTimeRemaining(selectedCandidate.yearsRemaining)}</span>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-3 text-zinc-300 text-sm pl-2">
-                                <MapPin size={16} className="text-zinc-500" />
-                                {selectedCandidate.client.endereco || 'Endereço não informado'}
-                            </div>
-                            <div className="flex items-center gap-3 text-zinc-300 text-sm pl-2">
-                                <Phone size={16} className="text-zinc-500" />
-                                {selectedCandidate.client.telefone || 'Sem telefone'}
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3">
-                            {selectedCandidate.client.telefone && (
-                                <button
-                                    onClick={() => handleWhatsAppClick(selectedCandidate.client.telefone)}
-                                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors shadow-lg shadow-emerald-900/20"
-                                >
-                                    <MessageCircle size={18} /> Contatar
+            {/* MODAL DETALHES CANDIDATO - VIA PORTAL */}
+            {selectedCandidate && createPortal(
+                <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-2 sm:p-6 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-[#09090b] border border-white/10 rounded-[32px] max-w-3xl w-full overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col md:flex-row h-fit max-h-[95vh] animate-in zoom-in-95 slide-in-from-bottom-10 duration-500">
+                        {/* Left Side: Visual/Status */}
+                        <div className="w-full md:w-2/5 bg-gradient-to-br from-zinc-800 to-zinc-950 p-8 flex flex-col items-center justify-center text-center relative border-r border-white/5">
+                            <div className="absolute top-6 left-6 md:hidden">
+                                <button onClick={() => setSelectedCandidate(null)} className="p-2 bg-white/5 rounded-full text-white/50 hover:text-white transition-colors">
+                                    <X size={20} />
                                 </button>
-                            )}
-                            <button
-                                onClick={() => handleViewFullProfile(selectedCandidate.client.id, 'cnis')}
-                                className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-2.5 rounded-lg font-medium border border-zinc-700 transition-colors"
-                            >
-                                Ver Cadastro
-                            </button>
+                            </div>
+
+                            <div className={`w-32 h-32 rounded-3xl flex items-center justify-center text-4xl font-black shadow-2xl mb-6 border-4 border-white/10 ${selectedCandidate.yearsRemaining <= 0
+                                ? 'bg-emerald-500 text-black shadow-emerald-500/20'
+                                : (selectedCandidate.client.pendencias && selectedCandidate.client.pendencias.length > 0 ? 'bg-red-600 text-white animate-pulse' : 'bg-zinc-800 text-zinc-100')
+                                }`}>
+                                {selectedCandidate.client.nome_completo.substring(0, 2).toUpperCase()}
+                            </div>
+
+                            <h3 className="text-2xl font-black text-white leading-tight mb-2 uppercase tracking-tighter">{selectedCandidate.client.nome_completo}</h3>
+                            <p className="text-zinc-400 font-mono text-xs tracking-widest bg-black/20 px-3 py-1 rounded-full border border-white/5">{selectedCandidate.client.cpf_cnpj}</p>
+
+                            <div className="mt-8 pt-8 border-t border-white/5 w-full">
+                                <span className={`text-xs font-black px-4 py-1.5 rounded-full border tracking-[0.2em] uppercase ${selectedCandidate.yearsRemaining <= 0
+                                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                    : 'bg-gold-500/10 text-gold-500 border-gold-500/20'}`}>
+                                    {selectedCandidate.yearsRemaining <= 0 ? 'Elegível Agora' : 'Em Prospecção'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Right Side: Data/Actions */}
+                        <div className="flex-1 p-8 sm:p-12 relative flex flex-col bg-[#09090b]">
+                            <div className="absolute top-8 right-8 hidden md:block">
+                                <button onClick={() => setSelectedCandidate(null)} className="p-2 hover:bg-white/5 rounded-full text-zinc-500 hover:text-white transition-all">
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 space-y-8">
+                                <div>
+                                    <h4 className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-4">Análise de Tempo</h4>
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-1">
+                                            <p className="text-sm text-zinc-500 font-medium">Idade Atual</p>
+                                            <p className="text-2xl font-black text-white">{selectedCandidate.age.years} anos</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-sm text-zinc-500 font-medium">Tempo Restante</p>
+                                            <p className="text-2xl font-black text-emerald-400">{formatTimeRemaining(selectedCandidate.yearsRemaining)}</p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-6 p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 rounded-lg bg-gold-500/10 text-gold-500">
+                                                <Briefcase size={16} />
+                                            </div>
+                                            <span className="text-sm font-bold text-zinc-300">Modalidade Proposta</span>
+                                        </div>
+                                        <span className="text-sm font-black text-white uppercase tracking-wider">{selectedCandidate.bestChance}</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-4">Contato e Localização</h4>
+                                    <div className="space-y-4">
+                                        <div className="flex items-start gap-3 group">
+                                            <MapPin size={18} className="text-zinc-700 group-hover:text-gold-500 shrink-0 mt-0.5 transition-colors" />
+                                            <p className="text-zinc-400 text-sm font-medium leading-relaxed">{selectedCandidate.client.endereco || 'Endereço não informado'}</p>
+                                        </div>
+                                        <div className="flex items-center gap-3 group">
+                                            <Phone size={18} className="text-zinc-700 group-hover:text-emerald-500 shrink-0 transition-colors" />
+                                            <p className="text-zinc-400 text-sm font-medium">{selectedCandidate.client.telefone || 'Sem telefone'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-12 flex gap-4">
+                                {selectedCandidate.client.telefone && (
+                                    <button
+                                        onClick={() => handleWhatsAppClick(selectedCandidate.client.telefone)}
+                                        className="flex-1 bg-[#25D366] hover:bg-[#22c35e] text-black h-14 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 transition-all shadow-xl shadow-emerald-500/10 active:scale-[0.98]"
+                                    >
+                                        <MessageCircle size={18} /> WhatsApp
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => handleViewFullProfile(selectedCandidate.client.id, 'cnis')}
+                                    className="flex-1 bg-white/5 hover:bg-white/10 text-white h-14 rounded-2xl font-black text-xs uppercase tracking-widest border border-white/5 transition-all active:scale-[0.98]"
+                                >
+                                    Ver Cadastro
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* MODAL DETALHES DE CÁLCULO / CNIS */}

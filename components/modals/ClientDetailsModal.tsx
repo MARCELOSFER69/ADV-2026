@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../services/supabaseClient';
 import { Client, Case, Branch, CaseStatus, Captador, ClientDocument, TabConfig } from '../../types';
@@ -55,6 +55,19 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
 
     const [isLayoutEditMode, setIsLayoutEditMode] = useState(false);
     const [tempLayout, setTempLayout] = useState<TabConfig[]>([]);
+
+    // Ref for tabs container horizontal scroll
+    const tabsContainerRef = useRef<HTMLDivElement>(null);
+
+    const handleTabsWheel = (e: React.WheelEvent) => {
+        if (tabsContainerRef.current) {
+            // Prevent default vertical scrolling when hovering tabs
+            // Note: In React proper prevention of passive wheel events can be tricky,
+            // but for horizontal containers often just shifting scrollLeft is enough
+            // if the container captures the scroll.
+            tabsContainerRef.current.scrollLeft += e.deltaY;
+        }
+    };
 
     const defaultTabs: TabConfig[] = useMemo(() => [
         { id: 'info', label: 'Informações', visible: true, order: 0 },
@@ -283,12 +296,15 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
 
     return (
         <>
-            <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 backdrop-blur-sm overscroll-contain">
-                <div className="bg-navy-950 rounded-xl max-w-4xl w-full h-[90vh] flex flex-col shadow-2xl border border-slate-800 animate-in fade-in zoom-in duration-200">
+            <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm overscroll-contain">
+                <div className="bg-[#131418] rounded-xl max-w-4xl w-full h-[90vh] flex flex-col shadow-2xl border border-white/10 animate-in fade-in zoom-in duration-200 ring-1 ring-white/5">
 
                     {/* Header */}
-                    <div className="p-6 border-b border-slate-800 flex justify-between items-start bg-navy-900 rounded-t-xl shrink-0">
-                        <div className="flex items-center gap-4">
+                    <div className="p-6 border-b border-white/5 flex justify-between items-start bg-[#131418] rounded-t-xl shrink-0 relative overflow-visible z-50">
+                        {/* Ambient Background Effect */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+
+                        <div className="flex items-center gap-4 relative z-10">
                             <div className="relative group">
                                 {editedClient.foto ? (
                                     <img src={editedClient.foto} alt={editedClient.nome_completo} className="w-16 h-16 rounded-full border-2 border-slate-700 object-cover" />
@@ -302,9 +318,9 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                             <div className="flex-1">
                                 {isEditMode ? (
                                     <>
-                                        <input className="bg-navy-800 border border-slate-700 rounded px-2 py-1 text-xl font-bold text-white mb-1 w-full outline-none focus:border-gold-500" value={editedClient.nome_completo} onChange={(e) => setEditedClient({ ...editedClient, nome_completo: e.target.value })} />
+                                        <input className="bg-[#18181b] border border-white/5 rounded px-2 py-1 text-xl font-bold text-white mb-1 w-full outline-none focus:border-gold-500 font-serif" value={editedClient.nome_completo} onChange={(e) => setEditedClient({ ...editedClient, nome_completo: e.target.value })} />
                                         <div className="relative">
-                                            <input className={`bg-navy-800 border rounded px-2 py-0.5 text-sm w-full outline-none ${duplicateClient ? 'border-red-500 text-red-400' : 'border-slate-700 text-slate-400'}`} value={editedClient.cpf_cnpj} onChange={(e) => setEditedClient({ ...editedClient, cpf_cnpj: formatCPFOrCNPJ(e.target.value) })} />
+                                            <input className={`bg-[#18181b] border rounded px-2 py-0.5 text-sm w-full outline-none ${duplicateClient ? 'border-red-500 text-red-400' : 'border-white/5 text-slate-400 focus:border-gold-500/50'}`} value={editedClient.cpf_cnpj} onChange={(e) => setEditedClient({ ...editedClient, cpf_cnpj: formatCPFOrCNPJ(e.target.value) })} />
                                             {duplicateClient && <p className="text-[10px] text-red-500 mt-1 absolute left-0 top-full">CPF já pertence a: <strong>{duplicateClient.nome_completo}</strong></p>}
                                         </div>
                                     </>
@@ -339,23 +355,23 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                             <div className="relative">
                                 <button
                                     onClick={() => setShowDocMenu(!showDocMenu)}
-                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${showDocMenu ? 'bg-gold-600 border-gold-600 text-white' : 'bg-navy-950 border-slate-700 text-slate-300 hover:text-white hover:border-slate-500'}`}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${showDocMenu ? 'bg-gold-600 border-gold-600 text-white' : 'bg-[#18181b] border-white/5 text-slate-300 hover:text-white hover:border-white/20'}`}
                                 >
                                     <Printer size={18} /> Docs <ChevronDown size={14} />
                                 </button>
 
                                 {showDocMenu && (
-                                    <div className="absolute right-0 top-full mt-2 w-80 bg-navy-900 border border-slate-700 rounded-xl shadow-2xl z-50 p-3 animate-in fade-in zoom-in-95 duration-100 flex flex-col gap-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+                                    <div className="absolute right-0 top-full mt-2 w-80 bg-[#18181b] border border-white/10 rounded-xl shadow-2xl z-50 p-3 animate-in fade-in zoom-in-95 duration-100 flex flex-col gap-2 max-h-[400px] overflow-y-auto custom-scrollbar ring-1 ring-black">
                                         <button
                                             onClick={toggleSelectAll}
-                                            className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-800 text-xs text-slate-400 hover:text-white mb-1"
+                                            className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-white/5 text-xs text-slate-400 hover:text-white mb-1"
                                         >
                                             <span>{selectedDocIds.length === allAvailableDocs.length ? 'Desmarcar Todos' : 'Selecionar Todos'}</span>
                                             <div className="text-gold-500">
                                                 {selectedDocIds.length === allAvailableDocs.length ? <CheckSquare size={14} /> : <Square size={14} />}
                                             </div>
                                         </button>
-                                        <div className="border-t border-slate-800"></div>
+                                        <div className="border-t border-white/5"></div>
                                         <div className="flex flex-col gap-1 mt-1">
                                             {allAvailableDocs.length === 0 && <p className="text-xs text-slate-500 text-center py-2">Nenhum documento disponível.</p>}
                                             {allAvailableDocs.map(doc => {
@@ -364,7 +380,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                                                     <div
                                                         key={doc.id}
                                                         onClick={() => toggleDocSelection(doc.id)}
-                                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors border ${isSelected ? 'bg-gold-600/20 border-gold-600/50' : 'bg-transparent border-transparent hover:bg-slate-800 hover:border-slate-700'}`}
+                                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors border ${isSelected ? 'bg-gold-600/20 border-gold-600/50' : 'bg-transparent border-transparent hover:bg-white/5 hover:border-white/10'}`}
                                                     >
                                                         <div className={`text-gold-500 ${isSelected ? 'opacity-100' : 'opacity-40'}`}>
                                                             {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
@@ -372,16 +388,16 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                                                         <span className={`text-sm flex-1 truncate ${isSelected ? 'text-white font-medium' : 'text-slate-300'}`}>
                                                             {doc.title}
                                                         </span>
-                                                        {doc.type === 'custom' && <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 uppercase">Mod</span>}
+                                                        {doc.type === 'custom' && <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-slate-400 uppercase">Mod</span>}
                                                     </div>
                                                 );
                                             })}
                                         </div>
-                                        <div className="sticky bottom-0 bg-navy-900 pt-2 mt-2 border-t border-slate-800">
+                                        <div className="sticky bottom-0 bg-[#18181b] pt-2 mt-2 border-t border-white/5">
                                             <button
                                                 onClick={handleBatchPrint}
                                                 disabled={selectedDocIds.length === 0}
-                                                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+                                                className="w-full bg-gold-600 hover:bg-gold-500 disabled:bg-[#131418] disabled:text-slate-500 disabled:cursor-not-allowed text-white py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-gold-500/20"
                                             >
                                                 <Printer size={14} /> Imprimir {selectedDocIds.length > 0 ? `(${selectedDocIds.length})` : ''}
                                             </button>
@@ -401,7 +417,11 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                         </div>
                     </div>
 
-                    <div className="flex border-b border-slate-800 px-6 bg-navy-900 overflow-x-auto custom-scrollbar no-scrollbar shrink-0">
+                    <div
+                        ref={tabsContainerRef}
+                        onWheel={handleTabsWheel}
+                        className="flex border-b border-white/5 px-6 bg-[#131418] overflow-x-auto custom-scrollbar no-scrollbar shrink-0"
+                    >
                         {tabsConfig.map((tab) => {
                             const Icon = tab.id === 'info' ? FileText :
                                 tab.id === 'docs' ? UploadCloud :
@@ -416,11 +436,14 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id as any)}
-                                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors shrink-0 whitespace-nowrap ${activeTab === tab.id ? 'border-gold-500 text-gold-500' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+                                    className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-all shrink-0 whitespace-nowrap outline-none
+                                        ${activeTab === tab.id
+                                            ? 'border-gold-500 text-gold-500'
+                                            : 'border-transparent text-slate-400 hover:text-white hover:bg-white/5'}`}
                                 >
                                     <Icon size={16} /> {tab.label}
                                     {tab.id === 'docs' && (editedClient.documentos?.length || 0) > 0 && (
-                                        <span className="bg-slate-800 text-slate-300 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 ${activeTab === tab.id ? 'bg-gold-500/10 text-gold-500' : 'bg-slate-800 text-slate-400'}`}>
                                             {editedClient.documentos.length}
                                         </span>
                                     )}
@@ -429,7 +452,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                         })}
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-6 bg-navy-950 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-6 bg-[#131418] custom-scrollbar relative z-10">
                         {activeTab === 'info' && (
                             <>
                                 <ClientInfoTab
@@ -484,7 +507,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                         )}
                     </div>
 
-                    <div className="p-4 border-t border-slate-800 bg-navy-900 flex justify-end items-center rounded-b-xl">
+                    <div className="p-4 border-t border-white/5 bg-[#131418] flex justify-end items-center rounded-b-xl relative z-20">
                         <button onClick={onClose} className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition-colors text-sm">Voltar</button>
                     </div>
                 </div>

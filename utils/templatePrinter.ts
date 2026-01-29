@@ -8,7 +8,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 const formatDate = (dateValue: string | Date | undefined, format: string) => {
     if (!dateValue) return '';
     let d = new Date();
-    
+
     if (typeof dateValue === 'string' && dateValue.includes('-')) {
         const parts = dateValue.split('-');
         const datePart = parts[2].includes('T') ? parts[2].split('T')[0] : parts[2];
@@ -27,7 +27,7 @@ const formatDate = (dateValue: string | Date | undefined, format: string) => {
     if (format === 'month_name_upper') return monthNames[d.getMonth()].toUpperCase();
     if (format === 'year') return String(year);
     if (format === 'day') return String(day).padStart(2, '0');
-    
+
     return `${day}/${month}/${year}`;
 };
 
@@ -38,8 +38,8 @@ const processTemplateString = (text: string, client: Client, dateFormat: string 
     const today = new Date().toISOString().split('T')[0];
     const map: Record<string, string> = {
         'data_atual': formatDate(today, dateFormat),
-        'cidade_escritorio': 'Santa Inês', 
-        ...c 
+        'cidade_escritorio': 'Santa Inês',
+        ...c
     };
 
     // --- ATUALIZAÇÃO GENIAL: SUPORTE A { } E [ ] ---
@@ -48,10 +48,10 @@ const processTemplateString = (text: string, client: Client, dateFormat: string 
     processed = processed.replace(/\{([a-zA-Z0-9_]+)\}|\[([a-zA-Z0-9_]+)\]/gi, (match, key1, key2) => {
         // key1 é o conteúdo de {}, key2 é o conteúdo de []
         // Pegamos o que não for undefined e forçamos minúsculo para bater com o banco de dados
-        const rawKey = (key1 || key2).toLowerCase(); 
-        
+        const rawKey = (key1 || key2).toLowerCase();
+
         let value = map[rawKey];
-        
+
         // Fallback: Se não achou direto, tenta mapear chaves comuns que podem vir erradas
         if (!value) {
             if (rawKey === 'nome' || rawKey === 'nome_cliente') value = map['nome_completo'];
@@ -63,7 +63,7 @@ const processTemplateString = (text: string, client: Client, dateFormat: string 
         if (rawKey.includes('data') || rawKey.includes('nascimento')) {
             return formatDate(value, dateFormat);
         }
-        
+
         // Se encontrou valor, retorna em MAIÚSCULO. Se não, mantém a tag original para o usuário ver que falhou.
         return value ? String(value).toUpperCase() : match;
     });
@@ -98,7 +98,7 @@ const generateFieldHtml = (field: FieldMark, client: Client) => {
     const textContent = processTemplateString(field.template, client, field.dateFormat);
     const fontWeight = field.isBold ? 'bold' : 'normal';
     const fontSize = `${field.fontSize}px`;
-    
+
     const autoFitClass = field.autoFit ? 'dynamic-fit' : '';
     const widthStyle = field.autoFit && field.width ? `width: ${field.width}%;` : 'white-space: nowrap;';
 
@@ -110,7 +110,7 @@ const generateFieldHtml = (field: FieldMark, client: Client) => {
                 ${commonStyle}
                 ${widthStyle}
                 font-size: ${fontSize};
-                font-family: 'Arial', sans-serif;
+                font-family: 'Inter', sans-serif;
                 font-weight: ${fontWeight};
                 text-align: ${field.textAlign || 'left'};
                 color: black;
@@ -122,55 +122,55 @@ const generateFieldHtml = (field: FieldMark, client: Client) => {
 };
 
 export const printCustomTemplate = async (template: any, client: Client) => {
-  try {
-    let pagesHtml = [];
+    try {
+        let pagesHtml = [];
 
-    // --- MODO HTML (Importado) ---
-    if (template.base_type === 'html') {
-        // 1. Processa o HTML Base (substitui variáveis no texto corrido {var} ou [var])
-        const rawHtml = processTemplateString(template.html_content || '', client);
-        
-        // 2. Gera os campos sobrepostos (caso o usuário tenha adicionado extras no editor)
-        const fieldsHtml = (template.campos_config || []).map((f: any) => generateFieldHtml(f, client)).join('');
+        // --- MODO HTML (Importado) ---
+        if (template.base_type === 'html') {
+            // 1. Processa o HTML Base (substitui variáveis no texto corrido {var} ou [var])
+            const rawHtml = processTemplateString(template.html_content || '', client);
 
-        pagesHtml.push(`
+            // 2. Gera os campos sobrepostos (caso o usuário tenha adicionado extras no editor)
+            const fieldsHtml = (template.campos_config || []).map((f: any) => generateFieldHtml(f, client)).join('');
+
+            pagesHtml.push(`
             <div class="page-container html-mode">
                 <div class="html-content">${rawHtml}</div>
                 ${fieldsHtml}
             </div>
         `);
-    } 
-    // --- MODO PDF (Canvas) ---
-    else {
-        const loadingTask = pdfjs.getDocument(template.arquivo_url);
-        const pdf = await loadingTask.promise;
+        }
+        // --- MODO PDF (Canvas) ---
+        else {
+            const loadingTask = pdfjs.getDocument(template.arquivo_url);
+            const pdf = await loadingTask.promise;
 
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            const page = await pdf.getPage(pageNum);
-            const viewport = page.getViewport({ scale: 2.0 });
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
+            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                const page = await pdf.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 2.0 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
 
-            if (context) await page.render({ canvasContext: context, viewport }).promise;
-            const imgData = canvas.toDataURL('image/jpeg', 0.85); 
+                if (context) await page.render({ canvasContext: context, viewport }).promise;
+                const imgData = canvas.toDataURL('image/jpeg', 0.85);
 
-            const fieldsOnPage = (template.campos_config || []).filter((f: any) => f.page === pageNum);
-            const fieldsHtml = fieldsOnPage.map((f: any) => generateFieldHtml(f, client)).join('');
+                const fieldsOnPage = (template.campos_config || []).filter((f: any) => f.page === pageNum);
+                const fieldsHtml = fieldsOnPage.map((f: any) => generateFieldHtml(f, client)).join('');
 
-            pagesHtml.push(`
+                pagesHtml.push(`
                 <div class="page-container pdf-mode">
                     <img src="${imgData}" class="pdf-bg" />
                     ${fieldsHtml}
                 </div>
             `);
+            }
         }
-    }
 
-    const printWindow = window.open('', '_blank', 'width=1000,height=900');
-    if (printWindow) {
-        printWindow.document.write(`
+        const printWindow = window.open('', '_blank', 'width=1000,height=900');
+        if (printWindow) {
+            printWindow.document.write(`
           <html>
             <head>
               <title>${template.titulo}</title>
@@ -219,10 +219,10 @@ export const printCustomTemplate = async (template: any, client: Client) => {
             </body>
           </html>
         `);
-        printWindow.document.close();
+            printWindow.document.close();
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Erro ao gerar o documento.");
     }
-  } catch (error) {
-    console.error(error);
-    alert("Erro ao gerar o documento.");
-  }
 };

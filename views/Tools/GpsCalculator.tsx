@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Calculator, UploadCloud, AlertCircle, FileText, CheckCircle2, Loader2, Trash2, AlertTriangle, Calendar, DollarSign, Ban, Search } from 'lucide-react';
+import { motion } from 'framer-motion';
 import * as pdfjsLib from 'pdfjs-dist';
 import { useApp } from '../../context/AppContext';
 import { Client } from '../../types';
@@ -224,19 +225,34 @@ const GpsCalculator: React.FC = () => {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-            <header className="flex justify-between items-end">
-                <div>
-                    <h2 className="text-2xl font-bold text-white font-serif flex items-center gap-2">
-                        <Calculator className="text-yellow-500" /> Calculadora de GPS v2
-                    </h2>
-                    <p className="text-zinc-400">Auditoria em lote de guias do eSocial (DAE).</p>
+            {/* Standard Premium Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-4">
+                <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-gold-500/10 rounded-2xl text-gold-500 border border-gold-500/20 shadow-lg shadow-gold-500/5 transition-transform hover:scale-105">
+                        <Calculator size={24} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-white font-serif tracking-tight">
+                            Calculadora de GPS v2
+                        </h1>
+                        <p className="text-slate-400 text-[11px] md:text-xs font-medium mt-0.5 opacity-80 uppercase tracking-widest">
+                            Auditoria em lote de guias do eSocial (DAE).
+                        </p>
+                    </div>
                 </div>
+
                 {processedGuides.length > 0 && (
-                    <button onClick={handleClear} className="text-sm text-red-400 hover:text-red-300 flex items-center gap-1 hover:bg-red-500/10 px-3 py-2 rounded transition-colors border border-transparent hover:border-red-500/20">
-                        <Trash2 size={16} /> Limpar
-                    </button>
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleClear}
+                        className="h-10 px-6 bg-[#131418] border border-white/10 hover:border-red-500/50 text-red-500 rounded-xl font-bold text-xs transition-all flex items-center gap-2 shadow-lg"
+                    >
+                        <Trash2 size={16} />
+                        <span>Limpar Auditoria</span>
+                    </motion.button>
                 )}
-            </header>
+            </div>
 
             {/* CONTROLE DE REFERÊNCIA */}
             <div className="bg-[#0f1014] border border-zinc-800 rounded-xl p-4 flex flex-col md:flex-row items-center gap-4 shadow-lg">

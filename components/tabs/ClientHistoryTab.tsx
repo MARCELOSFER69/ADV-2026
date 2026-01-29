@@ -31,7 +31,7 @@ const ClientHistoryTab: React.FC<ClientHistoryTabProps> = ({ client }) => {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-navy-900/50 p-4 rounded-xl border border-white/5">
+                <div className="bg-[#18181b] p-4 rounded-xl border border-white/5">
                     <div className="flex items-center gap-3 text-slate-400 mb-2 text-xs uppercase tracking-wider font-semibold">
                         <User size={14} className="text-gold-500" />
                         Registrado Por
@@ -41,7 +41,7 @@ const ClientHistoryTab: React.FC<ClientHistoryTabProps> = ({ client }) => {
                     </div>
                 </div>
 
-                <div className="bg-navy-900/50 p-4 rounded-xl border border-white/5">
+                <div className="bg-[#18181b] p-4 rounded-xl border border-white/5">
                     <div className="flex items-center gap-3 text-slate-400 mb-2 text-xs uppercase tracking-wider font-semibold">
                         <Clock size={14} className="text-gold-500" />
                         Última Atualização Por
@@ -53,7 +53,7 @@ const ClientHistoryTab: React.FC<ClientHistoryTabProps> = ({ client }) => {
             </div>
 
             <div className="relative">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2 font-serif">
                     <Calendar size={20} className="text-gold-500" />
                     Log de Atividades
                 </h3>
@@ -63,7 +63,7 @@ const ClientHistoryTab: React.FC<ClientHistoryTabProps> = ({ client }) => {
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-500"></div>
                     </div>
                 ) : history.length === 0 ? (
-                    <div className="bg-navy-900/30 border border-white/5 rounded-xl p-8 text-center">
+                    <div className="bg-[#18181b] border border-white/5 rounded-xl p-8 text-center">
                         <Info size={32} className="mx-auto text-slate-600 mb-2" />
                         <p className="text-slate-500 text-sm">Nenhum histórico encontrado para este cliente.</p>
                     </div>
@@ -75,11 +75,11 @@ const ClientHistoryTab: React.FC<ClientHistoryTabProps> = ({ client }) => {
                                 {index !== history.length - 1 && (
                                     <div className="absolute left-3 top-6 bottom-0 w-0.5 bg-slate-800"></div>
                                 )}
-                                <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-navy-900 border border-gold-500/50 flex items-center justify-center z-10 shadow-lg">
+                                <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-[#131418] border border-gold-500/50 flex items-center justify-center z-10 shadow-lg">
                                     <div className="w-2 h-2 rounded-full bg-gold-500"></div>
                                 </div>
 
-                                <div className="bg-navy-900/40 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-colors">
+                                <div className="bg-[#18181b] border border-white/5 rounded-xl p-4 hover:border-gold-500/20 transition-colors">
                                     <div className="flex justify-between items-start mb-1">
                                         <span className="text-gold-500 font-bold text-sm">{item.action}</span>
                                         <span className="text-[10px] text-slate-500 font-mono">{formatDateDisplay(item.timestamp)}</span>

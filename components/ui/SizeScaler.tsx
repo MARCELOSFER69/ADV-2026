@@ -22,10 +22,10 @@ const SizeScaler: React.FC<SizeScalerProps> = ({ value, onChange, min = 0.5, max
             <motion.div
                 initial={false}
                 animate={{ width: isHovered ? '180px' : '40px' }}
-                className="h-10 bg-yellow-500 rounded-full flex items-center shadow-lg shadow-yellow-600/20 overflow-hidden cursor-pointer border border-yellow-400/30"
+                className="h-10 bg-[#131418] rounded-full flex items-center shadow-lg shadow-gold-500/5 overflow-hidden cursor-pointer border border-white/10"
             >
                 <div className="w-10 h-10 flex items-center justify-center shrink-0">
-                    <Maximize2 size={18} className="text-zinc-900" />
+                    <Maximize2 size={18} className="text-gold-500" />
                 </div>
 
                 <AnimatePresence>
@@ -43,9 +43,11 @@ const SizeScaler: React.FC<SizeScalerProps> = ({ value, onChange, min = 0.5, max
                                 step={step}
                                 value={value}
                                 onChange={(e) => onChange(parseFloat(e.target.value))}
-                                className="w-full accent-zinc-900 h-1 bg-yellow-600/30 rounded-lg appearance-none cursor-pointer"
+                                className="w-full accent-gold-500 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
                             />
-                            <span className="text-[10px] font-black text-zinc-900 whitespace-nowrap">{Math.round(value * 100)}%</span>
+                            <span className="text-[10px] font-black text-white whitespace-nowrap uppercase tracking-widest">
+                                {max > 5 ? `${value}px` : `${Math.round(value * 100)}%`}
+                            </span>
                         </motion.div>
                     )}
                 </AnimatePresence>

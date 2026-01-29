@@ -5,14 +5,33 @@ import {
     Plus, Eye, Filter, X, Gavel, DollarSign, User, FileText, Trash2,
     Archive, Inbox, Search, LayoutList, LayoutGrid, Settings, ChevronDown,
     ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, Clock, Shield, RefreshCw, AlertTriangle,
-    ChevronLeft, ChevronRight, Loader2, FolderOpen
+    ChevronLeft, ChevronRight, Loader2, FolderOpen, Check
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import CaseDetailsModal from '../components/modals/CaseDetailsModal';
 import NewCaseModal from '../components/modals/NewCaseModal';
 import { formatCurrencyInput, formatProcessNumber, parseCurrencyToNumber } from '../services/formatters';
 import { formatDateDisplay } from '../utils/dateUtils';
 import CaseKanbanCard from '../components/CaseKanbanCard';
+import CaseFilters from '../components/cases/CaseFilters';
 import SizeScaler from '../components/ui/SizeScaler';
+import PendencyIndicator from '../components/ui/PendencyIndicator';
+import {
+    DndContext,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+    DragStartEvent,
+    DragOverEvent,
+    DragOverlay,
+    defaultDropAnimationSideEffects,
+} from '@dnd-kit/core';
+import {
+    SortableContext,
+    verticalListSortingStrategy,
+    arrayMove
+} from '@dnd-kit/sortable';
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
     // Mudei o label de Título para Prazos/Alertas, já que o texto do título será removido
@@ -78,6 +97,93 @@ const Cases: React.FC = () => {
     const [kanbanColumnWidth, setKanbanColumnWidth] = useState(320);
     const [kanbanCardScale, setKanbanCardScale] = useState(1);
     const [isResizing, setIsResizing] = useState(false);
+
+    const [selectedCaseIds, setSelectedCaseIds] = useState<string[]>([]);
+    const [isBulkArchiving, setIsBulkArchiving] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+    const handleToggleSelectCase = useCallback((id: string) => {
+        setSelectedCaseIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    }, []);
+
+    const handleSelectAllCases = useCallback((ids: string[]) => {
+        if (selectedCaseIds.length === ids.length) setSelectedCaseIds([]);
+        else setSelectedCaseIds(ids);
+    }, [selectedCaseIds]);
+
+    const handleBulkArchiveCases = useCallback(async () => {
+        if (selectedCaseIds.length === 0) return;
+        const reason = window.prompt(`Arquivar ${selectedCaseIds.length} processos?`, "Arquivamento em massa");
+        if (!reason) return;
+        setIsBulkArchiving(true);
+        try {
+            for (const id of selectedCaseIds) {
+                const c = cases.find(item => item.id === id);
+                if (c) await updateCase({ ...c, status: CaseStatus.ARQUIVADO, motivo_arquivamento: reason });
+            }
+            showToast('success', `${selectedCaseIds.length} processos arquivados.`);
+            setSelectedCaseIds([]);
+        } catch (error) { showToast('error', 'Erro no arquivamento.'); }
+        finally { setIsBulkArchiving(false); }
+    }, [selectedCaseIds, cases, updateCase, showToast]);
+
+    const handleBulkDeleteCases = useCallback(async () => {
+        if (selectedCaseIds.length === 0) return;
+        const confirmText = "EXCLUIR";
+        if (window.prompt(`Digite ${confirmText} para excluir ${selectedCaseIds.length} processos permanentemente.`) !== confirmText) return;
+        const reason = window.prompt("Motivo:");
+        if (!reason) return;
+        setIsBulkDeleting(true);
+        try {
+            for (const id of selectedCaseIds) await deleteCase(id);
+            showToast('success', `${selectedCaseIds.length} processos excluídos.`);
+            setSelectedCaseIds([]);
+        } catch (error) { showToast('error', 'Erro na exclusão.'); }
+        finally { setIsBulkDeleting(false); }
+    }, [selectedCaseIds, deleteCase, showToast]);
+
+    // --- DRAG AND DROP (DND KIT) ---
+    const [activeDragCase, setActiveDragCase] = useState<Case | null>(null);
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        })
+    );
+
+    const handleDragStart = (event: DragStartEvent) => {
+        const { active } = event;
+        const caseItem = active.data.current?.caseItem;
+        if (caseItem) setActiveDragCase(caseItem);
+    };
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        setActiveDragCase(null);
+
+        if (!over) return;
+
+        const caseId = active.id as string;
+        const newStatus = over.id as CaseStatus;
+        const draggedCase = cases.find(c => c.id === caseId);
+
+        if (draggedCase && draggedCase.status !== newStatus) {
+            try {
+                // Se o over.id for um status válido (e não outro card)
+                if (Object.values(CaseStatus).includes(newStatus)) {
+                    await updateCase({
+                        ...draggedCase,
+                        status: newStatus,
+                        updated_at: new Date().toISOString()
+                    });
+                    showToast('success', `Status atualizado para: ${newStatus}`);
+                }
+            } catch (error) {
+                showToast('error', 'Erro ao atualizar status.');
+            }
+        }
+    };
 
     // --- SCROLLING & DRAGGING REFS ---
     const kanbanContainerRef = useRef<HTMLDivElement>(null);
@@ -407,6 +513,19 @@ const Cases: React.FC = () => {
         saveUserPreferences({ casesColumns: newCols });
     };
 
+    const clearFilters = useCallback(() => {
+        setFilters({
+            tipo: 'all',
+            status: 'all',
+            dateStart: '',
+            dateEnd: '',
+            minVal: '',
+            maxVal: ''
+        });
+        setQuickFilter('all');
+        setSearchTerm('');
+    }, []);
+
     const handleColumnResizeDown = (e: React.MouseEvent) => {
         e.preventDefault();
         setIsResizing(true);
@@ -478,17 +597,7 @@ const Cases: React.FC = () => {
     };
 
     const getStatusHeaderColor = (status: CaseStatus) => {
-        switch (status) {
-            case CaseStatus.PROTOCOLAR: return 'bg-cyan-600 shadow-[0_0_8px_rgba(8,145,178,0.5)]';
-            case CaseStatus.ANALISE: return 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]';
-            case CaseStatus.EXIGENCIA: return 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]';
-            case CaseStatus.AGUARDANDO_AUDIENCIA: return 'bg-purple-500';
-            case CaseStatus.EM_RECURSO: return 'bg-yellow-600';
-            case CaseStatus.CONCLUIDO_CONCEDIDO: return 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]';
-            case CaseStatus.CONCLUIDO_INDEFERIDO: return 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]';
-            case CaseStatus.ARQUIVADO: return 'bg-zinc-500';
-            default: return 'bg-zinc-500';
-        }
+        return 'bg-zinc-500';
     };
 
     const getDeadlineStatus = (dateFatal?: string) => {
@@ -563,225 +672,206 @@ const Cases: React.FC = () => {
     const totalPages = Math.ceil(totalCases / ITEMS_PER_PAGE);
 
     return (
-        <div className="h-full flex flex-col">
-            <div className="flex flex-col gap-4 mb-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="h-full flex flex-col space-y-8 pb-10">
+            {/* Standard Premium Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-4">
+                <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-gold-500/10 rounded-2xl text-gold-500 border border-gold-500/20 shadow-lg shadow-gold-500/5 transition-transform hover:scale-105">
+                        <pageHeader.icon size={24} />
+                    </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-white font-serif flex items-center gap-2">
-                            {viewMode === 'active' ? (
-                                <><pageHeader.icon className="text-gold-500" /> {pageHeader.title}</>
-                            ) : <><Archive className="text-zinc-400" /> Arquivo Morto ({activeCategory})</>}
-                        </h2>
-                        <p className="text-zinc-500 text-sm mt-1">
+                        <h1 className="text-2xl md:text-3xl font-bold text-white font-serif tracking-tight">
+                            {viewMode === 'active' ? pageHeader.title : `Arquivo Morto (${activeCategory})`}
+                        </h1>
+                        <p className="text-slate-400 text-[11px] md:text-xs font-medium mt-0.5 opacity-80 uppercase tracking-widest">
                             {viewMode === 'active' ? pageHeader.desc : 'Histórico de processos encerrados desta categoria.'}
                         </p>
                     </div>
-
-                    <div className="flex items-center gap-3 w-full md:w-auto">
-                        <div className="bg-[#0f1014] border border-zinc-800 rounded-lg p-1 flex">
-                            <button onClick={() => setViewMode('active')} className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${viewMode === 'active' ? 'bg-gold-600 text-white shadow' : 'text-zinc-400 hover:text-white'}`}>Ativos</button>
-                            <button onClick={() => setViewMode('archived')} className={`px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1 ${viewMode === 'archived' ? 'bg-zinc-700 text-white shadow' : 'text-zinc-400 hover:text-white'}`}><Archive size={14} /> Arquivo</button>
-                        </div>
-
-                        {viewMode === 'active' && (
-                            <button
-                                onClick={() => setIsNewCaseModalOpen(true)}
-                                className="bg-gold-600 hover:bg-gold-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-colors whitespace-nowrap font-medium text-sm"
-                            >
-                                <Plus size={16} /> Novo Processo
-                            </button>
-                        )}
-                    </div>
                 </div>
 
-                {/* Filters Toolbar */}
-                <div className="bg-[#0f1014] border border-zinc-800 rounded-xl p-3 flex flex-col gap-3 shadow-sm">
-                    <div className="flex flex-col md:flex-row gap-3">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
-                            <input
-                                ref={searchInputRef}
-                                className="w-full bg-[#09090b] border border-zinc-800 rounded-lg pl-10 pr-10 py-2 text-sm text-white outline-none focus:border-gold-500"
-                                placeholder="Buscar por número ou cliente... (Alt + P)"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                            {searchTerm && (
-                                <button
-                                    onClick={() => { setSearchTerm(''); searchInputRef.current?.focus(); }}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
-                                    title="Limpar busca"
-                                >
-                                    <X size={16} />
-                                </button>
-                            )}
-                        </div>
+                <div className="flex items-center gap-3">
+                    <motion.button
+                        layout
+                        initial={false}
+                        onClick={() => { setViewMode(viewMode === 'active' ? 'archived' : 'active'); setCurrentPage(1); }}
+                        className={`group relative h-10 rounded-xl border flex items-center transition-all duration-300 overflow-hidden text-[10px] font-black uppercase tracking-widest ${viewMode === 'archived'
+                            ? 'bg-gold-500/10 border-gold-500 text-gold-500 shadow-lg shadow-gold-500/10 w-auto px-4 gap-2'
+                            : 'bg-[#181818] border-white/10 text-slate-400 hover:text-white hover:border-white/20 w-10 hover:w-auto px-0 hover:px-4 justify-center hover:justify-start gap-0 hover:gap-2'
+                            }`}
+                    >
+                        <Archive size={16} className={viewMode === 'archived' ? 'text-gold-500' : 'group-hover:text-white'} />
+                        <span className={`whitespace-nowrap transition-all duration-300 ${viewMode === 'archived' ? 'opacity-100 w-auto' : 'opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto'}`}>
+                            {viewMode === 'archived' ? 'Ver Ativos' : 'Ver Arquivo'}
+                        </span>
+                    </motion.button>
 
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                                className={`px-3 py-2 rounded-lg border text-sm font-medium flex items-center gap-2 transition-all ${showAdvancedFilters ? 'bg-zinc-900 border-gold-500 text-gold-500' : 'bg-[#09090b] border-zinc-800 text-zinc-400 hover:text-white'}`}
-                            >
-                                <Filter size={16} /> Filtros
-                            </button>
-
-                            {viewMode === 'active' && (
-                                <div className="bg-[#09090b] border border-zinc-800 rounded-lg flex p-0.5 items-center">
-                                    <button onClick={() => saveLayoutMode('kanban')} className={`p-1.5 rounded transition-colors ${layoutMode === 'kanban' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'}`} title="Visualização em Quadro"><LayoutGrid size={18} /></button>
-                                    <button onClick={() => saveLayoutMode('list')} className={`p-1.5 rounded transition-colors ${layoutMode === 'list' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'}`} title="Visualização em Lista"><LayoutList size={18} /></button>
-                                    <div className="w-px h-6 bg-white/10 mx-1"></div>
-                                    {layoutMode === 'kanban' ? (
-                                        <SizeScaler
-                                            value={mergedPreferences.kanbanCardScale || 1}
-                                            onChange={(val) => saveUserPreferences({ kanbanCardScale: val })}
-                                            min={0.5} max={1.5} step={0.05}
-                                        />
-                                    ) : (
-                                        <SizeScaler
-                                            value={mergedPreferences.casesFontSize || 14}
-                                            onChange={(val) => saveUserPreferences({ casesFontSize: val })}
-                                            min={10} max={20} step={1}
-                                        />
-                                    )}
-                                </div>
-                            )}
-
-                            {layoutMode === 'list' && (
-                                <button
-                                    onClick={() => {
-                                        setShowColumnConfig(!showColumnConfig);
-                                        setShowAdvancedFilters(false);
-                                    }}
-                                    className={`px-3 py-2 rounded-lg border text-sm font-medium flex items-center gap-2 transition-all ${showColumnConfig ? 'bg-zinc-900 border-gold-500 text-gold-500' : 'bg-[#09090b] border-zinc-800 text-zinc-400 hover:text-white'}`}
-                                >
-                                    <Settings size={16} /> <span className="hidden sm:inline">Colunas</span>
-                                </button>
-                            )}
-                        </div>
+                    <div className="flex items-center bg-[#131418] border border-white/10 rounded-xl p-1 shadow-inner h-10">
+                        <button
+                            onClick={() => saveLayoutMode('kanban')}
+                            className={`p-1.5 rounded-lg transition-all duration-300 flex items-center gap-2 px-3 ${layoutMode === 'kanban'
+                                ? 'bg-gold-600 text-black shadow-lg shadow-gold-600/20 font-bold'
+                                : 'text-slate-500 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            <LayoutGrid size={16} />
+                            <span className="text-[9px] uppercase font-black tracking-widest hidden sm:inline">Kanban</span>
+                        </button>
+                        <button
+                            onClick={() => saveLayoutMode('list')}
+                            className={`p-1.5 rounded-lg transition-all duration-300 flex items-center gap-2 px-3 ${layoutMode === 'list'
+                                ? 'bg-gold-600 text-black shadow-lg shadow-gold-600/20 font-bold'
+                                : 'text-slate-500 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            <LayoutList size={16} />
+                            <span className="text-[9px] uppercase font-black tracking-widest hidden sm:inline">Lista</span>
+                        </button>
                     </div>
 
-                    {/* Quick Filters Pills */}
-                    <div className="flex flex-wrap gap-2 pt-2 border-t border-zinc-800">
-                        <button onClick={() => setQuickFilter('all')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${quickFilter === 'all' ? 'bg-zinc-200 text-black' : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'}`}>Todos</button>
-                        <button onClick={() => setQuickFilter('mine')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${quickFilter === 'mine' ? 'bg-gold-500/20 text-gold-500 border border-gold-500/30' : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'}`}><User size={10} /> Meus Casos</button>
-                        <button onClick={() => setQuickFilter('deadlines')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${quickFilter === 'deadlines' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'}`}><AlertTriangle size={10} /> Prazos Próximos</button>
-                        <button onClick={() => setQuickFilter('stale')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${quickFilter === 'stale' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'}`}><Clock size={10} /> Parados +30d</button>
-                    </div>
-
-                    {showColumnConfig && (
-                        <div className="pt-4 border-t border-zinc-800 animate-in slide-in-from-top-2">
-                            <div className="flex justify-between items-center mb-4">
-                                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Configuração de Colunas</h4>
-                                <button onClick={handleResetColumns} className="text-xs text-red-400 hover:text-red-300 transition-colors">Restaurar Padrão</button>
-                            </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                {columns.map((col, idx) => (
-                                    <div key={col.id} className="flex items-center justify-between p-2 bg-[#09090b] border border-zinc-800 rounded-lg group hover:border-zinc-700 transition-all">
-                                        <div className="flex items-center gap-2 overflow-hidden">
-                                            <input
-                                                type="checkbox"
-                                                checked={col.visible}
-                                                onChange={() => toggleColumn(col.id)}
-                                                className="w-4 h-4 rounded bg-black border-zinc-700 text-gold-500 focus:ring-gold-500/20 cursor-pointer"
-                                            />
-                                            <span className="text-xs text-zinc-300 truncate">{col.label}</span>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <button onClick={() => moveColumn(idx, 'up')} disabled={idx === 0} className="p-1 hover:text-white text-zinc-600 disabled:opacity-0 transition-all"><ChevronLeft size={14} /></button>
-                                            <button onClick={() => moveColumn(idx, 'down')} disabled={idx === columns.length - 1} className="p-1 hover:text-white text-zinc-600 disabled:opacity-0 transition-all"><ChevronRight size={14} /></button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {showAdvancedFilters && (
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-3 border-t border-zinc-800 animate-in slide-in-from-top-2">
-                            <div>
-                                <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Tipo de Ação</label>
-                                <select className="w-full bg-[#09090b] border border-zinc-800 rounded px-2 py-1.5 text-sm text-white outline-none focus:border-gold-500" value={filters.tipo} onChange={(e) => setFilters({ ...filters, tipo: e.target.value })}><option value="all">Todos</option>{Object.values(CaseType).map(t => <option key={t} value={t}>{t}</option>)}</select>
-                            </div>
-                            <div className="flex items-end"><button onClick={() => setFilters({ tipo: 'all', status: 'all', dateStart: '', dateEnd: '', minVal: '', maxVal: '' })} className="text-xs text-zinc-400 hover:text-white underline pb-2">Limpar Filtros</button></div>
-                        </div>
-                    )}
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setIsNewCaseModalOpen(true)}
+                        className="group h-10 bg-gold-600 hover:bg-gold-700 text-black rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-gold-600/20 flex items-center justify-center hover:justify-start w-10 hover:w-auto overflow-hidden px-0 hover:px-4 gap-0 hover:gap-2"
+                    >
+                        <Plus size={18} className="shrink-0" />
+                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-all duration-300 w-0 group-hover:w-auto">Novo Processo</span>
+                    </motion.button>
                 </div>
             </div>
 
+            <div className="flex-shrink-0">
+                <CaseFilters
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                    searchInputRef={searchInputRef}
+                    sortConfig={sortConfig}
+                    handleSort={handleSort}
+                    showFilters={showAdvancedFilters}
+                    setShowFilters={setShowAdvancedFilters}
+                    layoutMode={layoutMode}
+                    saveLayoutMode={saveLayoutMode}
+                    showColumnConfig={showColumnConfig}
+                    setShowColumnConfig={setShowColumnConfig}
+                    columns={columns}
+                    toggleColumn={toggleColumn}
+                    moveColumn={moveColumn}
+                    handleResetColumns={handleResetColumns}
+                    mergedPreferences={mergedPreferences}
+                    saveUserPreferences={saveUserPreferences}
+                    filters={filters}
+                    setFilters={setFilters}
+                    clearFilters={clearFilters}
+                    quickFilter={quickFilter}
+                    setQuickFilter={setQuickFilter}
+                />
+            </div>
+
             {viewMode === 'active' && layoutMode === 'kanban' ? (
-                <div
-                    ref={kanbanContainerRef}
-                    onMouseDown={handleMouseDown}
-                    onMouseLeave={handleMouseLeave}
-                    onMouseUp={handleMouseUp}
-                    onMouseMove={handleMouseMove}
-                    className={`flex-1 overflow-x-auto pb-4 custom-scrollbar select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-                    style={{ '--kanban-card-scale': mergedPreferences.kanbanCardScale || 1 } as any}
+                <DndContext
+                    sensors={sensors}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
                 >
-                    <div className="flex gap-6 min-w-max h-full px-2">
-                        {activeKanbanColumns.map((status) => {
-                            const columnCases = filteredCasesKanban.filter(c => c.status === status);
-                            const totalColumnValue = columnCases.reduce((acc, curr) => acc + curr.valor_causa, 0);
+                    <div
+                        ref={kanbanContainerRef}
+                        onMouseDown={handleMouseDown}
+                        onMouseLeave={handleMouseLeave}
+                        onMouseUp={handleMouseUp}
+                        onMouseMove={handleMouseMove}
+                        className={`flex-1 overflow-x-auto pb-4 custom-scrollbar select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                        style={{ '--kanban-card-scale': mergedPreferences.kanbanCardScale || 1 } as any}
+                    >
+                        <div className="flex gap-6 min-w-max h-full px-2">
+                            {activeKanbanColumns.map((status) => {
+                                const columnCases = filteredCasesKanban.filter(c => c.status === status);
+                                const totalColumnValue = columnCases.reduce((acc, curr) => acc + curr.valor_causa, 0);
 
-                            return (
-                                <div
-                                    key={status}
-                                    className="flex-shrink-0 flex flex-col h-full relative group/col"
-                                    style={{ width: `${kanbanColumnWidth}px` }}
-                                >
-                                    {/* PREMIUM HEADER */}
-                                    <div className="mb-4 px-1">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <h3 className="font-bold text-zinc-300 flex items-center gap-2 text-sm">
-                                                <span className={`w-2.5 h-2.5 rounded-full ${getStatusHeaderColor(status)}`} />
-                                                {status}
-                                            </h3>
-                                            <span className="text-xs font-bold text-zinc-400 bg-zinc-800 border border-zinc-700 px-2 py-0.5 rounded-full shadow-inner">{columnCases.length}</span>
-                                        </div>
-                                        <div className="pl-4">
-                                            <p className={`text-xs font-medium ${totalColumnValue > 0 ? 'text-emerald-400' : 'text-zinc-600'}`}>
-                                                {totalColumnValue > 0 ? formatCurrency(totalColumnValue) : 'R$ 0,00'}
-                                                {totalColumnValue > 0 && <span className="text-[9px] text-zinc-500 ml-1 font-normal uppercase tracking-wider">Potencial</span>}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Resize Handle */}
+                                return (
                                     <div
-                                        onMouseDown={handleColumnResizeDown}
-                                        className="absolute right-[-12px] top-0 bottom-0 w-[6px] cursor-col-resize hover:bg-gold-500/50 transition-colors z-20 group-hover/col:bg-zinc-800/50 flex items-center justify-center"
-                                        title="Arraste para redimensionar coluna"
+                                        key={status}
+                                        className="flex-shrink-0 flex flex-col h-full relative group/col"
+                                        style={{ width: `${kanbanColumnWidth}px` }}
                                     >
-                                        <div className="w-[1px] h-10 bg-zinc-700 group-hover:bg-gold-500/50" />
-                                    </div>
-
-                                    <div
-                                        className={`kanban-column-scroll bg-zinc-900/20 p-2 rounded-xl flex-1 border border-dashed border-zinc-800 overflow-y-auto max-h-[calc(100vh-220px)] custom-scrollbar`}
-                                        style={{ zoom: kanbanCardScale }}
-                                    >
-                                        <div className="space-y-3">
-                                            {columnCases.map(caseItem => {
-                                                const client = clients.find(c => c.id === caseItem.client_id);
-                                                return (
-                                                    <CaseKanbanCard
-                                                        key={caseItem.id}
-                                                        caseItem={caseItem}
-                                                        client={client}
-                                                        onClick={setSelectedCase}
-                                                        onArchiveClick={setCaseToArchive}
-                                                    />
-                                                );
-                                            })}
-                                            {columnCases.length === 0 && <div className="text-center py-12 text-zinc-600 text-xs italic opacity-50">Sem processos</div>}
+                                        {/* PREMIUM HEADER */}
+                                        <div className="mb-4 px-1">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h3 className="font-black text-slate-300 flex items-center gap-2 text-[10px] uppercase tracking-widest">
+                                                    <span className={`w-2 h-2 rounded-full ${getStatusHeaderColor(status)} shadow-[0_0_8px_currentColor]`} />
+                                                    {status}
+                                                </h3>
+                                                <span className="text-[10px] font-bold text-slate-400 bg-[#18181b] border border-white/10 px-2.5 py-1 rounded-lg">{columnCases.length}</span>
+                                            </div>
+                                            <div className="pl-4">
+                                                <p className={`text-xs font-bold ${totalColumnValue > 0 ? 'text-emerald-400' : 'text-slate-600'}`}>
+                                                    {totalColumnValue > 0 ? formatCurrency(totalColumnValue) : 'R$ 0,00'}
+                                                    {totalColumnValue > 0 && <span className="text-[9px] text-slate-500 ml-1 font-normal uppercase tracking-wider">Potencial</span>}
+                                                </p>
+                                            </div>
                                         </div>
+
+                                        {/* Resize Handle */}
+                                        <div
+                                            onMouseDown={handleColumnResizeDown}
+                                            className="absolute right-[-12px] top-0 bottom-0 w-[6px] cursor-col-resize hover:bg-gold-500/50 transition-colors z-20 group-hover/col:bg-zinc-800/50 flex items-center justify-center"
+                                            title="Arraste para redimensionar coluna"
+                                        >
+                                            <div className="w-[1px] h-10 bg-zinc-700 group-hover:bg-gold-500/50" />
+                                        </div>
+
+                                        <SortableContext
+                                            id={status}
+                                            items={columnCases.map(c => c.id)}
+                                            strategy={verticalListSortingStrategy}
+                                        >
+                                            <div
+                                                className={`kanban-column-scroll bg-zinc-900/20 p-2 rounded-xl flex-1 border border-dashed border-zinc-800 overflow-y-auto max-h-[calc(100vh-220px)] custom-scrollbar`}
+                                                style={{ zoom: kanbanCardScale }}
+                                            >
+                                                <div className="space-y-3 min-h-[100px]">
+                                                    {columnCases.map(caseItem => {
+                                                        const client = clients.find(c => c.id === caseItem.client_id);
+                                                        return (
+                                                            <CaseKanbanCard
+                                                                key={caseItem.id}
+                                                                caseItem={caseItem}
+                                                                client={client}
+                                                                onClick={setSelectedCase}
+                                                                onArchiveClick={setCaseToArchive}
+                                                            />
+                                                        );
+                                                    })}
+                                                    {columnCases.length === 0 && <div className="text-center py-12 text-zinc-600 text-xs italic opacity-50">Sem processos</div>}
+                                                </div>
+                                            </div>
+                                        </SortableContext>
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
+
+                    <DragOverlay dropAnimation={{
+                        sideEffects: defaultDropAnimationSideEffects({
+                            styles: {
+                                active: {
+                                    opacity: '0.5',
+                                },
+                            },
+                        }),
+                    }}>
+                        {activeDragCase ? (
+                            <CaseKanbanCard
+                                caseItem={activeDragCase}
+                                client={clients.find(c => c.id === activeDragCase.client_id)}
+                                onClick={() => { }}
+                                onArchiveClick={() => { }}
+                            />
+                        ) : null}
+                    </DragOverlay>
+                </DndContext>
             ) : (
-                <div className="bg-[#0f1014] rounded-xl border border-white/5 flex-1 overflow-hidden flex flex-col shadow-2xl relative z-0 backdrop-blur-md">
+                <div className="bg-[#0f1014] rounded-xl border border-white/5 flex-1 flex flex-col shadow-2xl relative z-0 backdrop-blur-md">
                     {isFetching && (
                         <div className="absolute inset-0 bg-black/50 z-20 flex items-center justify-center">
                             <Loader2 className="animate-spin text-gold-500" size={40} />
@@ -791,6 +881,29 @@ const Cases: React.FC = () => {
                         <table className="w-full text-left border-collapse" style={{ fontSize: `${mergedPreferences.casesFontSize || 14}px` }}>
                             <thead className="bg-white/5 sticky top-0 z-10 backdrop-blur-sm border-b border-white/5">
                                 <tr>
+                                    <th className="py-4 px-6 w-10">
+                                        <div
+                                            onClick={(e) => { e.stopPropagation(); handleSelectAllCases(paginatedCases.map(c => c.id)); }}
+                                            className="relative flex items-center justify-center w-5 h-5 cursor-pointer group/header"
+                                        >
+                                            {/* Header Dot */}
+                                            <div className={`w-1.5 h-1.5 rounded-full bg-slate-700 transition-all duration-300 ${selectedCaseIds.length > 0 ? 'opacity-0 scale-0' : 'group-hover/header:opacity-0 group-hover/header:scale-0'
+                                                }`} />
+
+                                            {/* Header Checkbox */}
+                                            <div
+                                                className={`absolute inset-0 rounded border-2 flex items-center justify-center transition-all duration-300 ${paginatedCases.length > 0 && selectedCaseIds.length === paginatedCases.map(c => c.id).length
+                                                    ? 'bg-gold-500 border-gold-500 text-black opacity-100 scale-100'
+                                                    : selectedCaseIds.length > 0
+                                                        ? 'bg-gold-500/20 border-gold-500 text-gold-500 opacity-100 scale-100'
+                                                        : 'border-slate-700 bg-white/5 opacity-0 scale-50 group-hover/header:opacity-100 group-hover/header:scale-100'
+                                                    }`}
+                                            >
+                                                {paginatedCases.length > 0 && selectedCaseIds.length === paginatedCases.map(c => c.id).length && <Check size={14} className="stroke-[4]" />}
+                                                {selectedCaseIds.length > 0 && selectedCaseIds.length < paginatedCases.length && <div className="w-2.5 h-0.5 bg-gold-500 rounded-full" />}
+                                            </div>
+                                        </div>
+                                    </th>
                                     {columns.filter(c => c.visible).map(col => (
                                         <th key={col.id} className="py-4 px-6 text-xs font-medium text-zinc-500 uppercase tracking-wider select-none">
                                             <div className="flex items-center gap-1 cursor-pointer hover:text-zinc-300" onClick={() => handleSort(col.id === 'numero' ? 'numero_processo' : (col.id === 'data_abertura' ? 'data_abertura' : col.id))}>
@@ -814,34 +927,60 @@ const Cases: React.FC = () => {
                                         const clientName = getClientName(caseItem.client_id, caseItem);
 
                                         return (
-                                            <tr key={caseItem.id} className="group hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setSelectedCase(caseItem)}>
+                                            <tr
+                                                key={caseItem.id}
+                                                className={`group transition-colors cursor-pointer border-l-2 ${selectedCaseIds.includes(caseItem.id)
+                                                    ? 'bg-gold-500/10 border-gold-500 hover:bg-gold-500/15'
+                                                    : 'hover:bg-white/5 border-transparent'
+                                                    }`}
+                                                onClick={() => setSelectedCase(caseItem)}
+                                            >
+                                                <td className="py-4 px-6 align-middle" onClick={(e) => { e.stopPropagation(); handleToggleSelectCase(caseItem.id); }}>
+                                                    <div className="relative flex items-center justify-center w-5 h-5">
+                                                        {/* Row Dot */}
+                                                        <div className={`w-1.5 h-1.5 rounded-full bg-slate-700 transition-all duration-300 ${(selectedCaseIds.length > 0 || selectedCaseIds.includes(caseItem.id)) ? 'opacity-0 scale-0' : 'group-hover:opacity-0 group-hover:scale-0'
+                                                            }`} />
+
+                                                        {/* Row Checkbox */}
+                                                        <div className={`absolute inset-0 rounded border-2 flex items-center justify-center transition-all duration-300 ${selectedCaseIds.includes(caseItem.id)
+                                                            ? 'bg-gold-500 border-gold-500 text-black translate-y-0 opacity-100 scale-100'
+                                                            : selectedCaseIds.length > 0
+                                                                ? 'border-slate-600 bg-white/5 opacity-100 scale-100'
+                                                                : 'border-slate-700 bg-white/5 opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100'
+                                                            }`}>
+                                                            {selectedCaseIds.includes(caseItem.id) && <Check size={14} className="stroke-[4]" />}
+                                                        </div>
+                                                    </div>
+                                                </td>
                                                 {columns.filter(c => c.visible).map(col => (
-                                                    <td key={`${caseItem.id}-${col.id}`} className="py-4 px-6 text-sm align-middle">
+                                                    <td key={`${caseItem.id}-${col.id}`} className="py-4 px-6 align-middle">
                                                         {col.id === 'titulo' && (
                                                             <div>
                                                                 {/* TÍTULO REMOVIDO DA LISTA AQUI */}
-                                                                {deadline && <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold inline-block bg-zinc-900/50 border border-white/10 ${deadline.color}`}>{deadline.label}</span>}
+                                                                {deadline && <span className={`text-[0.85em] px-1.5 py-0.5 rounded font-bold inline-block bg-zinc-900/50 border border-white/10 ${deadline.color}`}>{deadline.label}</span>}
                                                             </div>
                                                         )}
-                                                        {col.id === 'numero' && <span className="text-zinc-500 font-mono text-xs">{caseItem.numero_processo}</span>}
+                                                        {col.id === 'numero' && <span className="opacity-50 font-mono text-[0.9em]">{caseItem.numero_processo}</span>}
                                                         {col.id === 'cliente' && (
-                                                            <div className="flex items-center gap-3">
-                                                                <div className={`w-8 h-8 rounded-full border border-white/10 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm bg-zinc-700 text-zinc-300`}>
-                                                                    {clientName.substring(0, 1)}
+                                                            <PendencyIndicator pendencies={clients.find(cl => cl.id === caseItem.client_id)?.pendencias} align="left">
+                                                                <div className="flex items-center gap-3 cursor-help">
+                                                                    <div className={`w-8 h-8 rounded-full border border-white/10 flex items-center justify-center font-bold text-[0.85em] shrink-0 shadow-sm bg-zinc-700 text-zinc-300`}>
+                                                                        {clientName.substring(0, 1)}
+                                                                    </div>
+                                                                    <span className="text-zinc-300 group-hover:text-white transition-colors">{clientName}</span>
                                                                 </div>
-                                                                <span className="text-zinc-300 group-hover:text-white transition-colors">{clientName}</span>
-                                                            </div>
+                                                            </PendencyIndicator>
                                                         )}
-                                                        {col.id === 'status' && <span className="text-[10px] font-medium px-2 py-1 bg-zinc-800 text-zinc-400 border border-zinc-700 rounded">{caseItem.status}</span>}
-                                                        {col.id === 'tipo' && <span className={`text-[10px] px-2 py-1 rounded border font-medium ${getCaseTypeColor(caseItem.tipo as CaseType)}`}>{caseItem.tipo}{caseItem.modalidade ? ` (${caseItem.modalidade})` : ''}</span>}
+                                                        {col.id === 'status' && <span className="text-[0.85em] font-medium px-2 py-1 bg-zinc-800 text-zinc-400 border border-zinc-700 rounded">{caseItem.status}</span>}
+                                                        {col.id === 'tipo' && <span className={`text-[0.85em] px-2 py-1 rounded border font-medium ${getCaseTypeColor(caseItem.tipo as CaseType)}`}>{caseItem.tipo}{caseItem.modalidade ? ` (${caseItem.modalidade})` : ''}</span>}
                                                         {col.id === 'tribunal' && <span className="text-zinc-500">{caseItem.tribunal}</span>}
                                                         {col.id === 'valor' && <span className="text-zinc-200 font-medium">{formatCurrency(caseItem.valor_causa)}</span>}
-                                                        {col.id === 'data_abertura' && <span className="text-zinc-500 text-xs">{(() => {
+                                                        {col.id === 'data_abertura' && <span className="text-zinc-500 text-[0.9em]">{(() => {
                                                             try {
                                                                 return caseItem.data_abertura ? new Date(caseItem.data_abertura).toLocaleDateString() : '-';
                                                             } catch (e) { return '-'; }
                                                         })()}</span>}
-                                                        {col.id === 'pagamento' && <span className={`text-xs font-bold px-2 py-1 rounded border ${caseItem.status_pagamento === 'Pago' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'}`}>{caseItem.status_pagamento}</span>}
+                                                        {col.id === 'pagamento' && <span className={`text-[0.85em] font-bold px-2 py-1 rounded border ${caseItem.status_pagamento === 'Pago' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'}`}>{caseItem.status_pagamento}</span>}
                                                     </td>
                                                 ))}
                                                 <td className="py-4 px-6 text-right">
@@ -963,6 +1102,51 @@ const Cases: React.FC = () => {
                     </div>
                 </div>
             )}
+            {/* Bulk Actions Bar */}
+            <AnimatePresence>
+                {selectedCaseIds.length > 0 && (
+                    <motion.div
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{ y: 20, opacity: 1 }}
+                        exit={{ y: 100, opacity: 0 }}
+                        className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-6 px-6 py-4 bg-zinc-900 border border-gold-500/30 rounded-2xl shadow-2xl shadow-black/50 backdrop-blur-xl"
+                    >
+                        <div className="flex items-center gap-3 pr-6 border-r border-zinc-700">
+                            <div className="w-8 h-8 rounded-full bg-gold-600 flex items-center justify-center text-white font-bold text-sm">
+                                {selectedCaseIds.length}
+                            </div>
+                            <span className="text-sm font-medium text-slate-200">Processos Selecionados</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleBulkArchiveCases}
+                                disabled={isBulkArchiving}
+                                className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-slate-300 hover:text-white rounded-xl transition-all font-medium text-xs border border-white/5 disabled:opacity-50"
+                            >
+                                {isBulkArchiving ? <Loader2 size={14} className="animate-spin" /> : <Archive size={14} />}
+                                Arquivar em Lote
+                            </button>
+                            <button
+                                onClick={handleBulkDeleteCases}
+                                disabled={isBulkDeleting}
+                                className="flex items-center gap-2 px-4 py-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-xl transition-all font-medium text-xs border border-red-500/20 disabled:opacity-50"
+                            >
+                                {isBulkDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                Excluir Permanentemente
+                            </button>
+                            <div className="w-px h-6 bg-zinc-700 mx-2" />
+                            <button
+                                onClick={() => setSelectedCaseIds([])}
+                                className="p-2 text-slate-500 hover:text-white transition-colors"
+                                title="Cancelar Seleção"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

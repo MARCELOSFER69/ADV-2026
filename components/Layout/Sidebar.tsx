@@ -12,7 +12,12 @@ import { BRAND_CONFIG } from '../../logoData';
 import NotificationsPanel from '../ui/NotificationsPanel';
 
 const Sidebar: React.FC = () => {
-    const { currentView, setCurrentView, logout, user, updateUserProfile, notifications, mergedPreferences, saveUserPreferences, isAssistantOpen, setIsAssistantOpen } = useApp();
+    const {
+        currentView, setCurrentView, logout, user, updateUserProfile,
+        notifications, mergedPreferences, saveUserPreferences,
+        isAssistantOpen, setIsAssistantOpen,
+        waitingChatsCount
+    } = useApp();
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -91,8 +96,15 @@ const Sidebar: React.FC = () => {
                     />
                 )}
                 <div className="min-w-[70px] flex items-center justify-center">
-                    <div className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 ${isActive ? 'bg-gold-600 text-white shadow-lg shadow-gold-600/20' : 'text-slate-400 group-hover/item:text-gold-500'}`}>
+                    <div className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 relative ${isActive ? 'bg-gold-600 text-white shadow-lg shadow-gold-600/20' : 'text-slate-400 group-hover/item:text-gold-500'}`}>
                         {item.icon && <item.icon size={20} />}
+
+                        {/* Badge for WhatsApp Queue - Clean & Positioned */}
+                        {item.id === 'whatsapp' && waitingChatsCount > 0 && (
+                            <div className="absolute -top-1 -right-1 z-20 min-w-[18px] h-[18px] bg-red-600 text-white text-[10px] font-black flex items-center justify-center rounded-full border-[3px] border-navy-950 shadow-sm animate-pulse">
+                                {waitingChatsCount}
+                            </div>
+                        )}
                     </div>
                 </div>
                 <span
@@ -229,15 +241,20 @@ const Sidebar: React.FC = () => {
 
                 {/* Header Fixo - Logo */}
                 <div className="h-20 flex items-center justify-center border-b border-slate-800 shrink-0 overflow-hidden relative">
-                    <div className="w-full h-full flex items-center justify-center px-2">
+                    <div className="w-full h-full flex items-center justify-center px-2 group-hover:px-4 transition-all duration-300">
                         {BRAND_CONFIG.logoBase64 ? (
-                            <img
-                                src={BRAND_CONFIG.logoBase64}
-                                alt={BRAND_CONFIG.sidebarName}
-                                className="max-h-12 w-auto object-contain transition-all duration-300 group-hover:scale-110"
-                            />
+                            <div className="relative w-full h-full flex items-center justify-center">
+                                <img
+                                    src={BRAND_CONFIG.logoBase64}
+                                    alt={BRAND_CONFIG.sidebarName}
+                                    className="max-h-10 group-hover:max-h-12 w-auto object-contain transition-all duration-300 rounded-xl"
+                                    style={{
+                                        filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.3))'
+                                    }}
+                                />
+                            </div>
                         ) : (
-                            <div className="w-10 h-10 border-2 border-gold-500 transform rotate-45 flex items-center justify-center rounded-lg">
+                            <div className="w-10 h-10 border-2 border-gold-500 transform rotate-45 flex items-center justify-center rounded-xl">
                                 <Scale className="text-gold-500 transform -rotate-45" size={20} />
                             </div>
                         )}
@@ -252,15 +269,15 @@ const Sidebar: React.FC = () => {
                         className="w-full flex items-center h-14 group/notif relative active-scale"
                     >
                         {isNotificationsOpen && <div className="absolute left-0 h-8 w-1 bg-gold-500 rounded-r opacity-0 group-hover:opacity-100 transition-opacity" />}
-                        <div className="min-w-[70px] flex items-center justify-center relative">
-                            <div className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 ${isNotificationsOpen ? 'bg-navy-900 text-gold-500' : 'text-slate-400 group-hover/notif:text-gold-500'}`}>
+                        <div className="min-w-[70px] flex items-center justify-center">
+                            <div className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 relative ${isNotificationsOpen ? 'bg-navy-900 text-gold-500' : 'text-slate-400 group-hover/notif:text-gold-500'}`}>
                                 <Bell size={20} />
+                                {unreadCount > 0 && (
+                                    <div className="absolute -top-1 -right-1 z-20 min-w-[18px] h-[18px] bg-red-600 text-white text-[10px] font-black flex items-center justify-center rounded-full border-[3px] border-navy-950 shadow-sm animate-pulse">
+                                        {unreadCount}
+                                    </div>
+                                )}
                             </div>
-                            {unreadCount > 0 && (
-                                <span className="absolute top-2 right-4 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white border-2 border-navy-950 shadow-sm animate-pulse">
-                                    {unreadCount}
-                                </span>
-                            )}
                         </div>
                         <span className="whitespace-nowrap overflow-hidden text-sm font-medium transition-all duration-300 text-slate-400 group-hover/notif:text-white w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 group-hover:ml-1">
                             Notificações

@@ -79,6 +79,7 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
             showToast('error', 'Cliente sem CPF cadastrado.');
             return;
         }
+        setIsRunning(true);
         setModalConfig({ type: 'rgp', isOpen: true });
     };
 
@@ -132,7 +133,7 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
         <div className="space-y-6 animate-in fade-in duration-300">
             {/* Header Info */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-navy-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
+                <div className="bg-[#18181b] border border-white/5 rounded-xl p-4 flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status RGP</span>
                         <Fish size={16} className="text-gold-500" />
@@ -144,7 +145,7 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
                     </div>
                 </div>
 
-                <div className="bg-navy-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
+                <div className="bg-[#18181b] border border-white/5 rounded-xl p-4 flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Manutenção REAP</span>
                         <Clock size={16} className="text-gold-500" />
@@ -161,7 +162,7 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
                     </div>
                 </div>
 
-                <div className="bg-navy-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
+                <div className="bg-[#18181b] border border-white/5 rounded-xl p-4 flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Localidade Pesqueira</span>
                         <MapPin size={16} className="text-gold-500" />
@@ -175,8 +176,8 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
             {/* Main Content */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* RGP Details */}
-                <div className="bg-navy-900/30 border border-slate-800 rounded-xl overflow-hidden relative">
-                    <div className="px-4 py-3 border-b border-slate-800 bg-navy-900/50 flex items-center justify-between">
+                <div className="bg-[#18181b] border border-white/5 rounded-xl overflow-hidden relative">
+                    <div className="px-4 py-3 border-b border-white/5 bg-[#131418] flex items-center justify-between">
                         <h3 className="text-sm font-bold text-white flex items-center gap-2 font-serif">
                             <ShieldCheck size={16} className="text-gold-500" /> Detalhes do Registro
                         </h3>
@@ -184,7 +185,7 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
                             <button
                                 onClick={handleConsultation}
                                 disabled={isRunning}
-                                className={`text-xs font-bold flex items-center gap-1.5 transition-all px-3 py-1 rounded-full border ${isRunning ? 'bg-navy-800 text-slate-500 border-slate-700 cursor-not-allowed' : 'bg-navy-800 text-gold-500 hover:bg-navy-700 border-slate-700 hover:border-gold-500'}`}
+                                className={`text-xs font-bold flex items-center gap-1.5 transition-all px-3 py-1 rounded-full border ${isRunning ? 'bg-[#131418] text-slate-500 border-white/5 cursor-not-allowed' : 'bg-[#131418] text-gold-500 hover:bg-gold-500/10 border-white/5 hover:border-gold-500/30'}`}
                             >
                                 <RefreshCw size={14} className={isRunning ? 'animate-spin' : ''} />
                                 {isRunning ? 'Consultando...' : 'Consultar Robô'}
@@ -192,19 +193,19 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
                         </div>
                     </div>
                     <div className="p-4 space-y-4">
-                        <div className="flex justify-between items-center py-2 border-b border-slate-800/50">
+                        <div className="flex justify-between items-center py-2 border-b border-white/5">
                             <span className="text-sm text-slate-500">Número do Registro:</span>
-                            <span className="text-sm font-mono text-white bg-slate-800 px-2 py-0.5 rounded">
+                            <span className="text-sm font-mono text-white bg-black/40 px-2 py-0.5 rounded">
                                 {client.rgp_numero || 'Pendente'}
                             </span>
                         </div>
-                        <div className="flex justify-between items-center py-2 border-b border-slate-800/50">
+                        <div className="flex justify-between items-center py-2 border-b border-white/5">
                             <span className="text-sm text-slate-500">Local de Exercício:</span>
                             <span className="text-sm text-slate-300">
                                 {client.rgp_local_exercicio || client.rgp_localidade || 'Não identificado'}
                             </span>
                         </div>
-                        <div className="flex justify-between items-center py-2 border-b border-slate-800/50">
+                        <div className="flex justify-between items-center py-2 border-b border-white/5">
                             <span className="text-sm text-slate-500">Data do 1º RGP:</span>
                             <span className="text-sm text-slate-300">{client.rgp_data_primeiro || 'Não identificada'}</span>
                         </div>
@@ -224,8 +225,8 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
                 {/* Automation Actions */}
                 <div className="space-y-4">
 
-                    <div className="bg-navy-900/30 border border-slate-800 rounded-xl overflow-hidden h-fit group transition-all hover:border-purple-500/30">
-                        <div className="px-4 py-3 border-b border-slate-800 bg-navy-900/50">
+                    <div className="bg-[#18181b] border border-white/5 rounded-xl overflow-hidden h-fit group transition-all hover:border-purple-500/30">
+                        <div className="px-4 py-3 border-b border-white/5 bg-[#131418]">
                             <h3 className="text-sm font-bold text-white flex items-center gap-2 font-serif">
                                 <RefreshCw size={16} className="text-gold-500" /> Ações de Automação
                             </h3>
@@ -234,7 +235,7 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
                             <button
                                 onClick={handleConsultation}
                                 disabled={isRunning}
-                                className={`w-full flex items-center justify-between p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 border border-slate-700 transition-all group ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`w-full flex items-center justify-between p-3 rounded-lg bg-[#131418] hover:bg-black/40 border border-white/5 transition-all group ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-lg bg-gold-600/20 flex items-center justify-center text-gold-500">
@@ -252,7 +253,7 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
 
                             <button
                                 onClick={handleReapProcess}
-                                className="w-full flex items-center justify-between p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 border border-slate-700 transition-all group"
+                                className="w-full flex items-center justify-between p-3 rounded-lg bg-[#131418] hover:bg-black/40 border border-white/5 transition-all group"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-lg bg-emerald-600/20 flex items-center justify-center text-emerald-500">
@@ -294,7 +295,10 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
 
             <BotExecutionModal
                 isOpen={modalConfig.isOpen}
-                onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+                onClose={() => {
+                    setModalConfig(prev => ({ ...prev, isOpen: false }));
+                    setIsRunning(false);
+                }}
                 type={modalConfig.type}
                 clientId={client.id}
                 cpf={client.cpf_cnpj.replace(/\D/g, '')}
@@ -302,6 +306,8 @@ const ClientRgpTab: React.FC<ClientRgpTabProps> = ({ client, onUpdate, setEdited
                 headless={isHeadless}
                 onSuccess={handleModalSuccess}
                 fishingData={modalConfig.type === 'reap' ? fishingData : undefined}
+                hideUI={modalConfig.type === 'rgp'}
+                onError={(msg) => showToast('error', msg)}
             />
         </div>
     );

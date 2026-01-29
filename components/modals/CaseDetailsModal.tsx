@@ -1,13 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Case, EventType, CaseStatus, CaseType, SystemAccess, CaseHistory, FinancialType, Event, CaseInstallment, FinancialRecord, GPS, ColumnConfig, TabConfig, SectionConfig } from '../../types';
-import {
-    X, DollarSign, Calendar, Plus, Save, Edit2, Check, FileText, ClipboardList,
-    Trash2, Globe, ExternalLink, Copy, Lock as LockIcon, History, MessageCircle,
-    Loader2, Archive, ArchiveRestore, User, Clock, CheckCircle, Circle, HandCoins,
-    Eye, EyeOff, FileSpreadsheet, Wallet, CreditCard, AlertTriangle, Lock,
-    LayoutDashboard, ChevronLeft, ChevronRight
-} from 'lucide-react';
+import { Plus, Trash2, Calendar, FileText, CheckCircle, AlertTriangle, X, DollarSign, ArchiveRestore, Lock as LockIcon, Lock, ExternalLink, Copy, Eye, EyeOff, Globe, Edit2, Info, ChevronDown, ClipboardList, User, Clock, Check, FileSpreadsheet, HandCoins, Wallet, Circle, Save, Archive, CreditCard, LayoutDashboard, ChevronLeft, ChevronRight, MessageCircle, MapPin, Loader2, Shield, Gavel, History } from 'lucide-react';
+import CustomSelect from '../ui/CustomSelect';
 import { formatCurrencyInput, formatProcessNumber, parseCurrencyToNumber, formatCPFOrCNPJ } from '../../services/formatters';
 import WhatsAppModal from './WhatsAppModal';
 import { formatDateDisplay, formatDateForDB, getTodayBrasilia } from '../../utils/dateUtils';
@@ -729,26 +724,29 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
     return (
         <>
             <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-                <div className="w-full max-w-6xl h-[90vh] bg-[var(--bg-base)] border border-[var(--border-main)] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-500 ring-1 ring-white/5">
-                    <div className="flex flex-col h-full bg-[var(--bg-base)]">
+                <div className="w-full max-w-6xl h-[90vh] bg-[#131418] border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-500 ring-1 ring-white/5">
+                    <div className="flex flex-col h-full bg-[#131418]">
                         {/* Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-[var(--border-main)] bg-[var(--bg-surface)] shrink-0">
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-3 text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-[0.2em] mb-1">
+                        <div className="flex items-center justify-between p-6 border-b border-white/5 bg-[#131418] shrink-0 relative overflow-visible z-50">
+                            {/* Ambient Background Effect */}
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+
+                            <div className="flex-1 min-w-0 relative z-10">
+                                <div className="flex items-center gap-3 text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">
                                     <span>{liveCase.tipo}</span>
                                     <span className="text-zinc-700">•</span>
                                     <span className="text-gold-500">{liveCase.modalidade || 'Processo'}</span>
                                 </div>
                                 {isEditMode ? (
                                     <input
-                                        className="text-2xl font-serif bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-white w-full max-w-lg outline-none focus:border-gold-500"
+                                        className="text-2xl font-serif bg-[#18181b] border border-white/5 rounded px-2 py-1 text-white w-full max-w-lg outline-none focus:border-gold-500"
                                         value={editedCase.titulo}
                                         onChange={e => setEditedCase({ ...editedCase, titulo: e.target.value })}
                                     />
                                 ) : (
-                                    <h2 className="text-2xl font-serif text-[var(--text-main)] truncate max-w-md">{liveCase.titulo}</h2>
+                                    <h2 className="text-2xl font-serif text-white truncate max-w-md">{liveCase.titulo}</h2>
                                 )}
-                                <div className="flex items-center gap-2 mt-1 text-sm text-[var(--text-muted)] group/client">
+                                <div className="flex items-center gap-2 mt-1 text-sm text-slate-400 group/client">
                                     {client && (
                                         <>
                                             <User size={14} className="text-gold-500/70" />
@@ -828,7 +826,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                         </div>
 
                         {/* Tabs */}
-                        <div className="flex border-b border-[var(--border-main)] px-6 bg-[var(--bg-surface)] overflow-x-auto custom-scrollbar no-scrollbar shrink-0">
+                        <div className="flex border-b border-white/5 px-6 bg-[#131418] overflow-x-auto custom-scrollbar no-scrollbar shrink-0">
                             {tabsConfig.map((tab) => {
                                 const Icon = tab.id === 'details' ? FileText :
                                     tab.id === 'checklist' ? ClipboardList :
@@ -841,7 +839,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                     <button
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id as any)}
-                                        className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors shrink-0 whitespace-nowrap active-scale ${activeTab === tab.id ? 'border-gold-500 text-gold-500' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                                        className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors shrink-0 whitespace-nowrap active-scale ${activeTab === tab.id ? 'border-gold-500 text-gold-500' : 'border-transparent text-slate-400 hover:text-white'}`}
                                     >
                                         <Icon size={16} /> {tab.label}
                                     </button>
@@ -850,20 +848,24 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-[var(--bg-base)]">
+                        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-[#131418]">
 
                             {/* DETAILS TAB */}
                             {
                                 activeTab === 'details' && (
                                     <div className="flex flex-col gap-6">
-                                        <div className="bg-navy-900 border border-slate-800 rounded-xl p-6 shadow-sm">
-                                            <ProcessStepper currentStatus={liveCase.status || ''} />
+                                        <div className="bg-[#18181b] border border-white/5 rounded-2xl p-4 shadow-inner overflow-hidden">
+                                            <ProcessStepper
+                                                currentStatus={liveCase.status || ''}
+                                                caseType={liveCase.tipo}
+                                                events={caseEvents}
+                                            />
                                         </div>
                                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                             {/* Left Column: Basic Info & Financial */}
                                             <div className="lg:col-span-2 space-y-8">
                                                 {/* 1. Dados do Processo */}
-                                                <div className="bg-navy-900 border border-slate-800 rounded-xl p-6 shadow-sm">
+                                                <div className="bg-[#18181b] border border-white/5 rounded-xl p-6 shadow-sm">
                                                     <h3 className="text-sm font-bold text-slate-400 uppercase mb-5 flex items-center gap-2 tracking-wider"><FileText size={16} className="text-gold-500" /> Dados do Processo</h3>
                                                     <div className="grid grid-cols-2 gap-6">
                                                         <div className="space-y-1">
@@ -878,7 +880,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                         transition={{ duration: 0.2 }}
                                                                     >
                                                                         <input
-                                                                            className="w-full bg-navy-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-gold-500 outline-none transition-all"
+                                                                            className="w-full bg-[#131418] border border-white/5 rounded-lg px-3 py-2 text-sm text-white focus:border-gold-500 outline-none transition-all"
                                                                             value={editedCase.numero_processo}
                                                                             onChange={e => setEditedCase({ ...editedCase, numero_processo: formatProcessNumber(e.target.value) })}
                                                                         />
@@ -928,20 +930,20 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                                 <button type="button" onClick={handleAddNewType} className="bg-gold-600 hover:bg-gold-500 text-white px-3 py-1 rounded-lg text-xs font-black border border-gold-500/50 shadow-lg shadow-gold-900/20 transition-all">Add</button>
                                                                             </div>
                                                                         ) : (
-                                                                            <select
-                                                                                className="w-full bg-navy-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-gold-500 outline-none transition-all cursor-pointer"
+                                                                            <CustomSelect
+                                                                                label=""
                                                                                 value={editedCase.tipo}
-                                                                                onChange={e => {
-                                                                                    const nextType = e.target.value;
+                                                                                onChange={(val) => {
+                                                                                    const nextType = val;
                                                                                     setEditedCase({
                                                                                         ...editedCase,
                                                                                         tipo: nextType as CaseType,
                                                                                         modalidade: (MODALITY_OPTIONS[nextType] || user?.preferences?.customModalities?.[nextType] || [])[0] || undefined
                                                                                     });
                                                                                 }}
-                                                                            >
-                                                                                {[...Object.values(CaseType), ...(user?.preferences?.customCaseTypes || [])].map(t => <option key={t} value={t}>{t}</option>)}
-                                                                            </select>
+                                                                                options={[...Object.values(CaseType), ...(user?.preferences?.customCaseTypes || [])].map(t => ({ label: t, value: t }))}
+                                                                                placeholder="Selecione o Tipo"
+                                                                            />
                                                                         )}
                                                                     </motion.div>
                                                                 ) : (
@@ -977,19 +979,19 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                             transition={{ duration: 0.15 }}
                                                                         >
                                                                             {!showNewModalityInput ? (
-                                                                                <select
-                                                                                    className="w-full bg-[var(--bg-base)] border border-[var(--border-main)] rounded-lg px-3 py-2.5 text-sm text-white focus:border-gold-500 outline-none transition-all cursor-pointer"
-                                                                                    value={editedCase.modalidade}
-                                                                                    onChange={e => setEditedCase({ ...editedCase, modalidade: e.target.value })}
-                                                                                >
-                                                                                    {currentModalityOptions.map(m => <option key={m} value={m}>{m}</option>)}
-                                                                                </select>
+                                                                                <CustomSelect
+                                                                                    label=""
+                                                                                    value={editedCase.modalidade || ''}
+                                                                                    onChange={(val) => setEditedCase({ ...editedCase, modalidade: val })}
+                                                                                    options={currentModalityOptions.map(m => ({ label: m, value: m }))}
+                                                                                    placeholder="Selecione a Modalidade"
+                                                                                />
                                                                             ) : (
                                                                                 <div className="flex gap-2">
                                                                                     <input
                                                                                         type="text"
                                                                                         autoFocus
-                                                                                        className="flex-1 bg-[var(--bg-base)] border border-[var(--border-main)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500 transition-all font-medium"
+                                                                                        className="flex-1 bg-[#131418] border border-white/5 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500 transition-all font-medium"
                                                                                         placeholder="Nova modalidade..."
                                                                                         value={newModalityValue}
                                                                                         onChange={(e) => setNewModalityValue(e.target.value)}
@@ -1027,7 +1029,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                         transition={{ duration: 0.15 }}
                                                                     >
                                                                         <input
-                                                                            className="w-full bg-[var(--bg-base)] border border-[var(--border-main)] rounded-lg px-3 py-2.5 text-sm text-white focus:border-gold-500 outline-none transition-all"
+                                                                            className="w-full bg-[#131418] border border-white/5 rounded-lg px-3 py-2.5 text-sm text-white focus:border-gold-500 outline-none transition-all"
                                                                             value={editedCase.tribunal}
                                                                             onChange={e => setEditedCase({ ...editedCase, tribunal: e.target.value })}
                                                                         />
@@ -1056,13 +1058,13 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                         exit={{ opacity: 0, x: 10 }}
                                                                         transition={{ duration: 0.15 }}
                                                                     >
-                                                                        <select
-                                                                            className="w-full bg-[var(--bg-base)] border border-[var(--border-main)] rounded-lg px-3 py-2.5 text-sm text-white focus:border-gold-500 outline-none transition-all cursor-pointer"
+                                                                        <CustomSelect
+                                                                            label=""
                                                                             value={editedCase.status}
-                                                                            onChange={e => setEditedCase({ ...editedCase, status: e.target.value as CaseStatus })}
-                                                                        >
-                                                                            {availableStatuses.map(s => <option key={s} value={s}>{s}</option>)}
-                                                                        </select>
+                                                                            onChange={(val) => setEditedCase({ ...editedCase, status: val as CaseStatus })}
+                                                                            options={availableStatuses.map(s => ({ label: s, value: s }))}
+                                                                            placeholder="Selecione o Status"
+                                                                        />
                                                                     </motion.div>
                                                                 ) : (
                                                                     <motion.div
@@ -1099,7 +1101,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                                 >
                                                                                     <input
                                                                                         type={field.type || 'text'}
-                                                                                        className="w-full bg-navy-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-gold-500 outline-none transition-all [color-scheme:dark]"
+                                                                                        className="w-full bg-[#131418] border border-white/5 rounded-lg px-3 py-2.5 text-sm text-white focus:border-gold-500 outline-none transition-all [color-scheme:dark]"
                                                                                         placeholder={field.placeholder}
                                                                                         value={editedCase.metadata?.[field.key] || ''}
                                                                                         onChange={e => setEditedCase({
@@ -1134,25 +1136,25 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
 
                                                 {/* 2. Seguro Defeso Installments */}
                                                 {isSeguroDefesoFinished && (
-                                                    <div className="bg-navy-900 border border-slate-800 rounded-xl p-6 shadow-sm">
+                                                    <div className="bg-[#18181b] border border-white/5 rounded-xl p-6 shadow-sm">
                                                         <h3 className="text-sm font-bold text-slate-400 uppercase mb-5 flex items-center gap-2 tracking-wider">
                                                             <DollarSign size={16} className="text-gold-500" /> Cronograma do Seguro
                                                         </h3>
 
                                                         {installments.length === 0 ? (
-                                                            <div className="text-center py-8 bg-zinc-900/50 rounded-xl border border-dashed border-zinc-800">
+                                                            <div className="text-center py-8 bg-[#131418] rounded-xl border border-dashed border-white/10">
                                                                 <p className="text-sm text-zinc-400 mb-4">Nenhum cronograma gerado para este benefício.</p>
                                                                 <div className="flex items-center justify-center gap-3">
                                                                     <input
                                                                         type="date"
-                                                                        className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white [color-scheme:dark] outline-none focus:border-yellow-600"
+                                                                        className="bg-[#18181b] border border-white/10 rounded-lg px-3 py-2 text-sm text-white [color-scheme:dark] outline-none focus:border-gold-500"
                                                                         value={installmentStartDate}
                                                                         onChange={(e) => setInstallmentStartDate(e.target.value)}
                                                                     />
                                                                     <button
                                                                         onClick={handleGenerateInstallments}
                                                                         disabled={isGeneratingInstallments}
-                                                                        className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-yellow-900/20 disabled:opacity-50 transition-all"
+                                                                        className="bg-gold-600 hover:bg-gold-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-gold-900/20 disabled:opacity-50 transition-all"
                                                                     >
                                                                         {isGeneratingInstallments ? 'Gerando...' : 'Gerar 4 Parcelas'}
                                                                     </button>
@@ -1161,7 +1163,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                         ) : (
                                                             <div className="overflow-x-auto">
                                                                 <table className="w-full text-left">
-                                                                    <thead className="bg-zinc-900/50 text-xs text-zinc-500 uppercase font-bold border-b border-zinc-800">
+                                                                    <thead className="bg-[#131418] text-xs text-zinc-500 uppercase font-bold border-b border-white/5">
                                                                         <tr>
                                                                             <th className="px-4 py-3 rounded-tl-lg">#</th>
                                                                             <th className="px-4 py-3">Vencimento</th>
@@ -1170,16 +1172,16 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                             <th className="px-4 py-3 text-center rounded-tr-lg">Status</th>
                                                                         </tr>
                                                                     </thead>
-                                                                    <tbody className="text-sm divide-y divide-zinc-800/50">
+                                                                    <tbody className="text-sm divide-y divide-white/5">
                                                                         {installments.map((inst, idx) => (
-                                                                            <tr key={inst.id} className="hover:bg-zinc-900/30 transition-colors">
+                                                                            <tr key={inst.id} className="hover:bg-white/5 transition-colors">
                                                                                 <td className="px-4 py-3 text-zinc-500 font-mono font-bold">{inst.parcela_numero}</td>
                                                                                 <td className="px-4 py-3 text-zinc-300">
                                                                                     {!isEditMode && formatDateDisplay(inst.data_vencimento)}
                                                                                     {isEditMode && (
                                                                                         <input
                                                                                             type="date"
-                                                                                            className="bg-transparent border-b border-zinc-700 focus:border-yellow-600 outline-none text-white w-32 [color-scheme:dark]"
+                                                                                            className="bg-transparent border-b border-white/10 focus:border-gold-500 outline-none text-white w-32 [color-scheme:dark]"
                                                                                             value={inst.data_vencimento}
                                                                                             onChange={(e) => handleInstallmentChange(idx, 'data_vencimento', e.target.value)}
                                                                                             onBlur={() => handleInstallmentSave(installments[idx])}
@@ -1198,14 +1200,12 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                                     </div>
                                                                                 </td>
                                                                                 <td className="px-4 py-3">
-                                                                                    <select
-                                                                                        className="bg-transparent border-b border-zinc-700 focus:border-yellow-600 outline-none text-zinc-300 text-xs cursor-pointer py-1"
-                                                                                        value={inst.destino || 'Escritório'}
-                                                                                        onChange={(e) => handleInstallmentChange(idx, 'destino', e.target.value)}
+                                                                                    <button
+                                                                                        onClick={() => handleInstallmentChange(idx, 'destino', inst.destino === 'Cliente' ? 'Escritório' : 'Cliente')}
+                                                                                        className={`px-2 py-1 rounded text-xs font-bold uppercase border transition-all ${inst.destino === 'Cliente' ? 'bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/20' : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-white'}`}
                                                                                     >
-                                                                                        <option value="Escritório" className="bg-[#09090b]">Escritório</option>
-                                                                                        <option value="Cliente" className="bg-[#09090b]">Cliente</option>
-                                                                                    </select>
+                                                                                        {inst.destino || 'Escritório'}
+                                                                                    </button>
                                                                                 </td>
                                                                                 <td className="px-4 py-3 text-center">
                                                                                     <button
@@ -1226,12 +1226,12 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                 )}
 
                                                 {/* 3. GPS Section */}
-                                                <div className="bg-navy-900 border border-slate-800 rounded-xl p-6 shadow-sm">
+                                                <div className="bg-[#18181b] border border-white/5 rounded-xl p-6 shadow-sm">
                                                     <div className="flex justify-between items-center mb-5">
                                                         <h3 className="text-sm font-bold text-slate-400 uppercase flex items-center gap-2 tracking-wider">
                                                             <FileSpreadsheet size={16} className="text-gold-500" /> Guias GPS (INSS)
                                                         </h3>
-                                                        <button onClick={() => setIsAddingGps(!isAddingGps)} className="text-xs text-yellow-600 hover:text-white flex items-center gap-1 hover:bg-yellow-600/10 px-3 py-1.5 rounded-lg transition-colors font-medium border border-transparent hover:border-yellow-600/20">
+                                                        <button onClick={() => setIsAddingGps(!isAddingGps)} className="text-xs text-gold-500 hover:text-white flex items-center gap-1 hover:bg-gold-500/10 px-3 py-1.5 rounded-lg transition-colors font-medium border border-transparent hover:border-gold-500/20">
                                                             <Plus size={14} /> Adicionar Guia
                                                         </button>
                                                     </div>
@@ -1240,17 +1240,17 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                         <div className="flex gap-2 mb-4 animate-in slide-in-from-top-2">
                                                             <input
                                                                 type="month"
-                                                                className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-yellow-600 [color-scheme:dark]"
+                                                                className="flex-1 bg-[#131418] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500 [color-scheme:dark]"
                                                                 value={newGpsCompetencia}
                                                                 onChange={(e) => setNewGpsCompetencia(e.target.value)}
                                                             />
-                                                            <button onClick={handleAddGps} className="bg-yellow-600 text-white px-4 rounded-lg text-sm font-bold">Salvar</button>
+                                                            <button onClick={handleAddGps} className="bg-gold-600 text-white px-4 rounded-lg text-sm font-bold">Salvar</button>
                                                         </div>
                                                     )}
 
                                                     <div className="space-y-2">
                                                         {(liveCase.gps_lista || []).map(gps => (
-                                                            <div key={gps.id} className="flex justify-between items-center p-3 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-main)]">
+                                                            <div key={gps.id} className="flex justify-between items-center p-3 bg-[#131418] rounded-lg border border-white/5">
                                                                 <div>
                                                                     <p className="text-sm font-bold text-zinc-200">Competência: {gps.competencia}</p>
                                                                     <p className="text-xs text-zinc-500">
@@ -1308,25 +1308,33 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                 </div>
 
                                                 {/* 4. Movimentações Financeiras */}
-                                                <div className="bg-navy-900 border border-slate-800 rounded-xl p-6 shadow-sm">
+                                                <div className="bg-[#18181b] border border-white/5 rounded-xl p-6 shadow-sm">
                                                     <div className="flex justify-between items-center mb-5">
                                                         <h3 className="text-sm font-bold text-slate-400 uppercase flex items-center gap-2 tracking-wider"><DollarSign size={16} className="text-gold-500" /> Movimentações Financeiras</h3>
-                                                        <button onClick={() => setIsAddingFinancial(!isAddingFinancial)} className="text-xs text-yellow-600 hover:text-white flex items-center gap-1 hover:bg-yellow-600/10 px-3 py-1.5 rounded-lg transition-colors font-medium border border-transparent hover:border-yellow-600/20"><Plus size={14} /> Adicionar</button>
+                                                        <button onClick={() => setIsAddingFinancial(!isAddingFinancial)} className="text-xs text-gold-500 hover:text-white flex items-center gap-1 hover:bg-gold-500/10 px-3 py-1.5 rounded-lg transition-colors font-medium border border-transparent hover:border-gold-500/20"><Plus size={14} /> Adicionar</button>
                                                     </div>
 
                                                     {isAddingFinancial && (
-                                                        <div className="bg-zinc-900/50 p-4 rounded-xl mb-4 border border-dashed border-zinc-700 animate-in slide-in-from-top-2">
+                                                        <div className="bg-[#131418] p-4 rounded-xl mb-4 border border-dashed border-white/10 animate-in slide-in-from-top-2">
                                                             <div className="flex flex-col gap-3 mb-3">
                                                                 <div className="flex gap-3">
-                                                                    <select className="bg-[#0f1014] border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white w-1/3 outline-none focus:border-yellow-600" value={newFinancial.type} onChange={e => setNewFinancial({ ...newFinancial, type: e.target.value as FinancialType })}>
-                                                                        <option value={FinancialType.RECEITA}>Receita</option>
-                                                                        <option value={FinancialType.DESPESA}>Despesa</option>
-                                                                        <option value={FinancialType.COMISSAO}>Comissão</option>
-                                                                    </select>
-                                                                    <input className="w-32 bg-[#0f1014] border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-yellow-600" placeholder="R$ 0,00" value={newFinancial.val} onChange={e => setNewFinancial({ ...newFinancial, val: formatCurrencyInput(e.target.value) })} />
+                                                                    <div className="w-1/3">
+                                                                        <CustomSelect
+                                                                            label=""
+                                                                            value={newFinancial.type}
+                                                                            onChange={(val) => setNewFinancial({ ...newFinancial, type: val as FinancialType })}
+                                                                            options={[
+                                                                                { label: 'Receita', value: FinancialType.RECEITA },
+                                                                                { label: 'Despesa', value: FinancialType.DESPESA },
+                                                                                { label: 'Comissão', value: FinancialType.COMISSAO }
+                                                                            ]}
+                                                                            placeholder="Tipo"
+                                                                        />
+                                                                    </div>
+                                                                    <input className="w-32 bg-[#18181b] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-gold-500" placeholder="R$ 0,00" value={newFinancial.val} onChange={e => setNewFinancial({ ...newFinancial, val: formatCurrencyInput(e.target.value) })} />
                                                                     <input
                                                                         type="date"
-                                                                        className="bg-[#0f1014] border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-yellow-600"
+                                                                        className="bg-[#18181b] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500"
                                                                         value={newFinancial.date}
                                                                         onChange={e => setNewFinancial({ ...newFinancial, date: e.target.value })}
                                                                     />
@@ -1360,7 +1368,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                         <input
                                                                             type="checkbox"
                                                                             id="is_honorary"
-                                                                            className="w-4 h-4 rounded border-zinc-700 bg-[#0f1014] text-yellow-600 focus:ring-yellow-600 focus:ring-offset-0"
+                                                                            className="w-4 h-4 rounded border-zinc-700 bg-[#0f1014] text-gold-500 focus:ring-gold-500 focus:ring-offset-0"
                                                                             checked={newFinancial.isHonorary}
                                                                             onChange={e => {
                                                                                 const checked = e.target.checked;
@@ -1381,7 +1389,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                 )}
 
                                                                 <input
-                                                                    className="flex-1 bg-[var(--bg-base)] border border-[var(--border-main)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[var(--text-muted)] outline-none focus:border-gold-500"
+                                                                    className="flex-1 bg-[#18181b] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-gold-500"
                                                                     placeholder={newFinancial.type === FinancialType.COMISSAO ? "Descrição (Opcional)" : (newFinancial.isHonorary ? "Adicione detalhes aos honorários..." : "Descrição da movimentação...")}
                                                                     value={newFinancial.desc}
                                                                     onChange={e => {
@@ -1395,7 +1403,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                 />
                                                             </div>
                                                             <div className="flex justify-end gap-2">
-                                                                <button onClick={() => setIsAddingFinancial(false)} className="text-xs text-[var(--text-muted)] hover:text-white px-3 py-2 rounded hover:bg-[var(--bg-card)] transition-colors">Cancelar</button>
+                                                                <button onClick={() => setIsAddingFinancial(false)} className="text-xs text-zinc-400 hover:text-white px-3 py-2 rounded hover:bg-[#18181b] transition-colors">Cancelar</button>
                                                                 <button onClick={handleAddFinancial} className="text-xs bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-500 font-bold shadow-lg shadow-emerald-900/20 transition-all">Salvar Lançamento</button>
                                                             </div>
                                                         </div>
@@ -1403,7 +1411,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
 
                                                     <div className="space-y-2">
                                                         {caseFinancials.map(f => (
-                                                            <div key={f.id} className="flex flex-col p-3 bg-[var(--bg-surface)] rounded-lg border border-[var(--border-main)] hover:border-gold-500/30 transition-colors group">
+                                                            <div key={f.id} className="flex flex-col p-3 bg-[#131418] rounded-lg border border-white/5 hover:border-gold-500/30 transition-colors group">
                                                                 <div className="flex justify-between items-center">
                                                                     <div>
                                                                         <div className="flex items-center gap-2">
@@ -1429,7 +1437,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
 
                                                                 {/* DETALHES EXTRAS FINANCEIRO (CORRIGIDO: RÓTULOS INVERTIDOS) */}
                                                                 {(f.forma_pagamento || f.recebedor || f.conta) && (
-                                                                    <div className="mt-2 pt-2 border-t border-[var(--border-main)] flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-muted)] bg-[var(--bg-base)]/40 p-2 rounded">
+                                                                    <div className="mt-2 pt-2 border-t border-white/5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-400 bg-white/5 p-2 rounded">
                                                                         {f.forma_pagamento && <span><strong>Forma:</strong> {f.forma_pagamento}</span>}
                                                                         {f.recebedor && <span><strong>{f.tipo === FinancialType.RECEITA ? 'Recebedor' : 'Pagador'}:</strong> {f.recebedor}</span>}
                                                                         {f.conta && <span><strong>Conta:</strong> {f.tipo_conta ? `${f.tipo_conta} - ` : ''}{f.conta}</span>}
@@ -1437,7 +1445,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                 )}
                                                             </div>
                                                         ))}
-                                                        {caseFinancials.length === 0 && <div className="text-[var(--text-muted)] text-xs italic py-4 text-center border border-dashed border-[var(--border-main)] rounded-lg">Nenhuma movimentação extra registrada.</div>}
+                                                        {caseFinancials.length === 0 && <div className="text-zinc-500 text-xs italic py-4 text-center border border-dashed border-white/10 rounded-lg">Nenhuma movimentação extra registrada.</div>}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1445,10 +1453,10 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                             {/* Right Column */}
                                             <div className="space-y-8">
                                                 {!isSeguroDefeso && (
-                                                    <div className="bg-navy-900 border border-slate-800 rounded-xl p-6 shadow-sm">
+                                                    <div className="bg-[#18181b] border border-white/5 rounded-xl p-6 shadow-sm">
                                                         <h3 className="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2 tracking-wider"><DollarSign size={16} className="text-gold-500" /> Honorários & Valores</h3>
                                                         <div className="space-y-5">
-                                                            <div><label className="block text-xs font-bold text-slate-500 mb-1">Valor da Causa</label>{isEditMode ? <input className="w-full bg-[var(--bg-base)] border border-[var(--border-main)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500" value={currencyInput} onChange={handleCurrencyChange} /> : <span className="text-2xl font-bold text-white tracking-tight">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(liveCase.valor_causa)}</span>}</div>
+                                                            <div><label className="block text-xs font-bold text-slate-500 mb-1">Valor da Causa</label>{isEditMode ? <input className="w-full bg-[#131418] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500" value={currencyInput} onChange={handleCurrencyChange} /> : <span className="text-2xl font-bold text-white tracking-tight">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(liveCase.valor_causa)}</span>}</div>
                                                             <div className="pt-4 border-t border-[var(--border-main)]">
                                                                 <label className="block text-xs font-bold text-slate-500 mb-1">Honorários (Êxito)</label>
                                                                 {isEditMode ? (
@@ -1459,15 +1467,17 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                                     <Lock size={14} className="text-zinc-500" />
                                                                                 </div>
                                                                             )}
-                                                                            <select
-                                                                                className={`w-full bg-[var(--bg-base)] border border-[var(--border-main)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500 ${isHonorariosLocked ? 'opacity-50 cursor-not-allowed text-[var(--text-muted)]' : ''}`}
-                                                                                value={editedCase.status_pagamento}
-                                                                                onChange={handleStatusPagamentoChange}
+                                                                            <CustomSelect
+                                                                                label=""
+                                                                                value={editedCase.status_pagamento || 'Pendente'}
+                                                                                onChange={(val) => handleStatusPagamentoChange({ target: { value: val } } as any)}
                                                                                 disabled={isHonorariosLocked}
-                                                                            >
-                                                                                <option value="Pendente">Pendente</option>
-                                                                                <option value="Pago">Pago</option>
-                                                                            </select>
+                                                                                options={[
+                                                                                    { label: 'Pendente', value: 'Pendente' },
+                                                                                    { label: 'Pago', value: 'Pago' }
+                                                                                ]}
+                                                                                placeholder="Status"
+                                                                            />
                                                                         </div>
                                                                         {isHonorariosLocked && (
                                                                             <p className="text-[10px] text-zinc-500 flex items-center gap-1">
@@ -1477,7 +1487,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                         <div className="relative">
                                                                             <input
                                                                                 type="text"
-                                                                                className={`w-full bg-[var(--bg-base)] border border-[var(--border-main)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500 ${!isSeguroDefeso ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                                                className={`w-full bg-[#131418] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500 ${!isSeguroDefeso ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                                                 value={!isSeguroDefeso ? formatCurrencyInput((totalHonorariosFromFinancials * 100).toString()) : honorariosInput}
                                                                                 onChange={handleHonorariosChange}
                                                                                 placeholder="R$ 0,00"
@@ -1497,7 +1507,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                     </div>
                                                                 ) : (
                                                                     <div className="flex flex-col gap-2">
-                                                                        <div className="flex justify-between items-center bg-[var(--bg-surface)] p-3 rounded-lg border border-[var(--border-main)]">
+                                                                        <div className="flex justify-between items-center bg-[#131418] p-3 rounded-lg border border-white/5">
                                                                             <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${liveCase.status_pagamento === 'Pago' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'}`}>{liveCase.status_pagamento}</span>
                                                                             <span className="font-bold text-emerald-500 text-lg">
                                                                                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalHonorariosFromFinancials)}
@@ -1529,7 +1539,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                     </div>
                                                 )}
 
-                                                <div className="bg-navy-900 border border-slate-800 rounded-xl p-6 shadow-sm">
+                                                <div className="bg-[#18181b] border border-white/5 rounded-xl p-6 shadow-sm">
                                                     <h3 className="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2 tracking-wider"><Clock size={16} className="text-gold-500" /> Prazo Fatal (SLA)</h3>
                                                     <AnimatePresence mode="wait">
                                                         {isEditMode ? (
@@ -1567,16 +1577,17 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                 </div>
 
                                                 {/* Events and Contact */}
-                                                <div className="bg-navy-900 border border-slate-800 rounded-xl p-6 shadow-sm">
+                                                <div className="bg-[#18181b] border border-white/5 rounded-xl p-6 shadow-sm">
                                                     <div className="flex justify-between items-center mb-4">
                                                         <h3 className="text-sm font-bold text-slate-400 uppercase flex items-center gap-2 tracking-wider">
                                                             <Calendar size={16} className="text-gold-500" /> Próximos Eventos
                                                         </h3>
                                                         <button onClick={() => { setIsAddingEvent(!isAddingEvent); setIsCustomEventType(false); setCustomEventType(''); }} className="text-xs text-gold-500 hover:text-white flex items-center gap-1 hover:bg-gold-500/10 px-2 py-1 rounded transition-colors border border-transparent hover:border-gold-500/20"><Plus size={12} /> Adicionar</button></div>
                                                     {isAddingEvent && (
-                                                        <div className="bg-zinc-900/50 p-3 rounded-xl mb-3 border border-dashed border-zinc-700 animate-in slide-in-from-top-2 space-y-2">
+
+                                                        <div className="bg-[#131418] p-3 rounded-xl mb-3 border border-dashed border-white/10 animate-in slide-in-from-top-2 space-y-2">
                                                             <input
-                                                                className="w-full bg-[#0f1014] border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-yellow-600"
+                                                                className="w-full bg-[#18181b] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-gold-500"
                                                                 placeholder="Título do evento"
                                                                 value={newEvent.titulo || ''}
                                                                 onChange={e => setNewEvent({ ...newEvent, titulo: e.target.value })}
@@ -1587,7 +1598,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                         <div className="flex gap-1">
                                                                             <input
                                                                                 autoFocus
-                                                                                className="flex-1 bg-[#0f1014] border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-yellow-600"
+                                                                                className="flex-1 bg-[#18181b] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-gold-500"
                                                                                 placeholder="Tipo do evento..."
                                                                                 value={customEventType}
                                                                                 onChange={e => setCustomEventType(e.target.value)}
@@ -1597,7 +1608,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                     ) : (
                                                                         <div className="flex gap-1">
                                                                             <select
-                                                                                className="flex-1 bg-[#0f1014] border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-yellow-600"
+                                                                                className="flex-1 bg-[#18181b] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-gold-500"
                                                                                 value={newEvent.tipo}
                                                                                 onChange={e => {
                                                                                     if (e.target.value === 'ADD_NEW') {
@@ -1608,14 +1619,14 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                                 }}
                                                                             >
                                                                                 {Object.values(EventType).map(t => <option key={t} value={t}>{t}</option>)}
-                                                                                <option value="ADD_NEW" className="text-yellow-600 font-bold">+ Adicionar Novo Tipo</option>
+                                                                                <option value="ADD_NEW" className="text-gold-500 font-bold">+ Adicionar Novo Tipo</option>
                                                                             </select>
                                                                         </div>
                                                                     )}
                                                                 </div>
                                                                 <input
                                                                     type="datetime-local"
-                                                                    className="w-full bg-[#0f1014] border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-yellow-600 [color-scheme:dark]"
+                                                                    className="w-full bg-[#18181b] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-gold-500 [color-scheme:dark]"
                                                                     value={newEvent.data_hora}
                                                                     onChange={e => setNewEvent({ ...newEvent, data_hora: e.target.value })}
                                                                 />
@@ -1623,7 +1634,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
 
                                                             {(newEvent.tipo === EventType.PERICIA || customEventType.toLowerCase().includes('pericia') || customEventType.toLowerCase().includes('perícia')) && (
                                                                 <input
-                                                                    className="w-full bg-[#0f1014] border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-yellow-600 animate-in fade-in"
+                                                                    className="w-full bg-[#18181b] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-gold-500 animate-in fade-in"
                                                                     placeholder="Cidade da Perícia"
                                                                     value={newEvent.cidade || ''}
                                                                     onChange={e => setNewEvent({ ...newEvent, cidade: e.target.value })}
@@ -1632,7 +1643,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
 
                                                             <div className="flex justify-end gap-2">
                                                                 <button onClick={() => setIsAddingEvent(false)} className="text-xs text-zinc-400 hover:text-white px-2 py-1">Cancelar</button>
-                                                                <button onClick={handleAddEvent} className="text-xs bg-emerald-600 text-white px-3 py-1 rounded hover:bg-emerald-500 font-bold">Salvar</button>
+                                                                <button onClick={handleAddEvent} className="text-xs bg-emerald-600 text-white px-3 py-1 rounded hover:bg-emerald-500 font-bold shadow-lg shadow-emerald-900/20">Salvar</button>
                                                             </div>
                                                         </div>
                                                     )}
@@ -1640,9 +1651,9 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                         {caseEvents.length > 0 ? caseEvents.map(e => (
                                                             <div key={e.id}>
                                                                 {editingEvent?.id === e.id ? (
-                                                                    <div className="bg-zinc-900/80 p-3 rounded-xl mb-2 border border-yellow-600/30 animate-in slide-in-from-top-1 space-y-2">
+                                                                    <div className="bg-[#18181b] p-3 rounded-xl mb-2 border border-gold-500/30 animate-in slide-in-from-top-1 space-y-2">
                                                                         <input
-                                                                            className="w-full bg-[#0f1014] border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-yellow-600"
+                                                                            className="w-full bg-[#131418] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-gold-500"
                                                                             placeholder="Título do evento"
                                                                             value={editingEvent.titulo || ''}
                                                                             onChange={ev => setEditingEvent({ ...editingEvent, titulo: ev.target.value })}
@@ -1653,7 +1664,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                                     <div className="flex gap-1">
                                                                                         <input
                                                                                             autoFocus
-                                                                                            className="flex-1 bg-[#0f1014] border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-yellow-600"
+                                                                                            className="flex-1 bg-[#131418] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-gold-500"
                                                                                             placeholder="Tipo..."
                                                                                             value={customEventType}
                                                                                             onChange={ev => setCustomEventType(ev.target.value)}
@@ -1662,7 +1673,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                                     </div>
                                                                                 ) : (
                                                                                     <select
-                                                                                        className="w-full bg-[#0f1014] border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-yellow-600"
+                                                                                        className="w-full bg-[#131418] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-gold-500"
                                                                                         value={editingEvent.tipo}
                                                                                         onChange={ev => {
                                                                                             if (ev.target.value === 'ADD_NEW') {
@@ -1674,24 +1685,24 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                                                         }}
                                                                                     >
                                                                                         {Object.values(EventType).map(t => <option key={t} value={t}>{t}</option>)}
-                                                                                        <option value="ADD_NEW" className="text-yellow-600 font-bold">+ Novo Tipo</option>
+                                                                                        <option value="ADD_NEW" className="text-gold-500 font-bold">+ Novo Tipo</option>
                                                                                     </select>
                                                                                 )}
                                                                             </div>
                                                                             <input
                                                                                 type="datetime-local"
-                                                                                className="w-full bg-[#0f1014] border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-yellow-600 [color-scheme:dark]"
+                                                                                className="w-full bg-[#131418] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-gold-500 [color-scheme:dark]"
                                                                                 value={editingEvent.data_hora}
                                                                                 onChange={ev => setEditingEvent({ ...editingEvent, data_hora: ev.target.value })}
                                                                             />
                                                                         </div>
                                                                         <div className="flex justify-end gap-2 mt-2">
                                                                             <button onClick={() => setEditingEvent(null)} className="text-[10px] text-zinc-500 hover:text-white">Cancelar</button>
-                                                                            <button onClick={handleUpdateEventLocal} className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded hover:bg-emerald-500 font-bold">Salvar</button>
+                                                                            <button onClick={handleUpdateEventLocal} className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded hover:bg-emerald-500 font-bold shadow-lg shadow-emerald-900/20">Salvar</button>
                                                                         </div>
                                                                     </div>
                                                                 ) : (
-                                                                    <div className="flex justify-between items-center p-3 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-yellow-600/30 transition-all group">
+                                                                    <div className="flex justify-between items-center p-3 bg-[#131418] rounded-lg border border-white/5 hover:border-gold-500/30 transition-all group">
                                                                         <div className="flex items-center gap-3">
                                                                             <div className={`p-2 rounded-lg ${e.tipo === EventType.AUDIENCIA ? 'bg-red-500/10 text-red-400' : e.tipo === EventType.PERICIA ? 'bg-blue-500/10 text-blue-400' : 'bg-gold-500/10 text-gold-500'}`}>
                                                                                 <Calendar size={16} />
@@ -1722,15 +1733,15 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                             {
                                 activeTab === 'checklist' && (
                                     <div className="space-y-6">
-                                        <div className="bg-[var(--bg-card)] border border-[var(--border-main)] rounded-xl p-6 shadow-lg">
+                                        <div className="bg-[#18181b] border border-white/5 rounded-xl p-6 shadow-lg">
                                             <div className="flex justify-between items-center mb-6">
-                                                <h3 className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-2"><ClipboardList size={14} /> Checklist de Documentação</h3>
+                                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2"><ClipboardList size={14} /> Checklist de Documentação</h3>
                                                 <span className="text-[10px] font-bold bg-gold-500/10 text-gold-500 px-2 py-0.5 rounded border border-gold-500/20">{caseTasks.filter(t => t.concluido).length}/{caseTasks.length || 0} CONCLUÍDOS</span>
                                             </div>
 
                                             <div className="flex gap-3 mb-6">
                                                 <input
-                                                    className="flex-1 bg-[var(--bg-base)] border border-[var(--border-main)] rounded-lg px-4 py-2 text-sm text-white outline-none focus:border-gold-500 transition-all placeholder:[var(--text-muted)]"
+                                                    className="flex-1 bg-[#131418] border border-white/10 rounded-lg px-4 py-2 text-sm text-white outline-none focus:border-gold-500 transition-all placeholder:text-zinc-600"
                                                     placeholder="Adicionar novo item..."
                                                     value={newTaskTitle}
                                                     onChange={e => setNewTaskTitle(e.target.value)}
@@ -1748,7 +1759,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                 {caseTasks.map(task => (
                                                     <div
                                                         key={task.id}
-                                                        className={`flex items-center justify-between p-4 rounded-xl border transition-all group ${task.concluido ? 'bg-[var(--bg-base)]/50 border-[var(--border-main)]' : 'bg-[var(--bg-card)] border-[var(--border-main)] hover:border-gold-500/30 shadow-md'}`}
+                                                        className={`flex items-center justify-between p-4 rounded-xl border transition-all group ${task.concluido ? 'bg-[#131418]/50 border-white/5' : 'bg-[#131418] border-white/5 hover:border-gold-500/30 shadow-md'}`}
                                                     >
                                                         <div className="flex items-center gap-4">
                                                             <button
@@ -1763,8 +1774,8 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                                     </div>
                                                 ))}
                                                 {caseTasks.length === 0 && (
-                                                    <div className="text-center py-12 border-2 border-dashed border-[var(--border-main)] rounded-2xl">
-                                                        <p className="text-[var(--text-muted)] text-sm italic">O checklist está vazio.</p>
+                                                    <div className="text-center py-12 border-2 border-dashed border-white/5 rounded-2xl">
+                                                        <p className="text-zinc-500 text-sm italic">O checklist está vazio.</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -1778,8 +1789,8 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                 activeTab === 'access' && (
                                     <div className="space-y-6">
                                         <div className="flex justify-between items-center mb-6"><h3 className="text-lg font-bold text-white flex items-center gap-2"><LockIcon size={20} className="text-gold-500" /> Credenciais e Links</h3><button onClick={() => setIsAddingAccess(!isAddingAccess)} className="bg-gold-500 hover:bg-gold-600 text-black px-4 py-2 rounded-lg text-sm flex items-center gap-2 font-medium shadow-lg shadow-gold-500/20"><Plus size={16} /> Adicionar Acesso</button></div>
-                                        {isAddingAccess && (<div className="bg-[var(--bg-card)] p-6 rounded-xl border border-[var(--border-main)] mb-6 animate-in slide-in-from-top-2 shadow-lg"><div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5"><div><label className="block text-xs font-bold text-[var(--text-muted)] mb-1 uppercase">Sistema</label><input className="w-full bg-[var(--bg-base)] border border-[var(--border-main)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500" placeholder="Ex: Meu INSS" value={newAccess.nome_sistema || ''} onChange={e => setNewAccess({ ...newAccess, nome_sistema: e.target.value })} list="systems-list" /><datalist id="systems-list">{COMMON_SYSTEMS.map(s => <option key={s.name} value={s.name} />)}</datalist></div><div><label className="block text-xs font-bold text-[var(--text-muted)] mb-1 uppercase">URL (Link)</label><input className="w-full bg-[var(--bg-base)] border border-[var(--border-main)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500" placeholder="https://..." value={newAccess.url || ''} onChange={e => setNewAccess({ ...newAccess, url: e.target.value })} /></div><div><label className="block text-xs font-bold text-[var(--text-muted)] mb-1 uppercase">Login/CPF</label><input className="w-full bg-[var(--bg-base)] border border-[var(--border-main)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500" value={newAccess.login || ''} onChange={e => setNewAccess({ ...newAccess, login: e.target.value })} /></div><div><label className="block text-xs font-bold text-[var(--text-muted)] mb-1 uppercase">Senha</label><input className="w-full bg-[var(--bg-base)] border border-[var(--border-main)] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500" value={newAccess.senha || ''} onChange={e => setNewAccess({ ...newAccess, senha: e.target.value })} /></div></div><div className="flex justify-end gap-3"><button onClick={() => setIsAddingAccess(false)} className="text-[var(--text-muted)] hover:text-white px-4 py-2 text-sm font-medium hover:bg-[var(--bg-card)] rounded-lg transition-colors">Cancelar</button><button onClick={handleAddAccess} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-sm font-bold shadow-lg shadow-emerald-900/20">Salvar Acesso</button></div></div>)}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">{(liveCase.acessos || []).map(access => (<div key={access.id} className="bg-[var(--bg-card)] border border-[var(--border-main)] rounded-xl p-5 hover:border-gold-500/30 transition-all group relative shadow-md"><div className="flex items-center gap-4 mb-4"><div className="p-3 bg-[var(--bg-surface)] rounded-xl text-gold-500 border border-[var(--border-main)]"><Globe size={20} /></div><div><h4 className="font-bold text-white text-sm">{access.nome_sistema}</h4><a href={access.url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline flex items-center gap-1 mt-0.5">{access.url.substring(0, 30)}... <ExternalLink size={10} /></a></div><button onClick={() => handleDeleteAccess(access.id)} className="absolute top-4 right-4 text-zinc-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded hover:bg-zinc-800"><Trash2 size={16} /></button></div><div className="space-y-3 bg-[var(--bg-surface)] p-4 rounded-xl border border-[var(--border-main)]"><div className="flex justify-between items-center"><span className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-wider">Login</span><div className="flex items-center gap-2"><span className="text-sm font-mono text-zinc-300 bg-[var(--bg-base)] px-2 py-0.5 rounded border border-[var(--border-main)]">{access.login}</span><button onClick={() => copyToClipboard(access.login)} className="text-zinc-500 hover:text-white p-1 rounded hover:bg-zinc-800" title="Copiar"><Copy size={12} /></button></div></div><div className="flex justify-between items-center border-t border-[var(--border-main)] pt-3"><span className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-wider">Senha</span><div className="flex items-center gap-2"><span className="text-sm font-mono text-zinc-300 bg-[var(--bg-base)] px-2 py-0.5 rounded border border-[var(--border-main)]">{showPassword[access.id] ? access.senha : '••••••••'}</span><button onClick={() => togglePasswordVisibility(access.id)} className="text-zinc-500 hover:text-white p-1 rounded hover:bg-zinc-800">{showPassword[access.id] ? <EyeOff size={12} /> : <Eye size={12} />}</button><button onClick={() => copyToClipboard(access.senha || '')} className="text-zinc-500 hover:text-white p-1 rounded hover:bg-zinc-800" title="Copiar"><Copy size={12} /></button></div></div></div></div>))}{(liveCase.acessos || []).length === 0 && <div className="col-span-full py-12 text-center text-[var(--text-muted)] border border-dashed border-[var(--border-main)] rounded-xl bg-[var(--bg-card)]">Nenhum acesso cadastrado.</div>}</div>
+                                        {isAddingAccess && (<div className="bg-[#18181b] p-6 rounded-xl border border-white/5 mb-6 animate-in slide-in-from-top-2 shadow-lg"><div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5"><div><label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Sistema</label><input className="w-full bg-[#131418] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500" placeholder="Ex: Meu INSS" value={newAccess.nome_sistema || ''} onChange={e => setNewAccess({ ...newAccess, nome_sistema: e.target.value })} list="systems-list" /><datalist id="systems-list">{COMMON_SYSTEMS.map(s => <option key={s.name} value={s.name} />)}</datalist></div><div><label className="block text-xs font-bold text-slate-400 mb-1 uppercase">URL (Link)</label><input className="w-full bg-[#131418] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500" placeholder="https://..." value={newAccess.url || ''} onChange={e => setNewAccess({ ...newAccess, url: e.target.value })} /></div><div><label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Login/CPF</label><input className="w-full bg-[#131418] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500" value={newAccess.login || ''} onChange={e => setNewAccess({ ...newAccess, login: e.target.value })} /></div><div><label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Senha</label><input className="w-full bg-[#131418] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500" value={newAccess.senha || ''} onChange={e => setNewAccess({ ...newAccess, senha: e.target.value })} /></div></div><div className="flex justify-end gap-3"><button onClick={() => setIsAddingAccess(false)} className="text-zinc-400 hover:text-white px-4 py-2 text-sm font-medium hover:bg-[#131418] rounded-lg transition-colors">Cancelar</button><button onClick={handleAddAccess} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-sm font-bold shadow-lg shadow-emerald-900/20">Salvar Acesso</button></div></div>)}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">{(liveCase.acessos || []).map(access => (<div key={access.id} className="bg-[#18181b] border border-white/5 rounded-xl p-5 hover:border-gold-500/30 transition-all group relative shadow-md"><div className="flex items-center gap-4 mb-4"><div className="p-3 bg-[#131418] rounded-xl text-gold-500 border border-white/5"><Globe size={20} /></div><div><h4 className="font-bold text-white text-sm">{access.nome_sistema}</h4><a href={access.url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline flex items-center gap-1 mt-0.5">{access.url.substring(0, 30)}... <ExternalLink size={10} /></a></div><button onClick={() => handleDeleteAccess(access.id)} className="absolute top-4 right-4 text-zinc-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded hover:bg-zinc-800"><Trash2 size={16} /></button></div><div className="space-y-3 bg-[#131418] p-4 rounded-xl border border-white/5"><div className="flex justify-between items-center"><span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Login</span><div className="flex items-center gap-2"><span className="text-sm font-mono text-zinc-300 bg-[#18181b] px-2 py-0.5 rounded border border-white/5">{access.login}</span><button onClick={() => copyToClipboard(access.login)} className="text-zinc-500 hover:text-white p-1 rounded hover:bg-zinc-800" title="Copiar"><Copy size={12} /></button></div></div><div className="flex justify-between items-center border-t border-white/5 pt-3"><span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Senha</span><div className="flex items-center gap-2"><span className="text-sm font-mono text-zinc-300 bg-[#18181b] px-2 py-0.5 rounded border border-white/5">{showPassword[access.id] ? access.senha : '••••••••'}</span><button onClick={() => togglePasswordVisibility(access.id)} className="text-zinc-500 hover:text-white p-1 rounded hover:bg-zinc-800">{showPassword[access.id] ? <EyeOff size={12} /> : <Eye size={12} />}</button><button onClick={() => copyToClipboard(access.senha || '')} className="text-zinc-500 hover:text-white p-1 rounded hover:bg-zinc-800" title="Copiar"><Copy size={12} /></button></div></div></div></div>))}{(liveCase.acessos || []).length === 0 && <div className="col-span-full py-12 text-center text-zinc-500 border border-dashed border-white/5 rounded-xl bg-[#18181b]">Nenhum acesso cadastrado.</div>}</div>
                                     </div>
                                 )
                             }
@@ -1798,17 +1809,17 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
 
 
                         {/* Footer */}
-                        < div className="p-4 border-t border-[var(--border-main)] bg-[var(--bg-surface)] flex justify-end items-center rounded-b-xl shrink-0" >
-                            <button onClick={onClose} className="px-5 py-2.5 bg-[var(--bg-card)] hover:bg-[var(--bg-base)] text-zinc-300 rounded-lg font-medium transition-colors text-sm">Voltar</button>
-                        </div >
-                    </div >
-                </div >
+                        <div className="p-4 border-t border-white/5 bg-[#131418] flex justify-end items-center rounded-b-xl shrink-0">
+                            <button onClick={onClose} className="px-5 py-2.5 bg-[#18181b] hover:bg-white/5 text-zinc-300 rounded-lg font-medium transition-colors text-sm border border-white/5 hover:border-white/10">Voltar</button>
+                        </div>
+                    </div>
+                </div>
 
                 {/* WHATSAPP MODAL */}
                 {isWhatsAppModalOpen && client && (<WhatsAppModal isOpen={isWhatsAppModalOpen} onClose={() => setIsWhatsAppModalOpen(false)} clientName={client.nome_completo} phone={client.telefone} caseTitle={liveCase.titulo} />)}
 
                 {/* RESTORE MODAL */}
-                {isRestoreModalOpen && (<div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-200"><div className="bg-[var(--bg-surface)] border border-[var(--border-main)] p-6 rounded-xl max-w-sm w-full shadow-2xl"><div className="flex flex-col items-center mb-4"><div className="p-3 bg-emerald-500/10 rounded-full mb-3 text-emerald-500 border border-emerald-500/20"><ArchiveRestore size={24} /></div><h3 className="text-lg font-bold text-white text-center">Restaurar Processo</h3><p className="text-xs text-[var(--text-muted)] text-center mt-1">{liveCase.titulo}</p></div><div className="mb-4"><label className="block text-xs font-bold text-[var(--text-muted)] uppercase mb-1">Motivo da Restauração</label><textarea className="w-full bg-[var(--bg-base)] border border-[var(--border-main)] rounded-lg p-3 text-sm text-white outline-none focus:border-emerald-500 resize-none h-24" placeholder="Ex: Cliente retornou, Fato novo, Erro..." value={restoreReason} onChange={(e) => setRestoreReason(e.target.value)} autoFocus /></div><div className="flex gap-3 justify-center"><button onClick={() => { setIsRestoreModalOpen(false); setRestoreReason(''); }} className="flex-1 px-4 py-2 text-zinc-300 hover:bg-[var(--bg-card)] rounded-lg transition-colors text-sm font-medium">Cancelar</button><button onClick={confirmRestore} className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors text-sm font-medium shadow-lg shadow-emerald-600/20">Restaurar</button></div></div></div>)}
+                {isRestoreModalOpen && (<div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-200"><div className="bg-[#18181b] border border-white/10 p-6 rounded-xl max-w-sm w-full shadow-2xl"><div className="flex flex-col items-center mb-4"><div className="p-3 bg-emerald-500/10 rounded-full mb-3 text-emerald-500 border border-emerald-500/20"><ArchiveRestore size={24} /></div><h3 className="text-lg font-bold text-white text-center">Restaurar Processo</h3><p className="text-xs text-zinc-400 text-center mt-1">{liveCase.titulo}</p></div><div className="mb-4"><label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Motivo da Restauração</label><textarea className="w-full bg-[#131418] border border-white/10 rounded-lg p-3 text-sm text-white outline-none focus:border-emerald-500 resize-none h-24" placeholder="Ex: Cliente retornou, Fato novo, Erro..." value={restoreReason} onChange={(e) => setRestoreReason(e.target.value)} autoFocus /></div><div className="flex gap-3 justify-center"><button onClick={() => { setIsRestoreModalOpen(false); setRestoreReason(''); }} className="flex-1 px-4 py-2 text-zinc-300 hover:bg-[#131418] rounded-lg transition-colors text-sm font-medium">Cancelar</button><button onClick={confirmRestore} className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors text-sm font-medium shadow-lg shadow-emerald-600/20">Restaurar</button></div></div></div>)}
 
                 {/* ================================================================================== */}
                 {/* MODAIS DE CONFIRMAÇÃO DE PAGAMENTO */}

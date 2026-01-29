@@ -129,7 +129,7 @@ export const AssistantSidebar: React.FC = () => {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setIsOpen(false)}
-                            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
+                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
                         />
 
                         <motion.aside
@@ -137,37 +137,39 @@ export const AssistantSidebar: React.FC = () => {
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed top-0 right-0 h-full w-full max-w-[400px] bg-navy-950 border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] z-[70] flex flex-col"
+                            className="fixed top-0 right-0 h-full w-full max-w-[400px] bg-[#131418] border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] z-[70] flex flex-col"
                         >
-                            {/* Header */}
-                            <div className="p-6 border-b border-white/5 bg-gradient-to-r from-navy-900 to-navy-950 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-gold-600/20 rounded-xl">
-                                        <Bot className="text-gold-500" size={24} />
+                            {/* Header Premium */}
+                            <div className="p-6 border-b border-white/5 bg-[#131418] flex items-center justify-between relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+
+                                <div className="flex items-center gap-4 relative z-10">
+                                    <div className="p-2.5 bg-gold-500/10 rounded-2xl text-gold-500 border border-gold-500/20 shadow-lg shadow-gold-500/5 transition-transform hover:scale-105">
+                                        <Bot size={24} />
                                     </div>
                                     <div>
-                                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                                            Clara Copilot <Sparkles size={16} className="text-gold-500" />
+                                        <h2 className="text-2xl font-bold text-white font-serif tracking-tight flex items-center gap-2">
+                                            Clara Copilot <Sparkles size={14} className="text-gold-500" />
                                         </h2>
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
                                             <span className="text-[10px] uppercase font-bold text-emerald-500 tracking-wider">Online & Conectada</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 relative z-10">
                                     <button
                                         onClick={() => setShowSettings(!showSettings)}
-                                        className={`p-2 rounded-full transition-colors ${showSettings ? 'bg-gold-600/20 text-gold-500' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
+                                        className={`p-2 rounded-xl transition-all ${showSettings ? 'bg-gold-500/10 text-gold-500' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
                                         title="Configurações"
                                     >
-                                        <ChevronRight size={20} className={showSettings ? 'rotate-90' : ''} />
+                                        <ChevronRight size={18} className={`transition-transform duration-300 ${showSettings ? 'rotate-90' : ''}`} />
                                     </button>
                                     <button
                                         onClick={() => setIsOpen(false)}
-                                        className="p-2 hover:bg-white/5 rounded-full transition-colors text-zinc-400 hover:text-white"
+                                        className="p-2 hover:bg-white/5 rounded-xl transition-colors text-slate-400 hover:text-white"
                                     >
-                                        <X size={20} />
+                                        <X size={18} />
                                     </button>
                                 </div>
                             </div>
@@ -179,20 +181,20 @@ export const AssistantSidebar: React.FC = () => {
                                         initial={{ height: 0, opacity: 0 }}
                                         animate={{ height: 'auto', opacity: 1 }}
                                         exit={{ height: 0, opacity: 0 }}
-                                        className="overflow-hidden bg-navy-900 border-b border-white/5"
+                                        className="overflow-hidden bg-[#0f1014]/50 border-b border-white/5"
                                     >
                                         <div className="p-4 space-y-3">
-                                            <p className="text-[10px] font-bold text-slate-500 uppercase">Posição do Lançador</p>
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Posição do Lançador</p>
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={togglePosition}
-                                                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border text-xs font-medium transition-all ${triggerPosition === 'floating' ? 'bg-gold-600 border-gold-500 text-white' : 'border-zinc-800 text-zinc-400 hover:border-zinc-700'}`}
+                                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${triggerPosition === 'floating' ? 'bg-gold-600 shadow-lg shadow-gold-600/20 text-black' : 'bg-[#18181b] border border-white/10 text-slate-400 hover:text-white hover:border-white/20'}`}
                                                 >
                                                     Botão Flutuante
                                                 </button>
                                                 <button
                                                     onClick={togglePosition}
-                                                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border text-xs font-medium transition-all ${triggerPosition === 'sidebar' ? 'bg-gold-600 border-gold-500 text-white' : 'border-zinc-800 text-zinc-400 hover:border-zinc-700'}`}
+                                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${triggerPosition === 'sidebar' ? 'bg-gold-600 shadow-lg shadow-gold-600/20 text-black' : 'bg-[#18181b] border border-white/10 text-slate-400 hover:text-white hover:border-white/20'}`}
                                                 >
                                                     Na Sidebar
                                                 </button>
@@ -203,13 +205,19 @@ export const AssistantSidebar: React.FC = () => {
                             </AnimatePresence>
 
                             {/* Alertas Rápidos Contextuais */}
-                            <div className="px-6 py-4 bg-navy-900/50 border-b border-white/5 overflow-x-auto custom-scrollbar">
-                                <div className="flex gap-3">
-                                    <button onClick={() => setInput('Como está meu faturamento este mês?')} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800/50 border border-zinc-700 hover:border-gold-500/50 transition-all text-xs text-zinc-300 hover:text-white shrink-0">
-                                        <BarChart3 size={14} className="text-emerald-500" /> Faturamento
+                            <div className="px-6 py-4 bg-[#131418]/50 border-b border-white/5 overflow-x-auto custom-scrollbar">
+                                <div className="flex gap-2">
+                                    <button onClick={() => setInput('Como está meu faturamento este mês?')} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#18181b] border border-white/5 hover:border-gold-500/30 hover:bg-gold-500/5 transition-all text-xs font-medium text-slate-400 hover:text-gold-500 shrink-0 group">
+                                        <div className="p-1 rounded-md bg-emerald-500/10 group-hover:bg-emerald-500/20 text-emerald-500 transition-colors">
+                                            <BarChart3 size={12} />
+                                        </div>
+                                        Faturamento
                                     </button>
-                                    <button onClick={() => setInput('Quais os prazos fatais da semana?')} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800/50 border border-zinc-700 hover:border-gold-500/50 transition-all text-xs text-zinc-300 hover:text-white shrink-0">
-                                        <Clock size={14} className="text-red-500" /> Prazos
+                                    <button onClick={() => setInput('Quais os prazos fatais da semana?')} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#18181b] border border-white/5 hover:border-gold-500/30 hover:bg-gold-500/5 transition-all text-xs font-medium text-slate-400 hover:text-gold-500 shrink-0 group">
+                                        <div className="p-1 rounded-md bg-red-500/10 group-hover:bg-red-500/20 text-red-500 transition-colors">
+                                            <Clock size={12} />
+                                        </div>
+                                        Prazos
                                     </button>
                                 </div>
                             </div>
@@ -217,7 +225,7 @@ export const AssistantSidebar: React.FC = () => {
                             {/* Mensagens */}
                             <div
                                 ref={scrollRef}
-                                className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar scroll-smooth"
+                                className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar scroll-smooth bg-[#131418]"
                             >
                                 {messages.map((msg) => (
                                     <motion.div
@@ -226,16 +234,16 @@ export const AssistantSidebar: React.FC = () => {
                                         animate={{ opacity: 1, y: 0 }}
                                         className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                                     >
-                                        <div className={`max-w-[85%] rounded-2xl p-4 shadow-sm ${msg.sender === 'user'
-                                            ? 'bg-gold-600 text-white rounded-tr-none'
-                                            : 'bg-navy-900 border border-white/5 text-zinc-200 rounded-tl-none'
+                                        <div className={`max-w-[85%] rounded-2xl p-4 shadow-lg ${msg.sender === 'user'
+                                            ? 'bg-gradient-to-br from-gold-500 to-gold-600 text-black font-medium rounded-tr-none'
+                                            : 'bg-[#18181b] border border-white/10 text-slate-300 rounded-tl-none'
                                             }`}>
                                             <div className="prose prose-sm prose-invert max-w-none">
                                                 {msg.text.split('\n').map((line, i) => (
                                                     <p key={i} className={i > 0 ? 'mt-2' : ''}>{line}</p>
                                                 ))}
                                             </div>
-                                            <span className="text-[10px] opacity-50 mt-2 block">
+                                            <span className={`text-[10px] mt-2 block font-medium ${msg.sender === 'user' ? 'text-black/60' : 'text-slate-500'}`}>
                                                 {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         </div>
@@ -247,17 +255,20 @@ export const AssistantSidebar: React.FC = () => {
                                         animate={{ opacity: 1 }}
                                         className="flex justify-start"
                                     >
-                                        <div className="bg-navy-900 border border-white/5 p-4 rounded-2xl rounded-tl-none flex items-center gap-2">
-                                            <Loader2 size={16} className="animate-spin text-gold-500" />
-                                            <span className="text-xs text-zinc-400">Clara está pensando...</span>
+                                        <div className="bg-[#18181b] border border-white/10 p-4 rounded-2xl rounded-tl-none flex items-center gap-3 shadow-lg">
+                                            <div className="p-1.5 bg-gold-500/10 rounded-lg">
+                                                <Loader2 size={14} className="animate-spin text-gold-500" />
+                                            </div>
+                                            <span className="text-xs font-medium text-slate-400">Clara está digitando...</span>
                                         </div>
                                     </motion.div>
                                 )}
                             </div>
 
                             {/* Input */}
-                            <div className="p-6 border-t border-white/5 bg-navy-950">
-                                <div className="relative">
+                            <div className="p-6 border-t border-white/5 bg-[#131418]">
+                                <div className="relative group">
+                                    <div className="absolute -inset-0.5 bg-gradient-to-r from-gold-500/20 to-gold-600/20 rounded-2xl blur opacity-0 group-focus-within:opacity-100 transition duration-500"></div>
                                     <textarea
                                         value={input}
                                         onChange={(e) => setInput(e.target.value)}
@@ -268,19 +279,20 @@ export const AssistantSidebar: React.FC = () => {
                                             }
                                         }}
                                         placeholder="Pergunte qualquer coisa sobre o escritório..."
-                                        className="w-full bg-navy-900 border border-zinc-800 rounded-xl px-4 py-3 pr-12 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/20 transition-all resize-none max-h-32"
-                                        rows={2}
+                                        className="relative w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-4 pr-14 text-sm text-white placeholder:text-slate-600 outline-none focus:border-gold-500/50 transition-all resize-none max-h-32 min-h-[56px] custom-scrollbar"
+                                        rows={1}
+                                        style={{ minHeight: '56px' }}
                                     />
                                     <button
                                         onClick={handleSendMessage}
                                         disabled={!input.trim() || isLoading}
-                                        className="absolute right-2 bottom-2 p-2 rounded-lg bg-gold-600 hover:bg-gold-500 text-white disabled:opacity-50 disabled:grayscale transition-all"
+                                        className="absolute right-2 bottom-2 p-2.5 rounded-lg bg-gold-600 hover:bg-gold-500 text-black disabled:opacity-50 disabled:grayscale transition-all shadow-lg hover:shadow-gold-500/20 active:scale-95 z-10"
                                     >
-                                        <Send size={18} />
+                                        {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} className="ml-0.5" />}
                                     </button>
                                 </div>
-                                <p className="text-[10px] text-zinc-500 text-center mt-3 flex items-center justify-center gap-1">
-                                    Desenvolvido com IA Gemini <Sparkles size={10} />
+                                <p className="text-[10px] text-slate-600 text-center mt-4 flex items-center justify-center gap-1.5 font-medium tracking-wide uppercase opacity-70">
+                                    <Bot size={12} className="text-gold-500/50" /> Desenvolvido com IA Gemini
                                 </p>
                             </div>
                         </motion.aside>

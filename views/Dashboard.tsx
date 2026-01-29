@@ -112,7 +112,7 @@ const PERIOD_LABELS: Record<WidgetPeriod, string> = {
 };
 
 const Dashboard: React.FC = () => {
-    const { clients, cases, financial, events, tasks, toggleTask, user, setCurrentView, setCaseToView, setClientToView, setIsNewCaseModalOpen, saveUserPreferences, showToast, reminders, addReminder, toggleReminder, deleteReminder } = useApp();
+    const { clients, cases, financial, events, tasks, toggleTask, user, setCurrentView, setCaseToView, setClientToView, setIsNewCaseModalOpen, setIsNewClientModalOpen, saveUserPreferences, showToast, reminders, addReminder, toggleReminder, deleteReminder } = useApp();
 
     // State
     const [widgets, setWidgets] = useState<DashboardWidget[]>(DEFAULT_LAYOUT);
@@ -257,6 +257,7 @@ const Dashboard: React.FC = () => {
                         icon={Users}
                         colorClass="text-purple-400"
                         bgColorClass="bg-purple-500/10"
+                        outline={true}
                     />
                 );
             }
@@ -289,6 +290,7 @@ const Dashboard: React.FC = () => {
                         icon={Scale}
                         colorClass="text-blue-400"
                         bgColorClass="bg-blue-500/10"
+                        outline={true}
                     />
                 );
             }
@@ -400,6 +402,7 @@ const Dashboard: React.FC = () => {
                         icon={AlertOctagon}
                         colorClass={stagnantCasesCount > 0 ? "text-red-500" : "text-emerald-500"}
                         bgColorClass="bg-red-500/10"
+                        outline={true}
                     />
                 );
 
@@ -425,7 +428,7 @@ const Dashboard: React.FC = () => {
                     <DashboardShortcuts
                         onNewCase={() => { setCurrentView('cases'); setIsNewCaseModalOpen(true); }}
                         onFinancial={() => setCurrentView('financial')}
-                        onNewClient={() => setCurrentView('clients')}
+                        onNewClient={() => { setCurrentView('clients'); setIsNewClientModalOpen(true); }}
                         onCommissions={() => setCurrentView('commissions')}
                     />
                 );
@@ -470,6 +473,7 @@ const Dashboard: React.FC = () => {
                         trend={widget.type !== 'kpi-active-cases' ? { value: kpi.trend, isPositive: kpi.trend >= 0 } : undefined}
                         format={kpi.format as any}
                         type={widget.type}
+                        outline={['kpi-income', 'kpi-expense'].includes(widget.type)}
                     />
                 );
 
@@ -551,7 +555,7 @@ const Dashboard: React.FC = () => {
             {/* EDIT TOOLBAR */}
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4 mb-8">
                 <div className="flex items-center gap-2">
-                    <button onClick={() => setIsEditMode(!isEditMode)} className={`group flex items-center p-2 rounded-full transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap ${isEditMode ? 'bg-yellow-600 text-white w-36' : 'bg-zinc-800 text-zinc-400 hover:text-white w-10 hover:w-48'}`}>
+                    <button onClick={() => setIsEditMode(!isEditMode)} className={`group flex items-center p-2 rounded-full transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap ${isEditMode ? 'bg-yellow-600 text-white w-64' : 'bg-zinc-800 text-zinc-400 hover:text-white w-10 hover:w-64'}`}>
                         <div className="shrink-0">{isEditMode ? <Save size={20} /> : <Settings size={20} />}</div>
                         <span className="ml-2 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">{isEditMode ? 'Salvar Layout' : 'Personalizar Dashboard'}</span>
                     </button>
@@ -587,16 +591,19 @@ const Dashboard: React.FC = () => {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4, delay: index * 0.05 }}
-                        className={`relative bg-zinc-900/60 backdrop-blur-md border ${isEditMode ? 'border-dashed border-yellow-500/50 cursor-move' : 'border-white/5'} rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col`}
+                        className={`relative rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col
+                            ${isEditMode ? 'border-2 border-dashed border-gold-500/50 cursor-move bg-[#131418]/60' :
+                                (widget.type.startsWith('kpi-') ? 'bg-[#131418] border border-white/5 hover:border-gold-500/30' : 'bg-[#131418] border border-white/5 hover:border-white/10')}
+                        `}
                         style={{ gridColumn: `span ${widget.width}` }}
                     >
                         {isEditMode && (
                             <div className="absolute top-0 left-0 w-full h-full bg-black/60 z-20 flex items-center justify-center gap-2 backdrop-blur-sm">
-                                <button onClick={() => { const n = [...widgets]; if (index > 0) { [n[index], n[index - 1]] = [n[index - 1], n[index]]; setWidgets(n); } }} className="p-2 bg-zinc-800 rounded text-white hover:bg-zinc-700" title="Mover Esq"><ChevronLeft size={20} /></button>
-                                <button onClick={() => { const n = widgets.map(w => w.id === widget.id ? { ...w, width: (w.width === 4 ? 1 : w.width + 1) as any } : w); setWidgets(n); }} className="p-2 bg-zinc-800 rounded text-white hover:bg-zinc-700" title="Redimensionar"><Maximize2 size={20} /></button>
-                                <button onClick={() => openWidgetConfig(widget)} className="p-2 bg-zinc-800 rounded text-yellow-500 hover:bg-zinc-700" title="Configurar"><Settings size={20} /></button>
-                                <button onClick={() => removeWidget(widget.id)} className="p-2 bg-red-900/50 rounded text-red-400 hover:bg-red-900" title="Excluir"><Trash2 size={20} /></button>
-                                <button onClick={() => { const n = [...widgets]; if (index < n.length - 1) { [n[index], n[index + 1]] = [n[index + 1], n[index]]; setWidgets(n); } }} className="p-2 bg-zinc-800 rounded text-white hover:bg-zinc-700" title="Mover Dir"><ChevronRight size={20} /></button>
+                                <button onClick={() => { const n = [...widgets]; if (index > 0) { [n[index], n[index - 1]] = [n[index - 1], n[index]]; setWidgets(n); } }} className="p-2 bg-[#18181b] rounded-xl text-white hover:bg-zinc-700 border border-white/10" title="Mover Esq"><ChevronLeft size={20} /></button>
+                                <button onClick={() => { const n = widgets.map(w => w.id === widget.id ? { ...w, width: (w.width === 4 ? 1 : w.width + 1) as any } : w); setWidgets(n); }} className="p-2 bg-[#18181b] border border-gold-500/50 rounded-xl text-gold-500 hover:bg-gold-500 hover:text-black transition-colors shadow-lg shadow-gold-500/20" title="Redimensionar"><Maximize2 size={20} /></button>
+                                <button onClick={() => openWidgetConfig(widget)} className="p-2 bg-[#18181b] rounded-xl text-gold-500 hover:bg-zinc-700 border border-white/10" title="Configurar"><Settings size={20} /></button>
+                                <button onClick={() => removeWidget(widget.id)} className="p-2 bg-red-900/20 rounded-xl text-red-400 hover:bg-red-900/40 border border-red-500/20" title="Excluir"><Trash2 size={20} /></button>
+                                <button onClick={() => { const n = [...widgets]; if (index < n.length - 1) { [n[index], n[index + 1]] = [n[index + 1], n[index]]; setWidgets(n); } }} className="p-2 bg-[#18181b] rounded-xl text-white hover:bg-zinc-700 border border-white/10" title="Mover Dir"><ChevronRight size={20} /></button>
                             </div>
                         )}
                         <div className="flex-1 p-5 overflow-hidden">

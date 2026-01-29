@@ -89,6 +89,7 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
                                     <User className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-yellow-600 transition-colors" size={18} />
                                     <input
                                         required
+                                        autoComplete="off"
                                         className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 pl-10 pr-4 py-2.5 rounded-xl focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600/20 outline-none transition-all placeholder:text-zinc-600"
                                         value={newClient.nome_completo || ''}
                                         onChange={e => setNewClient({ ...newClient, nome_completo: e.target.value })}
@@ -104,6 +105,7 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
                                         <CreditCard className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${newClient.cpf_cnpj && 'text-zinc-600 group-focus-within:text-yellow-600'}`} size={18} />
                                         <input
                                             required
+                                            autoComplete="off"
                                             className={`w-full bg-[#0f1014] border text-zinc-200 pl-10 pr-4 py-2.5 rounded-xl outline-none transition-all placeholder:text-zinc-600 ${duplicateClient ? 'border-red-500 text-red-400' : 'border-zinc-800 focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600/20'}`}
                                             value={newClient.cpf_cnpj || ''}
                                             onChange={e => setNewClient({ ...newClient, cpf_cnpj: formatCPFOrCNPJ(e.target.value) })}
@@ -237,7 +239,7 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
                                 <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Email</label>
                                 <div className="relative group">
                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-yellow-600 transition-colors" size={18} />
-                                    <input type="email" className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 pl-10 pr-4 py-2.5 rounded-xl focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600/20 outline-none placeholder:text-zinc-600" value={newClient.email || ''} onChange={e => setNewClient({ ...newClient, email: e.target.value })} placeholder="email@exemplo.com" />
+                                    <input type="email" autoComplete="off" className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 pl-10 pr-4 py-2.5 rounded-xl focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600/20 outline-none placeholder:text-zinc-600" value={newClient.email || ''} onChange={e => setNewClient({ ...newClient, email: e.target.value })} placeholder="email@exemplo.com" />
                                 </div>
                             </div>
                         </div>
@@ -255,6 +257,7 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
                                 <div className="relative group">
                                     <input
                                         type={showGovPassword ? "text" : "password"}
+                                        autoComplete="new-password"
                                         className={`w-full bg-[#0f1014] border pr-10 py-2.5 px-4 rounded-xl outline-none transition-all placeholder:text-zinc-600 ${!newClient.senha_gov && !newClient.pendencias?.includes('Senha')
                                             ? 'border-red-500/50 focus:border-red-500'
                                             : 'border-zinc-800 focus:border-yellow-600'

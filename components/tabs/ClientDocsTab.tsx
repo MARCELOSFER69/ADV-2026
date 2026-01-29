@@ -27,7 +27,7 @@ const ClientDocsTab: React.FC<ClientDocsTabProps> = ({
 
     return (
         <div className="space-y-6 min-h-[300px]">
-            <div className="bg-zinc-900/50 border-2 border-dashed border-zinc-800 rounded-xl p-8 flex flex-col items-center justify-center text-center transition-colors hover:border-gold-500/50 hover:bg-zinc-900 group">
+            <div className="bg-[#18181b] border-2 border-dashed border-white/5 rounded-xl p-8 flex flex-col items-center justify-center text-center transition-colors hover:border-gold-500/50 hover:bg-[#18181b]/80 group">
                 {isUploading ? (
                     <div className="flex flex-col items-center animate-pulse">
                         <Loader2 className="animate-spin text-gold-500 mb-2" size={32} />
@@ -35,7 +35,7 @@ const ClientDocsTab: React.FC<ClientDocsTabProps> = ({
                     </div>
                 ) : (
                     <label className="cursor-pointer w-full flex flex-col items-center">
-                        <div className="w-14 h-14 bg-navy-950 rounded-full flex items-center justify-center mb-3 shadow-lg border border-zinc-800 group-hover:border-gold-500/30 transition-all">
+                        <div className="w-14 h-14 bg-[#131418] rounded-full flex items-center justify-center mb-3 shadow-lg border border-white/5 group-hover:border-gold-500/30 transition-all">
                             <UploadCloud size={24} className="text-zinc-500 group-hover:text-gold-500" />
                         </div>
                         <h3 className="text-sm font-bold text-white mb-1">Clique para anexar</h3>
@@ -47,7 +47,7 @@ const ClientDocsTab: React.FC<ClientDocsTabProps> = ({
 
             <div className="space-y-3">
                 <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2"><FileText size={14} /> Arquivos Salvos</span>
+                    <span className="flex items-center gap-2"><FileText size={14} className="text-gold-500" /> Arquivos Salvos</span>
                     <button
                         onClick={handleSync}
                         disabled={isSyncing}
@@ -61,7 +61,7 @@ const ClientDocsTab: React.FC<ClientDocsTabProps> = ({
 
                 {client.documentos && client.documentos.length > 0 ? (
                     client.documentos.map(doc => (
-                        <div key={doc.id} className="flex items-center justify-between p-3 bg-navy-900 border border-slate-800 rounded-lg hover:border-slate-700 transition-colors group">
+                        <div key={doc.id} className="flex items-center justify-between p-3 bg-[#18181b] border border-white/5 rounded-lg hover:border-gold-500/20 transition-all group">
                             <div className="flex items-center gap-3">
                                 <div className={`p-2 rounded-lg ${doc.tipo === 'PDF' ? 'bg-red-500/10 text-red-400' : 'bg-blue-500/10 text-blue-400'}`}>
                                     <FileText size={20} />

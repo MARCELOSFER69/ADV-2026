@@ -1,6 +1,7 @@
 import React from 'react';
 import { Building2, AlertTriangle, Phone, MapPin, MessageCircle, RefreshCw, Archive, Trash2, Eye } from 'lucide-react';
 import { Client } from '../../types';
+import PendencyIndicator from '../ui/PendencyIndicator';
 
 interface ClientGridViewProps {
     sortedClients: Client[];
@@ -37,31 +38,26 @@ const ClientGridView: React.FC<ClientGridViewProps> = ({
                     <div
                         key={client.id}
                         onClick={() => setSelectedClient(client)}
-                        className={`bg-zinc-900/60 backdrop-blur-md border ${hasPendencias ? 'border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.1)]' : 'border-white/5'} rounded-xl p-5 hover:border-gold-600/30 transition-all cursor-pointer group relative overflow-hidden shadow-lg hover:shadow-2xl`}
+                        className={`bg-zinc-900/60 backdrop-blur-md border ${hasPendencias ? 'border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.1)]' : 'border-white/5'} rounded-xl p-5 hover:border-gold-600/30 transition-all cursor-pointer group relative shadow-lg hover:shadow-2xl`}
                     >
                         <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-4">
-                                {client.foto ? (
-                                    <img src={client.foto} alt={client.nome_completo} className="w-14 h-14 rounded-full border-2 border-slate-700 object-cover" />
-                                ) : (
-                                    <div className={`w-14 h-14 rounded-full border-2 border-white/10 flex items-center justify-center font-bold text-xl shadow-inner ${hasPendencias ? 'bg-red-600 text-white animate-pulse' : 'bg-zinc-700 text-zinc-300'}`}>
-                                        {String(client.nome_completo || '').substring(0, 2).toUpperCase()}
+                            <PendencyIndicator pendencies={client.pendencias} align="left" className="w-full">
+                                <div className="flex items-center gap-4 cursor-help">
+                                    {client.foto ? (
+                                        <img src={client.foto} alt={client.nome_completo} className="w-14 h-14 rounded-full border-2 border-slate-700 object-cover" />
+                                    ) : (
+                                        <div className={`w-14 h-14 rounded-full border-2 border-white/10 flex items-center justify-center font-bold text-xl shadow-inner relative transition-all duration-300 ${hasPendencias ? 'bg-rose-600 text-white border-rose-500/50' : 'bg-zinc-700 text-zinc-300'}`}>
+                                            {String(client.nome_completo || '').substring(0, 2).toUpperCase()}
+                                        </div>
+                                    )}
+                                    <div>
+                                        <h3 className="font-bold text-slate-200 group-hover:text-gold-500 transition-colors line-clamp-1">{client.nome_completo}</h3>
+                                        <p className="text-xs text-slate-500">{client.cpf_cnpj}</p>
+                                        <div className="flex items-center gap-1 mt-1 text-[10px] text-zinc-100 font-medium"><Building2 size={12} /> {client.filial || 'Matriz'}</div>
                                     </div>
-                                )}
-                                <div>
-                                    <h3 className="font-bold text-slate-200 group-hover:text-gold-500 transition-colors line-clamp-1">{client.nome_completo}</h3>
-                                    <p className="text-xs text-slate-500">{client.cpf_cnpj}</p>
-                                    <div className="flex items-center gap-1 mt-1 text-[10px] text-zinc-100 font-medium"><Building2 size={12} /> {client.filial || 'Matriz'}</div>
                                 </div>
-                            </div>
+                            </PendencyIndicator>
                         </div>
-                        {hasPendencias && (
-                            <div className="mb-3">
-                                <span className="text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-1 rounded flex items-center gap-1 w-fit">
-                                    <AlertTriangle size={10} /> {client.pendencias!.length} Pendências
-                                </span>
-                            </div>
-                        )}
                         <div className="space-y-2 mb-4">
                             <div className="flex items-center gap-2 text-sm text-slate-400"><Phone size={14} /> {client.telefone || '-'}</div>
                             <div className="flex items-center gap-2 text-sm text-slate-400 truncate"><MapPin size={14} /> {client.cidade ? `${client.cidade} - ${client.uf}` : (client.endereco ? client.endereco.split(',')[0] : 'Endereço não informado')}</div>

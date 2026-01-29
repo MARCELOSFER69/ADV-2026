@@ -128,6 +128,7 @@ interface AppContextType {
     markChatAsRead: (chatId: string) => Promise<void>;
     deleteChat: (chatId: string) => Promise<void>;
     finishChat: (chatId: string) => Promise<void>;
+    waitingChatsCount: number;
 
     // --- AUTOMATION ---
     triggerRgpSync: (clientList: { id: string, cpf_cnpj: string }[]) => Promise<void>;
@@ -136,6 +137,9 @@ interface AppContextType {
     // --- ASSISTANT ---
     isAssistantOpen: boolean;
     setIsAssistantOpen: (isOpen: boolean) => void;
+
+    // --- ANIMATIONS ---
+    isStatusBlinking: boolean;
 }
 
 interface ToastMessage {
@@ -237,6 +241,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const [isAssistantOpen, setIsAssistantOpen] = useState(false);
     const [clientToView, _setClientToView] = useState<string | null>(null);
     const [clientDetailTab, setClientDetailTab] = useState<'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp'>('info');
+    const [isStatusBlinking, setIsStatusBlinking] = useState(false);
 
     const setClientToView = useCallback((id: string | null, tab?: 'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp') => {
         _setClientToView(id);
@@ -778,6 +783,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             return undefined;
         }
         return undefined;
+    }, []);
+
+    // --- ANIMATION TIMER (60s cycle) ---
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setIsStatusBlinking(true);
+            setTimeout(() => setIsStatusBlinking(false), 3000);
+        }, 60000);
+        return () => clearInterval(interval);
     }, []);
 
     useEffect(() => {
@@ -2326,6 +2340,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         return { ...globalPreferences, ...(user?.preferences || {}) };
     }, [globalPreferences, user?.preferences]);
 
+    const waitingChatsCount = useMemo(() => {
+        return chats.filter(c => c.status === 'waiting' && !c.assigned_to_id).length;
+    }, [chats]);
+
     // --- EFEITO DE TEMA ---
     useEffect(() => {
         const theme = mergedPreferences.theme || 'standard';
@@ -2364,7 +2382,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         clientDetailTab, setClientDetailTab,
         chats, chatMessages, fetchChatMessages, assumeChat, sendMessage, markChatAsRead, deleteChat, finishChat,
         triggerRgpSync, triggerReapSync, refreshClient, reloadData,
-        isAssistantOpen, setIsAssistantOpen
+        isAssistantOpen, setIsAssistantOpen,
+        waitingChatsCount,
+        isStatusBlinking
     }), [
         user, login, logout, updateUserProfile, saveUserPreferences,
         globalPreferences, mergedPreferences, saveGlobalPreferences,
@@ -2394,7 +2414,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         clientDetailTab, setClientDetailTab,
         chats, chatMessages, fetchChatMessages, assumeChat, sendMessage, markChatAsRead, deleteChat, finishChat,
         triggerRgpSync, triggerReapSync, refreshClient, reloadData,
-        isAssistantOpen, setIsAssistantOpen
+        isAssistantOpen, setIsAssistantOpen,
+        waitingChatsCount,
+        isStatusBlinking
     ]);
 
     return (

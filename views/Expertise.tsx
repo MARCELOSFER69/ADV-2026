@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { EventType } from '../types';
 import {
@@ -8,6 +9,7 @@ import {
 } from 'lucide-react';
 import NewPericiaModal from '../components/modals/NewPericiaModal';
 import { formatDateDisplay } from '../utils/dateUtils';
+import PendencyIndicator from '../components/ui/PendencyIndicator';
 
 const Expertise: React.FC = () => {
     const { events, clients, cases, setClientToView, setCaseToView, setCurrentView, updateEvent, deleteEvent, showToast } = useApp();
@@ -89,23 +91,30 @@ const Expertise: React.FC = () => {
     return (
         <div className="h-full flex flex-col p-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold text-white font-serif flex items-center gap-3">
-                        <div className="p-2 bg-gradient-to-br from-gold-500 to-gold-700 rounded-xl shadow-lg shadow-gold-900/20">
-                            <Calendar className="text-white" size={24} />
-                        </div>
-                        Perícias Médicas
-                    </h1>
-                    <p className="text-zinc-400 mt-2">Gerencie e acompanhe todos os agendamentos de perícias.</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-4">
+                <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-gold-500/10 rounded-2xl text-gold-500 border border-gold-500/20 shadow-lg shadow-gold-500/5 transition-transform hover:scale-105">
+                        <Calendar size={24} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-white font-serif tracking-tight">
+                            Perícias Médicas
+                        </h1>
+                        <p className="text-slate-400 text-[11px] md:text-xs font-medium mt-0.5 opacity-80 uppercase tracking-widest">
+                            Gerencie e acompanhe todos os agendamentos de perícias.
+                        </p>
+                    </div>
                 </div>
 
-                <button
+                <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setIsNewModalOpen(true)}
-                    className="bg-gold-600 hover:bg-gold-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-lg shadow-gold-900/20 flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95"
+                    className="group h-10 bg-gold-600 hover:bg-gold-700 text-black px-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-gold-600/20 flex items-center gap-2 w-10 hover:w-auto overflow-hidden hover:pr-5 transition-all duration-300"
                 >
-                    <Plus size={18} /> Nova Perícia
-                </button>
+                    <Plus size={18} className="shrink-0" />
+                    <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity">Nova Perícia</span>
+                </motion.button>
             </div>
 
             {/* Toolbar */}
@@ -208,16 +217,20 @@ const Expertise: React.FC = () => {
                                                 {client?.nome_completo.substring(0, 2).toUpperCase() || '??'}
                                             </div>
                                             <div className="min-w-0">
-                                                <h3
-                                                    className="text-sm font-bold text-zinc-200 group-hover/client:text-white transition-colors cursor-pointer truncate"
-                                                    onClick={() => {
-                                                        setClientToView(client?.id || null);
-                                                        setCurrentView('clients');
-                                                    }}
-                                                >
-                                                    {client?.nome_completo || 'Cliente não encontrado'}
-                                                </h3>
-                                                <p className="text-[10px] text-zinc-500 font-mono truncate">{client?.cpf_cnpj || 'Sem documento'}</p>
+                                                <PendencyIndicator pendencies={client?.pendencias} align="left">
+                                                    <div className="cursor-help">
+                                                        <h3
+                                                            className="text-sm font-bold text-zinc-200 group-hover/client:text-white transition-colors cursor-pointer truncate"
+                                                            onClick={() => {
+                                                                setClientToView(client?.id || null);
+                                                                setCurrentView('clients');
+                                                            }}
+                                                        >
+                                                            {client?.nome_completo || 'Cliente não encontrado'}
+                                                        </h3>
+                                                        <p className="text-[10px] text-zinc-500 font-mono truncate">{client?.cpf_cnpj || 'Sem documento'}</p>
+                                                    </div>
+                                                </PendencyIndicator>
                                             </div>
                                         </div>
 

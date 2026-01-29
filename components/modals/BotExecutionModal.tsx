@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Terminal, X, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 
 interface BotExecutionModalProps {
@@ -11,17 +12,24 @@ interface BotExecutionModalProps {
     type: 'rgp' | 'reap';
     onSuccess?: () => void;
     fishingData?: any[];
+    queue?: Array<{ id: string; cpf: string; name: string; senha?: string }>;
+    hideUI?: boolean;
+    onError?: (msg: string) => void;
 }
 
 const BotExecutionModal: React.FC<BotExecutionModalProps> = ({
-    isOpen, onClose, cpf, clientId, senha, headless, type, onSuccess, fishingData
+    isOpen, onClose, cpf, clientId, senha, headless, type, onSuccess, fishingData, queue, hideUI, onError
 }) => {
     const [logs, setLogs] = useState<string[]>([]);
-    const [status, setStatus] = useState<'connecting' | 'running' | 'success' | 'error'>('connecting');
+    const [status, setStatus] = useState<'connecting' | 'running' | 'success' | 'error' | 'queue_finished'>('connecting');
     const [finalMessage, setFinalMessage] = useState<string>('');
+    const [currentIndex, setCurrentIndex] = useState(0);
 
     const logsEndRef = useRef<HTMLDivElement>(null);
     const eventSourceRef = useRef<EventSource | null>(null);
+
+    // Determines current target based on queue or props
+    const currentTarget = queue && queue.length > 0 ? queue[currentIndex] : { id: clientId, cpf, name: 'Cliente', senha };
 
     useEffect(() => {
         if (logsEndRef.current) {
@@ -37,171 +45,218 @@ const BotExecutionModal: React.FC<BotExecutionModalProps> = ({
             }
             setLogs([]);
             setStatus('connecting');
+            setCurrentIndex(0);
             return;
         }
 
-        const baseUrl = type === 'rgp' ? '/api/stream-rgp' : '/api/stream-reap';
-        let url = `http://localhost:3001${baseUrl}?id=${clientId}&cpf=${cpf}&headless=${headless}&t=${new Date().getTime()}`;
+        const runRobot = async () => {
+            const baseUrl = type === 'rgp' ? '/api/stream-rgp' : '/api/stream-reap';
+            const targetCpf = currentTarget.cpf.replace(/\D/g, '');
+            let url = `http://localhost:3001${baseUrl}?id=${currentTarget.id}&cpf=${targetCpf}&headless=${headless}&t=${new Date().getTime()}`;
 
-        if (type === 'reap' && senha) {
-            url += `&senha=${encodeURIComponent(senha)}`;
-        }
+            if (type === 'reap' && currentTarget.senha) {
+                url += `&senha=${encodeURIComponent(currentTarget.senha)}`;
+            }
 
-        // Adiciona fishing_data para REAP
-        if (type === 'reap' && fishingData && fishingData.length > 0) {
-            url += `&fishing_data=${encodeURIComponent(JSON.stringify(fishingData))}`;
-        }
+            if (type === 'reap' && fishingData && fishingData.length > 0) {
+                url += `&fishing_data=${encodeURIComponent(JSON.stringify(fishingData))}`;
+            }
 
-        console.log("🔌 Conectando ao Stream:", url);
-        setLogs([`> Iniciando conexão com o robô ${type.toUpperCase()} (Modo ${headless ? 'Headless' : 'Visível'})...`]);
-        setStatus('running');
+            console.log("🔌 Conectando ao Stream:", url);
+            const startMsg = queue
+                ? `> [${currentIndex + 1}/${queue.length}] Iniciando ${type.toUpperCase()} para ${currentTarget.name}...`
+                : `> Iniciando conexão com o robô ${type.toUpperCase()} (Modo ${headless ? 'Headless' : 'Visível'})...`;
 
-        const es = new EventSource(url);
-        eventSourceRef.current = es;
+            setLogs(prev => [...prev, startMsg]);
+            setStatus('running');
 
-        es.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
+            const es = new EventSource(url);
+            eventSourceRef.current = es;
 
-                if (data.type === 'log') {
-                    setLogs(prev => [...prev, `> ${data.message}`]);
-                } else if (data.type === 'success') {
-                    setLogs(prev => [...prev, `✅ SUCESSO: Operação finalizada com sucesso!`]);
-                    setStatus('success');
-                    if (onSuccess) onSuccess();
-                    es.close();
-                } else if (data.type === 'error') {
-                    setLogs(prev => [...prev, `❌ ERRO: ${data.message}`]);
-                    setFinalMessage(data.message);
-                    setStatus('error');
+            es.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'log') {
+                        setLogs(prev => [...prev, `> ${data.message}`]);
+                    } else if (data.type === 'success') {
+                        setLogs(prev => [...prev, `✅ SUCESSO: ${currentTarget.name} finalizado!`]);
+
+                        // Proceed to next or finish
+                        if (queue && currentIndex < queue.length - 1) {
+                            setTimeout(() => {
+                                setCurrentIndex(prev => prev + 1);
+                            }, 2000);
+                        } else {
+                            setStatus('queue_finished');
+                        }
+
+                        if (onSuccess) onSuccess();
+                        es.close();
+                    } else if (data.type === 'error') {
+                        setLogs(prev => [...prev, `❌ ERRO (${currentTarget.name}): ${data.message}`]);
+
+                        // On error in queue, we might want to continue or stop. 
+                        // For now, let's stop but allow next.
+                        if (queue && currentIndex < queue.length - 1) {
+                            setLogs(prev => [...prev, `⚠️ Pulando para o próximo devido a erro...`]);
+                            setTimeout(() => {
+                                setCurrentIndex(prev => prev + 1);
+                            }, 3000);
+                        } else {
+                            setFinalMessage(data.message);
+                            setStatus('error');
+                        }
+                        if (onError) onError(data.message);
+                        es.close();
+                    }
+                } catch (e) {
+                    console.error("Erro ao processar evento SSE:", e);
+                }
+            };
+
+            es.onerror = (err) => {
+                if (status !== 'success' && status !== 'error' && status !== 'queue_finished') {
+                    setLogs(prev => [...prev, `⚠️ Conexão perdida para ${currentTarget.name}.`]);
+                    if (queue && currentIndex < queue.length - 1) {
+                        setTimeout(() => setCurrentIndex(prev => prev + 1), 3000);
+                    } else {
+                        setStatus('error');
+                    }
                     es.close();
                 }
-            } catch (e) {
-                console.error("Erro ao processar evento SSE:", e);
-            }
+            };
         };
 
-        es.onerror = (err) => {
-            if (status !== 'success' && status !== 'error') {
-                if (es.readyState === 2) {
-                    // Closed by server
-                } else {
-                    setLogs(prev => [...prev, `⚠️ Conexão perdida. O robô pode ter parado ou terminado.`]);
-                    setStatus('error');
-                    es.close();
-                }
-            }
-        };
+        runRobot();
 
         return () => {
-            if (es) es.close();
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+            }
         };
-    }, [isOpen, clientId, cpf, headless, type, senha]);
+    }, [isOpen, currentIndex, type, headless, fishingData]);
 
-    if (!isOpen) return null;
+    // Auto-close if hidden
+    useEffect(() => {
+        if (hideUI && isOpen) {
+            if (status === 'success' || status === 'queue_finished') {
+                setTimeout(onClose, 500);
+            } else if (status === 'error') {
+                setTimeout(onClose, 2000); // Give time for parent to show toast? or just close.
+            }
+        }
+    }, [status, hideUI, isOpen, onClose]);
 
-    return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-[#0c0d10] border border-slate-800 w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
+    if (!isOpen || hideUI) return null;
+
+    const progress = queue ? ((currentIndex + (status === 'queue_finished' ? 1 : 0)) / queue.length) * 100 : 100;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-[#0c0d10] border border-slate-800 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
                 {/* Header */}
                 <div className="bg-navy-900 px-5 py-4 border-b border-slate-800 flex justify-between items-center">
                     <div className="flex items-center gap-3">
                         <div className={`w-3 h-3 rounded-full ${status === 'running' ? 'bg-amber-500 animate-pulse' :
-                            status === 'success' ? 'bg-emerald-500' :
+                            status === 'queue_finished' || status === 'success' ? 'bg-emerald-500' :
                                 status === 'error' ? 'bg-red-500' : 'bg-slate-500'
                             }`} />
-                        <h3 className="font-bold text-white text-sm uppercase tracking-wide">
-                            {type === 'reap' ? 'Manutenção REAP' : 'Consulta RGP'}
-                        </h3>
+                        <div>
+                            <h3 className="font-bold text-white text-sm uppercase tracking-wide">
+                                {type === 'reap' ? 'Manutenção REAP' : 'Consulta RGP'}
+                                {queue && ` (${currentIndex + 1}/${queue.length})`}
+                            </h3>
+                            {queue && (
+                                <p className="text-[10px] text-slate-500 font-mono truncate max-w-[200px]">
+                                    {status === 'queue_finished' ? 'Fila Processada' : `Atual: ${currentTarget.name}`}
+                                </p>
+                            )}
+                        </div>
                     </div>
-                    {status !== 'running' && (
-                        <button
-                            onClick={onClose}
-                            className="text-slate-500 hover:text-white transition-colors"
-                        >
+                    {(status !== 'running') && (
+                        <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
                             <X size={20} />
                         </button>
                     )}
                 </div>
 
-                {/* Content - Clean Loading State */}
-                <div className="p-8 flex flex-col items-center justify-center gap-4">
-                    {status === 'running' && (
-                        <>
-                            <div className="relative">
-                                <Loader2 size={48} className="text-gold-500 animate-spin" />
-                            </div>
-                            <div className="text-center">
-                                <p className="text-white font-bold text-lg">Processando...</p>
-                                <p className="text-slate-500 text-sm mt-1">
-                                    {type === 'reap' ? 'Realizando manutenção anual do cliente.' : 'Consultando dados do RGP.'}
-                                </p>
-                            </div>
-                            <button
-                                onClick={async () => {
-                                    // Primeiro fecha a conexão SSE
-                                    if (eventSourceRef.current) {
-                                        eventSourceRef.current.close();
-                                        eventSourceRef.current = null;
-                                    }
-                                    // Depois manda matar o processo no backend
-                                    try {
-                                        await fetch('http://localhost:3001/api/stop-reap', { method: 'POST' });
-                                    } catch (e) {
-                                        console.warn('Erro ao chamar stop-reap:', e);
-                                    }
-                                    setStatus('error');
-                                    setFinalMessage('Operação cancelada pelo usuário.');
-                                }}
-                                className="mt-4 bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 text-red-400 hover:text-red-300 text-sm font-bold px-6 py-2 rounded-lg transition-all flex items-center gap-2"
-                            >
-                                <X size={16} />
-                                Cancelar Operação
-                            </button>
-                        </>
-                    )}
-
-                    {status === 'success' && (
-                        <>
-                            <CheckCircle2 size={56} className="text-emerald-500" />
-                            <div className="text-center">
-                                <p className="text-white font-bold text-lg">Concluído com Sucesso!</p>
-                                <p className="text-slate-500 text-sm mt-1">
-                                    {type === 'reap' ? 'Manutenção REAP finalizada.' : 'Consulta RGP finalizada.'}
-                                </p>
-                            </div>
-                        </>
-                    )}
-
-                    {status === 'error' && (
-                        <>
-                            <AlertTriangle size={56} className="text-red-500" />
-                            <div className="text-center">
-                                <p className="text-white font-bold text-lg">Ocorreu um Erro</p>
-                                <p className="text-slate-500 text-sm mt-1">
-                                    {finalMessage || 'O robô encontrou um problema durante a execução.'}
-                                </p>
-                            </div>
-                        </>
-                    )}
-                </div>
-
-                {/* Footer */}
-                {status !== 'running' && (
-                    <div className={`px-5 py-4 border-t border-slate-800 flex justify-end ${status === 'success' ? 'bg-emerald-500/5' :
-                        status === 'error' ? 'bg-red-500/5' : ''
-                        }`}>
-                        <button
-                            onClick={onClose}
-                            className={`text-white text-sm font-bold px-6 py-2 rounded-lg transition-colors ${status === 'success' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-700 hover:bg-slate-600'
-                                }`}
-                        >
-                            Fechar
-                        </button>
+                {/* Progress Bar (Queue only) */}
+                {queue && (
+                    <div className="w-full bg-slate-900 h-1">
+                        <div
+                            className="bg-gold-500 h-full transition-all duration-500"
+                            style={{ width: `${progress}%` }}
+                        />
                     </div>
                 )}
+
+                {/* Content - Log View */}
+                <div className="flex-1 overflow-y-auto p-4 bg-black/40 font-mono text-[11px] space-y-1 custom-scrollbar min-h-[300px]">
+                    {logs.map((log, i) => (
+                        <div key={i} className={`${log.includes('✅') ? 'text-emerald-400' :
+                            log.includes('❌') ? 'text-red-400' :
+                                log.includes('🚀') ? 'text-gold-400 font-bold' :
+                                    'text-slate-400'
+                            }`}>
+                            {log}
+                        </div>
+                    ))}
+                    <div ref={logsEndRef} />
+                </div>
+
+                {/* Footer Actions */}
+                <div className="p-4 border-t border-slate-800 bg-navy-900 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                        {status === 'running' && (
+                            <div className="flex items-center gap-2 text-gold-500 text-xs font-bold animate-pulse">
+                                <Loader2 size={14} className="animate-spin" />
+                                <span>EXECUTANDO...</span>
+                            </div>
+                        )}
+                        {(status === 'queue_finished' || status === 'success') && (
+                            <div className="flex items-center gap-2 text-emerald-500 text-xs font-bold">
+                                <CheckCircle2 size={14} />
+                                <span>CONCLUÍDO</span>
+                            </div>
+                        )}
+                        {status === 'error' && (
+                            <div className="flex items-center gap-2 text-red-500 text-xs font-bold">
+                                <AlertTriangle size={14} />
+                                <span>ERRO NA FILA</span>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex gap-2">
+                        {status === 'running' && (
+                            <button
+                                onClick={async () => {
+                                    if (eventSourceRef.current) eventSourceRef.current.close();
+                                    try {
+                                        await fetch('http://localhost:3001/api/stop-reap', { method: 'POST' });
+                                    } catch (e) { }
+                                    setStatus('error');
+                                    setFinalMessage('Cancelado pelo usuário.');
+                                }}
+                                className="bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 text-red-400 text-xs font-bold px-4 py-2 rounded-lg transition-all"
+                            >
+                                Parar Robô
+                            </button>
+                        )}
+                        {status !== 'running' && (
+                            <button
+                                onClick={onClose}
+                                className="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-6 py-2 rounded-lg transition-colors"
+                            >
+                                Fechar
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

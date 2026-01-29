@@ -4,13 +4,13 @@ import { Client } from '../types';
 const field = (label: string, value: string = '', width: string = '100%') => {
   const text = value || '';
   const len = text.length;
-  
+
   // Lógica de redução de fonte baseada em caracteres
   let fontSize = '14px';
   let paddingTop = '0px';
-  
-  if (len > 40) { fontSize = '9px'; paddingTop = '3px'; } 
-  else if (len > 30) { fontSize = '10px'; paddingTop = '2px'; } 
+
+  if (len > 40) { fontSize = '9px'; paddingTop = '3px'; }
+  else if (len > 30) { fontSize = '10px'; paddingTop = '2px'; }
   else if (len > 20) { fontSize = '12px'; paddingTop = '1px'; }
 
   return `
@@ -126,7 +126,7 @@ const getDeclaracaoHtml = (client: Client) => {
 // FUNÇÃO PRINCIPAL DE IMPRESSÃO (LIMPA)
 export const printDocuments = (client: Client, selectedDocs: { declaracao: boolean; procuracao: boolean }) => {
   const printWindow = window.open('', '_blank', 'width=900,height=800');
-  
+
   if (!printWindow) {
     alert('Por favor, permita pop-ups para imprimir.');
     return;
@@ -148,7 +148,7 @@ export const printDocuments = (client: Client, selectedDocs: { declaracao: boole
           body { 
             margin: 0; 
             padding: 0; 
-            font-family: "Times New Roman", Times, serif; 
+            font-family: "Inter", sans-serif; 
             background: #f0f0f0;
           }
           .page { 

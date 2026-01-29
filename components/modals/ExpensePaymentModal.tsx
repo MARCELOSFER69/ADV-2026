@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { OfficeExpense } from '../../types';
 import { PiggyBank } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { formatDateDisplay } from '../../utils/dateUtils';
 
 interface BalanceWithRemaining {
@@ -69,8 +70,8 @@ const ExpensePaymentModal: React.FC<ExpensePaymentModalProps> = ({
 
     return (
         <div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
-            <div className="bg-navy-900 border border-slate-700 rounded-xl w-full max-w-md shadow-2xl">
-                <div className="p-5 border-b border-slate-800">
+            <div className="bg-[#0f1014] border border-white/10 rounded-xl w-full max-w-md shadow-2xl">
+                <div className="p-5 border-b border-white/10">
                     <h3 className="text-lg font-bold text-white">Confirmar Pagamento</h3>
                     <p className="text-sm text-slate-400 mt-1">
                         Informe os dados para dar baixa em: <span className="text-white">{expense?.titulo}</span>
@@ -78,26 +79,35 @@ const ExpensePaymentModal: React.FC<ExpensePaymentModalProps> = ({
                 </div>
                 <div className="p-5 space-y-4">
 
-                    {/* Checkbox Pagar com Saldo (Modal) */}
-                    <div className="flex items-center gap-2 mb-2 p-2 bg-navy-800 rounded-lg border border-slate-700">
-                        <input
-                            type="checkbox"
-                            id="use_balance_payment"
-                            className="w-4 h-4 rounded border-slate-600 bg-navy-900 text-gold-500 focus:ring-offset-navy-900"
-                            checked={useBalancePayment}
-                            onChange={(e) => handleUseBalanceChange(e.target.checked)}
-                        />
-                        <label htmlFor="use_balance_payment" className="text-sm text-slate-300 font-medium select-none cursor-pointer flex items-center gap-2">
-                            <PiggyBank size={14} className="text-gold-500" />
-                            Usar Saldo de Escritório?
-                        </label>
+                    {/* Custom Toggle: Pagar com Saldo (Modal) */}
+                    <div
+                        onClick={() => handleUseBalanceChange(!useBalancePayment)}
+                        className="flex items-center justify-between p-4 bg-[#18181b] rounded-xl border border-white/10 cursor-pointer group hover:border-gold-500/30 transition-all duration-300"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg transition-colors duration-300 ${useBalancePayment ? 'bg-gold-500/20 text-gold-500' : 'bg-slate-800 text-slate-500'}`}>
+                                <PiggyBank size={18} />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-white">Usar Saldo de Escritório?</p>
+                                <p className="text-[10px] text-slate-500 font-medium">Baixa imediata no caixa</p>
+                            </div>
+                        </div>
+
+                        <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${useBalancePayment ? 'bg-gold-500' : 'bg-[#27272a]'}`}>
+                            <motion.div
+                                animate={{ x: useBalancePayment ? 26 : 4 }}
+                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-lg"
+                            />
+                        </div>
                     </div>
 
                     {useBalancePayment ? (
                         <div className="animate-in fade-in slide-in-from-top-1">
                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Qual Saldo Utilizar?</label>
                             <select
-                                className="w-full bg-navy-950 border border-slate-700 rounded-lg px-4 py-2 text-white outline-none focus:border-gold-500 text-sm"
+                                className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-gold-500 text-sm"
                                 value={selectedBalancePaymentId}
                                 onChange={(e) => setSelectedBalancePaymentId(e.target.value)}
                             >
@@ -126,14 +136,14 @@ const ExpensePaymentModal: React.FC<ExpensePaymentModalProps> = ({
 
                                 {isAddingPayerPayment ? (
                                     <input
-                                        className="w-full bg-navy-950 border border-slate-700 rounded-lg px-4 py-2 text-white outline-none focus:border-emerald-500"
+                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-emerald-500"
                                         value={confirmPaymentData.payer}
                                         onChange={(e) => setConfirmPaymentData({ ...confirmPaymentData, payer: e.target.value })}
                                         placeholder="Nome do pagador..."
                                     />
                                 ) : (
                                     <select
-                                        className="w-full bg-navy-950 border border-slate-700 rounded-lg px-4 py-2 text-white outline-none focus:border-emerald-500"
+                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-emerald-500"
                                         value={confirmPaymentData.payer}
                                         onChange={(e) => setConfirmPaymentData({ ...confirmPaymentData, payer: e.target.value })}
                                     >
@@ -149,7 +159,7 @@ const ExpensePaymentModal: React.FC<ExpensePaymentModalProps> = ({
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tipo</label>
                                     <select
-                                        className="w-full bg-navy-950 border border-slate-700 rounded-lg px-2 py-2 text-white outline-none focus:border-emerald-500"
+                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-2 text-white outline-none focus:border-emerald-500"
                                         value={confirmPaymentData.accountType}
                                         onChange={(e) => setConfirmPaymentData({ ...confirmPaymentData, accountType: e.target.value as 'PF' | 'PJ' })}
                                     >
@@ -173,14 +183,14 @@ const ExpensePaymentModal: React.FC<ExpensePaymentModalProps> = ({
 
                                     {isAddingAccountPayment ? (
                                         <input
-                                            className="w-full bg-navy-950 border border-slate-700 rounded-lg px-4 py-2 text-white outline-none focus:border-emerald-500"
+                                            className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-emerald-500"
                                             value={confirmPaymentData.account}
                                             onChange={(e) => setConfirmPaymentData({ ...confirmPaymentData, account: e.target.value })}
                                             placeholder="Ex: Nubank..."
                                         />
                                     ) : (
                                         <select
-                                            className="w-full bg-navy-950 border border-slate-700 rounded-lg px-4 py-2 text-white outline-none focus:border-emerald-500"
+                                            className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-emerald-500"
                                             value={confirmPaymentData.account}
                                             onChange={(e) => setConfirmPaymentData({ ...confirmPaymentData, account: e.target.value })}
                                         >
@@ -193,10 +203,10 @@ const ExpensePaymentModal: React.FC<ExpensePaymentModalProps> = ({
                         </>
                     )}
                 </div>
-                <div className="p-4 border-t border-slate-800 bg-navy-950 rounded-b-xl flex gap-3">
+                <div className="p-4 border-t border-white/10 bg-black/20 rounded-b-xl flex gap-3">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
+                        className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 text-white rounded-lg font-medium transition-colors"
                     >
                         Cancelar
                     </button>

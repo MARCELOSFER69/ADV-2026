@@ -209,13 +209,20 @@ export function Personal() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <User className="text-purple-500" /> Área Pessoal
-          </h2>
-          <p className="text-gray-400">Gerencie suas informações privadas e acessos.</p>
+      {/* Header Standardized with Robots Style */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-4">
+        <div className="flex items-center gap-4">
+          <div className="p-2.5 bg-gold-500/10 rounded-2xl text-gold-500 border border-gold-500/20 shadow-lg shadow-gold-500/5 transition-transform hover:scale-105">
+            <User size={24} />
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-white font-serif tracking-tight">
+              Área Pessoal
+            </h1>
+            <p className="text-slate-400 text-[11px] md:text-xs font-medium mt-0.5 opacity-80 uppercase tracking-widest">
+              Gerencie suas informações privadas e acessos de forma segura.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -223,13 +230,13 @@ export function Personal() {
       <div className="flex border-b border-gray-800">
         <button
           onClick={() => setActiveTab('credentials')}
-          className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'credentials' ? 'border-purple-500 text-purple-400' : 'border-transparent text-gray-400 hover:text-white'}`}
+          className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'credentials' ? 'border-gold-500 text-gold-500' : 'border-transparent text-gray-400 hover:text-white'}`}
         >
           <Shield size={16} /> Credenciais Pessoais
         </button>
         <button
           onClick={() => setActiveTab('bot')}
-          className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'bot' ? 'border-purple-500 text-purple-400' : 'border-transparent text-gray-400 hover:text-white'}`}
+          className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'bot' ? 'border-gold-500 text-gold-500' : 'border-transparent text-gray-400 hover:text-white'}`}
         >
           <Terminal size={16} /> Gerenciamento do Robô
         </button>
@@ -239,20 +246,20 @@ export function Personal() {
         <div className="space-y-6">
 
           {/* Toolbar */}
-          <div className="flex flex-col md:flex-row gap-4 bg-gray-900 p-4 rounded-xl border border-gray-800">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+          <div className="flex flex-col md:flex-row gap-4 bg-[#0f1014] p-4 rounded-xl border border-white/10 shadow-lg">
+            <div className="flex-1 relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-gold-500 transition-colors" size={18} />
               <input
                 type="text"
                 placeholder="Buscar por nome ou site..."
-                className="w-full bg-gray-950 border border-gray-700 rounded-lg pl-10 pr-10 py-2 text-white outline-none focus:border-purple-500"
+                className="w-full bg-[#18181b] border border-white/10 rounded-xl pl-11 pr-10 py-3 text-white outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/20 transition-all placeholder:text-slate-600"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
                   title="Limpar busca"
                 >
                   <X size={18} />
@@ -261,7 +268,7 @@ export function Personal() {
             </div>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+              className="bg-gold-600 hover:bg-gold-500 text-black px-6 py-3 rounded-xl font-black uppercase tracking-wider text-xs flex items-center gap-2 transition-all shadow-lg shadow-gold-600/20 active:scale-95"
             >
               <Plus size={18} /> Nova Credencial
             </button>
@@ -270,65 +277,66 @@ export function Personal() {
           {/* Grid de Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredCredentials.map(cred => (
-              <div key={cred.id} className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-purple-500/50 transition-all group shadow-lg">
+              <div key={cred.id} className="bg-[#0f1014] border border-white/5 rounded-xl p-6 hover:border-purple-500/30 transition-all group shadow-xl hover:shadow-2xl hover:shadow-purple-900/10 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-8 bg-purple-500/5 rounded-full blur-2xl -mr-4 -mt-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
 
                 {/* Card Header */}
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
-                      <Globe size={20} />
+                <div className="flex justify-between items-start mb-6 relative z-10">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-[#18181b] rounded-xl text-purple-500 border border-white/5 group-hover:border-purple-500/20 transition-colors shadow-inner">
+                      <Globe size={24} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-white text-lg">{cred.site_nome}</h3>
+                      <h3 className="font-black text-white text-lg tracking-tight group-hover:text-purple-400 transition-colors">{cred.site_nome}</h3>
                       {cred.site_url && (
-                        <a href={cred.site_url.startsWith('http') ? cred.site_url : `https://${cred.site_url}`} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline flex items-center gap-1">
-                          Acessar Site <ExternalLink size={10} />
+                        <a href={cred.site_url.startsWith('http') ? cred.site_url : `https://${cred.site_url}`} target="_blank" rel="noreferrer" className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-500/40 transition-all flex items-center gap-1 w-fit mt-1 uppercase font-bold tracking-wider">
+                          Acessar <ExternalLink size={10} />
                         </a>
                       )}
                     </div>
                   </div>
-                  <button onClick={() => deletePersonalCredential(cred.id)} className="text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => deletePersonalCredential(cred.id)} className="p-2 text-slate-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100">
                     <Trash2 size={18} />
                   </button>
                 </div>
 
                 {/* Card Body */}
-                <div className="space-y-3">
+                <div className="space-y-3 relative z-10">
                   {/* Pessoa */}
-                  <div className="bg-gray-950/50 p-2 rounded border border-gray-800 flex justify-between items-center">
-                    <span className="text-xs text-gray-500 uppercase font-bold flex items-center gap-1"><User size={10} /> Pessoa</span>
-                    <span className="text-sm text-gray-200">{cred.nome_pessoa}</span>
+                  <div className="bg-[#18181b] p-3 rounded-xl border border-white/5 flex justify-between items-center group/field hover:border-white/10 transition-colors">
+                    <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest flex items-center gap-1.5"><User size={12} /> Pessoa</span>
+                    <span className="text-sm font-medium text-slate-200">{cred.nome_pessoa}</span>
                   </div>
 
                   {/* Login/CPF */}
                   {cred.cpf_login && (
-                    <div className="bg-gray-950/50 p-2 rounded border border-gray-800 flex justify-between items-center group/item">
-                      <span className="text-xs text-gray-500 uppercase font-bold flex items-center gap-1"><User size={10} /> Login/CPF</span>
+                    <div className="bg-[#18181b] p-3 rounded-xl border border-white/5 flex justify-between items-center group/field hover:border-white/10 transition-colors">
+                      <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest flex items-center gap-1.5"><Shield size={12} /> Login/CPF</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-200 font-mono">{cred.cpf_login}</span>
-                        <button onClick={() => copyToClipboard(cred.cpf_login)} className="text-gray-500 hover:text-white opacity-0 group-hover/item:opacity-100"><Copy size={12} /></button>
+                        <span className="text-sm font-mono text-slate-200 tracking-tight">{cred.cpf_login}</span>
+                        <button onClick={() => copyToClipboard(cred.cpf_login)} className="text-slate-500 hover:text-white transition-colors opacity-0 group-hover/field:opacity-100"><Copy size={14} /></button>
                       </div>
                     </div>
                   )}
 
                   {/* Senha */}
-                  <div className="bg-gray-950/50 p-2 rounded border border-gray-800 flex justify-between items-center group/item">
-                    <span className="text-xs text-gray-500 uppercase font-bold flex items-center gap-1"><KeyRound size={10} /> Senha</span>
+                  <div className="bg-[#18181b] p-3 rounded-xl border border-white/5 flex justify-between items-center group/field hover:border-white/10 transition-colors">
+                    <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest flex items-center gap-1.5"><KeyRound size={12} /> Senha</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-200 font-mono">
+                      <span className="text-sm font-mono text-slate-200 tracking-tight">
                         {showPassword[cred.id] ? cred.senha : '••••••••'}
                       </span>
-                      <button onClick={() => setShowPassword(prev => ({ ...prev, [cred.id]: !prev[cred.id] }))} className="text-gray-500 hover:text-white">
+                      <button onClick={() => setShowPassword(prev => ({ ...prev, [cred.id]: !prev[cred.id] }))} className="text-slate-500 hover:text-purple-400 transition-colors">
                         {showPassword[cred.id] ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
-                      <button onClick={() => copyToClipboard(cred.senha)} className="text-gray-500 hover:text-white opacity-0 group-hover/item:opacity-100"><Copy size={12} /></button>
+                      <button onClick={() => copyToClipboard(cred.senha)} className="text-slate-500 hover:text-white transition-colors opacity-0 group-hover/field:opacity-100"><Copy size={14} /></button>
                     </div>
                   </div>
 
                   {/* Obs */}
                   {cred.observacao && (
-                    <div className="mt-2 text-xs text-gray-500 italic border-t border-gray-800 pt-2 flex gap-1">
-                      <FileText size={12} className="shrink-0 mt-0.5" /> {cred.observacao}
+                    <div className="mt-3 text-xs text-slate-500 italic border-t border-white/5 pt-3 flex gap-2">
+                      <FileText size={14} className="shrink-0 mt-0.5 text-purple-500/50" /> {cred.observacao}
                     </div>
                   )}
                 </div>
@@ -349,57 +357,57 @@ export function Personal() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             {/* Status Card */}
             <div className="md:col-span-4 space-y-4">
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-lg group relative transition-all duration-300 hover:border-purple-500/30">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-bold text-white flex items-center gap-2">
-                    <Activity size={18} className="text-purple-500" /> Status do Robô
+              <div className="bg-[#0f1014] border border-white/10 rounded-xl p-6 shadow-2xl group relative transition-all duration-300 hover:border-purple-500/30 overflow-hidden">
+                <div className="flex items-center justify-between mb-6 relative z-10">
+                  <h3 className="font-bold text-white flex items-center gap-2 text-lg">
+                    <Activity size={20} className="text-purple-500" /> Status do Robô
                   </h3>
-                  <div className={`px-2 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1.5 ${isBotOnline ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-gray-500/10 text-gray-500 border-gray-500/20'}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${isBotOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-500'}`} />
+                  <div className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-2 ${isBotOnline ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-zinc-800 text-zinc-500 border-zinc-700'}`}>
+                    <span className={`w-2 h-2 rounded-full ${isBotOnline ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-500'}`} />
                     {isBotOnline ? 'ONLINE' : 'OFFLINE'}
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500">Máquina</span>
+                <div className="space-y-4 relative z-10">
+                  <div className="flex justify-between items-center text-sm p-3 bg-[#18181b] rounded-xl border border-white/5">
+                    <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">Máquina</span>
                     <span className="text-white font-mono">{botStatus?.machine || '-'}</span>
                   </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500">Último Sinal</span>
-                    <span className="text-white">{botStatus?.last_heartbeat ? new Date(botStatus.last_heartbeat).toLocaleTimeString() : '-'}</span>
+                  <div className="flex justify-between items-center text-sm p-3 bg-[#18181b] rounded-xl border border-white/5">
+                    <span className="text-slate-500 font-bold text-xs uppercase tracking-wider">Último Sinal</span>
+                    <span className="text-emerald-400 font-mono text-xs">{botStatus?.last_heartbeat ? new Date(botStatus.last_heartbeat).toLocaleTimeString() : '-'}</span>
                   </div>
 
                   {/* BOTOES DE ACAO */}
-                  <div className="pt-4 border-t border-gray-800 flex gap-2">
+                  <div className="pt-4 border-t border-white/10 flex gap-2">
                     <button
                       onClick={() => sendBotCommand('restart')}
                       disabled={!isBotOnline}
-                      className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all"
+                      className="flex-1 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-900/20 active:scale-95"
                     >
-                      <RefreshCw size={16} /> Reiniciar
+                      <RefreshCw size={18} /> Reiniciar Sistema
                     </button>
                     <button
                       onClick={() => sendBotCommand('stop')}
                       disabled={!isBotOnline}
-                      className="bg-gray-800 hover:bg-red-600 text-white p-2 rounded-lg transition-all"
+                      className="bg-[#18181b] hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/50 text-slate-400 border border-white/10 p-3 rounded-xl transition-all"
                       title="Parar Robô"
                     >
-                      <Square size={16} />
+                      <Square size={18} />
                     </button>
                   </div>
 
                   {/* HOVER CONFIG: HEADLESS TOGGLE */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 pt-2 flex items-center justify-between text-xs text-gray-500 border-t border-gray-800/50 mt-2">
-                    <span className="flex items-center gap-1.5">
-                      <Eye size={12} /> Ver navegador?
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 pt-2 flex items-center justify-between text-xs text-slate-500 border-t border-white/5 mt-2">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Eye size={12} /> Visualizar navegador
                     </span>
                     <button
                       onClick={toggleHeadless}
-                      className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${!isHeadless ? 'bg-purple-500' : 'bg-gray-700'}`}
+                      className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${!isHeadless ? 'bg-purple-500' : 'bg-[#18181b] border-white/20'}`}
                       title={isHeadless ? "Modo Oculto (Ativo)" : "Modo Visível (Ativo)"}
                     >
-                      <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${!isHeadless ? 'translate-x-3' : 'translate-x-0'}`} />
+                      <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${!isHeadless ? 'translate-x-4' : 'translate-x-0'}`} />
                     </button>
                   </div>
                 </div>
@@ -408,33 +416,33 @@ export function Personal() {
 
             {/* Logs Window (Real-time Interactive) */}
             <div className="md:col-span-8">
-              <div className="bg-[#0c0d10] border border-gray-800 rounded-xl overflow-hidden shadow-2xl flex flex-col h-[500px]">
-                <div className="bg-gray-900 px-4 py-2 border-b border-gray-800 flex justify-between items-center">
-                  <span className="text-xs font-bold text-gray-500 flex items-center gap-2">
-                    <Terminal size={14} /> CLARA-BOT@TERMINAL (v2.0)
+              <div className="bg-[#0c0d10] border border-white/10 rounded-xl overflow-hidden shadow-2xl flex flex-col h-[500px]">
+                <div className="bg-[#18181b] px-4 py-3 border-b border-white/5 flex justify-between items-center">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                    <Terminal size={14} className="text-purple-500" /> CLARA-BOT@TERMINAL (v2.0)
                     {isBotOnline && (
-                      <span className="flex items-center gap-1.5 ml-2">
+                      <span className="flex items-center gap-1.5 ml-2 bg-emerald-500/10 px-2 py-0.5 rounded text-emerald-500 border border-emerald-500/10">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[10px] text-emerald-500/50 font-normal">Real-Time</span>
+                        <span className="font-bold">LIVE</span>
                       </span>
                     )}
                   </span>
                   <div className="flex gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-red-500/20" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/20" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-green-500/20" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/50" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-500/20 border border-green-500/50" />
                   </div>
                 </div>
 
                 {/* Scrollable Logs Area */}
-                <div className="flex-1 p-4 font-mono text-[11px] overflow-y-auto whitespace-pre-wrap selection:bg-emerald-500/20 custom-scrollbar flex flex-col gap-1">
+                <div className="flex-1 p-4 font-mono text-[11px] overflow-y-auto whitespace-pre-wrap selection:bg-purple-500/30 custom-scrollbar flex flex-col gap-1 bg-[#0c0d10]">
                   {/* Histórico antigo (se houver) */}
-                  {botLogs && <div className="text-gray-600 border-b border-gray-800 pb-2 mb-2">{botLogs.slice(-1000)}... [Histórico Carregado]</div>}
+                  {botLogs && <div className="text-slate-600 border-b border-white/5 pb-2 mb-2">{botLogs.slice(-1000)}... [Histórico Carregado]</div>}
 
                   {/* Logs em Tempo Real */}
                   {terminalLines.map((line, i) => (
-                    <div key={i} className={`${line.type === 'error' ? 'text-red-400' : line.type === 'warn' ? 'text-yellow-400' : 'text-emerald-500/90'} break-all`}>
-                      <span className="opacity-30 mr-2">[{new Date(line.timestamp).toLocaleTimeString()}]</span>
+                    <div key={i} className={`${line.type === 'error' ? 'text-red-400' : line.type === 'warn' ? 'text-yellow-400' : 'text-emerald-500/90'} break-all border-l-2 pl-2 ${line.type === 'error' ? 'border-red-500/50 bg-red-500/5' : 'border-emerald-500/20 hover:bg-white/5'} transition-colors py-0.5`}>
+                      <span className="opacity-30 mr-2 text-slate-500">[{new Date(line.timestamp).toLocaleTimeString()}]</span>
                       {line.message}
                     </div>
                   ))}
@@ -442,11 +450,11 @@ export function Personal() {
                 </div>
 
                 {/* Command Input Area */}
-                <div className="bg-gray-900/50 p-2 border-t border-gray-800 flex items-center gap-2">
-                  <span className="text-emerald-500 font-bold ml-2">❯</span>
+                <div className="bg-[#18181b] p-3 border-t border-white/10 flex items-center gap-2">
+                  <span className="text-purple-500 font-bold ml-1 animate-pulse">❯</span>
                   <input
                     type="text"
-                    className="flex-1 bg-transparent border-none outline-none text-white font-mono text-sm placeholder-gray-700"
+                    className="flex-1 bg-transparent border-none outline-none text-white font-mono text-xs placeholder-slate-600"
                     placeholder="Digite um comando (ex: status, help)..."
                     value={terminalInput}
                     onChange={(e) => setTerminalInput(e.target.value)}
@@ -476,36 +484,36 @@ export function Personal() {
       {/* MODAL DE ADICIONAR */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-md shadow-2xl animate-in zoom-in duration-200">
-            <div className="p-6 border-b border-gray-800 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-white">Nova Credencial</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-white"><Trash2 size={20} className="rotate-45" /></button>
+          <div className="bg-[#0f1014] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in duration-200 overflow-hidden">
+            <div className="p-5 border-b border-white/10 flex justify-between items-center bg-[#18181b]">
+              <h3 className="text-lg font-black text-white uppercase tracking-wider flex items-center gap-2"><Shield size={18} className="text-purple-500" /> Nova Credencial</h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-500 hover:text-white transition-colors"><X size={20} /></button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-5">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome da Pessoa *</label>
-                <input className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2.5 text-white outline-none focus:border-purple-500"
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Nome da Pessoa *</label>
+                <input className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20 transition-all placeholder:text-slate-700"
                   value={formData.nome_pessoa} onChange={e => setFormData({ ...formData, nome_pessoa: e.target.value })} placeholder="Ex: Dr. João" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome do Site *</label>
-                  <input className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2.5 text-white outline-none focus:border-purple-500"
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Nome do Site *</label>
+                  <input className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20 transition-all placeholder:text-slate-700"
                     value={formData.site_nome} onChange={e => setFormData({ ...formData, site_nome: e.target.value })} placeholder="Ex: Portal INSS" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Link (URL)</label>
-                  <input className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2.5 text-white outline-none focus:border-purple-500"
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Link (URL)</label>
+                  <input className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20 transition-all placeholder:text-slate-700"
                     value={formData.site_url} onChange={e => setFormData({ ...formData, site_url: e.target.value })} placeholder="www.site.com" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Login / CPF</label>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Login / CPF</label>
                 <input
-                  className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2.5 text-white outline-none focus:border-purple-500"
+                  className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20 transition-all placeholder:text-slate-700"
                   value={formData.cpf_login}
                   onChange={e => setFormData({ ...formData, cpf_login: formatCPF(e.target.value) })}
                   placeholder="000.000.000-00"
@@ -514,19 +522,19 @@ export function Personal() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Senha *</label>
-                <input className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2.5 text-white outline-none focus:border-purple-500"
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Senha *</label>
+                <input className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20 transition-all placeholder:text-slate-700"
                   type="text"
                   value={formData.senha} onChange={e => setFormData({ ...formData, senha: e.target.value })} />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Observações</label>
-                <textarea className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2.5 text-white outline-none focus:border-purple-500 resize-none h-20"
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Observações</label>
+                <textarea className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20 transition-all placeholder:text-slate-700 resize-none h-24"
                   value={formData.observacao} onChange={e => setFormData({ ...formData, observacao: e.target.value })} />
               </div>
 
-              <button onClick={handleSave} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg transition-colors mt-2">
+              <button onClick={handleSave} className="w-full bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white font-black uppercase tracking-widest py-4 rounded-xl shadow-lg shadow-purple-600/20 transition-all transform active:scale-[0.98] mt-2">
                 Salvar Credencial
               </button>
             </div>

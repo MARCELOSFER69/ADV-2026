@@ -30,34 +30,43 @@ const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
     const monthDays = Array.from({ length: days }, (_, i) => i + 1);
 
     return (
-        <div className="bg-navy-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg flex flex-col h-full animate-in fade-in duration-300">
+        <div className="bg-[#0f1014] border border-white/10 rounded-xl overflow-hidden shadow-2xl flex flex-col h-full animate-in fade-in duration-300">
             {/* Calendar Header */}
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-navy-950/50">
-                <h3 className="text-lg font-bold text-white font-serif capitalize">
+            <div className="p-5 border-b border-white/10 flex items-center justify-between bg-[#131418]">
+                <h3 className="text-xl font-black text-white font-serif capitalize tracking-tight">
                     {currentDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
                 </h3>
                 <div className="flex gap-2">
-                    <button onClick={() => onMonthChange('prev')} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
-                        <ChevronLeft size={20} />
+                    <button
+                        onClick={() => onMonthChange('prev')}
+                        className="p-2 hover:bg-white/5 rounded-lg text-gold-500/70 hover:text-gold-500 transition-all"
+                    >
+                        <ChevronLeft size={22} />
                     </button>
-                    <button onClick={onTodayClick} className="px-3 py-1 text-xs font-bold bg-slate-800 text-slate-300 rounded hover:text-white transition-colors">
+                    <button
+                        onClick={onTodayClick}
+                        className="px-4 py-1.5 text-xs font-black bg-gold-500/10 text-gold-500 rounded-lg border border-gold-500/20 hover:bg-gold-500/20 transition-all uppercase tracking-widest"
+                    >
                         Hoje
                     </button>
-                    <button onClick={() => onMonthChange('next')} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
-                        <ChevronRight size={20} />
+                    <button
+                        onClick={() => onMonthChange('next')}
+                        className="p-2 hover:bg-white/5 rounded-lg text-gold-500/70 hover:text-gold-500 transition-all"
+                    >
+                        <ChevronRight size={22} />
                     </button>
                 </div>
             </div>
 
             {/* Calendar Grid */}
-            <div className="p-4 flex-1">
-                <div className="grid grid-cols-7 border-b border-slate-800 pb-2 mb-2">
+            <div className="flex-1 flex flex-col">
+                <div className="grid grid-cols-7 border-b border-slate-800 bg-navy-950/30">
                     {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
-                        <div key={d} className="text-center text-xs font-bold text-slate-500 uppercase">{d}</div>
+                        <div key={d} className="py-2 text-center text-[10px] font-black text-slate-500 uppercase tracking-widest">{d}</div>
                     ))}
                 </div>
-                <div className="grid grid-cols-7 gap-2">
-                    {blanks.map(x => <div key={`blank-${x}`} className="" />)}
+                <div className="grid grid-cols-7 flex-1 auto-rows-fr bg-[#0b0c10]">
+                    {blanks.map(x => <div key={`blank-${x}`} className="border-b border-r border-slate-800/50 bg-slate-900/10" />)}
                     {monthDays.map(day => {
                         const year = currentDate.getFullYear();
                         const month = currentDate.getMonth();
@@ -74,22 +83,28 @@ const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
                                 key={day}
                                 onClick={() => onDayClick(day)}
                                 className={`
-                                    min-h-[80px] p-2 rounded-xl border cursor-pointer transition-all relative group flex flex-col justify-between
-                                    ${isToday ? 'bg-slate-800/50 border-slate-600' : 'bg-[#0f1014] border-slate-800 hover:border-slate-600'}
+                                    min-h-[100px] p-2 border-b border-r border-slate-800/80 cursor-pointer transition-all relative group flex flex-col justify-between
+                                    ${isToday ? 'bg-gold-500/5' : 'hover:bg-white/[0.02]'}
                                 `}
                             >
                                 <div className="flex justify-between items-start">
-                                    <span className={`text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-gold-500 text-black' : 'text-slate-400'}`}>
+                                    <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full transition-all ${isToday ? 'bg-gold-500 text-black shadow-lg shadow-gold-500/20' : 'text-slate-400 group-hover:text-white'}`}>
                                         {day}
                                     </span>
+                                    <div className="flex flex-wrap gap-1 justify-end">
+                                        {hasPending && <div className="w-1.5 h-1.5 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]" title="Pendente"></div>}
+                                        {hasPaid && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" title="Pago"></div>}
+                                    </div>
                                 </div>
-                                <div className="flex flex-wrap gap-1 mt-1 justify-end">
-                                    {hasPending && <div className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_5px_#eab308]" title="Pendente"></div>}
-                                    {hasPaid && <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_#ef4444]" title="Pago"></div>}
-                                </div>
+
                                 {dayExpenses.length > 0 && (
-                                    <div className="mt-1 text-[9px] font-medium text-slate-500 text-right">
-                                        {dayExpenses.length} item(s)
+                                    <div className="mt-1">
+                                        <div className="text-[10px] font-bold text-slate-500 group-hover:text-slate-300 transition-colors">
+                                            {dayExpenses.length} despesa{dayExpenses.length > 1 ? 's' : ''}
+                                        </div>
+                                        <div className="text-[9px] font-medium text-gold-500/70 group-hover:text-gold-500 transition-colors">
+                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(dayExpenses.reduce((acc, curr) => acc + curr.valor, 0))}
+                                        </div>
                                     </div>
                                 )}
                             </div>

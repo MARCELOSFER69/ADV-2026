@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Search, Plus, Phone, Mail, FileText, X, MapPin, Eye, Calendar, User, ChevronRight, Filter, Edit2, Camera, Save, Building2, Loader2, MessageCircle, Clock, LayoutGrid, LayoutList, Settings, ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, CheckSquare, Copy, ArrowRight, CreditCard, Heart, Briefcase, Globe, Share2, AlertTriangle, CheckCircle2, Trash2, Archive, RefreshCw, Check, Lock, ChevronLeft } from 'lucide-react';
+import { Search, Plus, Phone, Mail, FileText, X, MapPin, Eye, Calendar, User, ChevronRight, Filter, Edit2, Camera, Save, Building2, Loader2, MessageCircle, Clock, LayoutGrid, LayoutList, Settings, ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, CheckSquare, Copy, ArrowRight, CreditCard, Heart, Briefcase, Globe, Share2, AlertTriangle, CheckCircle2, Trash2, Archive, RefreshCw, Check, Lock, ChevronLeft, Users } from 'lucide-react';
 import { Client, Case, Branch, CaseStatus, ColumnConfig, Captador } from '../types';
 import CaseDetailsModal from '../components/modals/CaseDetailsModal';
 import WhatsAppModal from '../components/modals/WhatsAppModal';
@@ -19,6 +19,7 @@ import ClientFormModal from '../components/modals/ClientFormModal';
 import ClientFilters from '../components/clients/ClientFilters';
 import ClientGridView from '../components/clients/ClientGridView';
 import ClientTableView from '../components/clients/ClientTableView';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const DEFAULT_CLIENT_COLUMNS: ColumnConfig[] = [
     { id: 'nome', label: 'Nome / CPF', visible: true, order: 0 },
@@ -88,6 +89,7 @@ const Clients: React.FC = () => {
     const [newCaptadorName, setNewCaptadorName] = useState('');
     const [hasRepresentative, setHasRepresentative] = useState(false);
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+    const [selectedCase, setSelectedCase] = useState<Case | null>(null);
     const [isClientEditMode, setIsClientEditMode] = useState(false);
     const [sortConfig, setSortConfig] = useState<{ key: keyof Client | 'status', direction: 'asc' | 'desc' }>({ key: 'nome_completo', direction: 'asc' });
     const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_CLIENT_COLUMNS);
@@ -97,8 +99,76 @@ const Clients: React.FC = () => {
         city: '', captador: '', status: 'all', filial: 'all', sexo: 'all',
         dateStart: '', dateEnd: '', pendencia: 'all', gps: 'all'
     });
+    const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
+    const [isBulkArchiving, setIsBulkArchiving] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
     const searchInputRef = useRef<HTMLInputElement>(null);
+
+    // Bulk Handlers
+    const handleToggleSelectClient = useCallback((id: string) => {
+        setSelectedClientIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    }, []);
+
+    const handleSelectAllClients = useCallback((idsOnPage: string[]) => {
+        if (selectedClientIds.length === idsOnPage.length) {
+            setSelectedClientIds([]);
+        } else {
+            setSelectedClientIds(idsOnPage);
+        }
+    }, [selectedClientIds]);
+
+    const handleBulkArchive = useCallback(async () => {
+        if (selectedClientIds.length === 0) return;
+        const reason = window.prompt(`Arquivar ${selectedClientIds.length} clientes selecionados? Digite o motivo:`, "Arquivamento em massa");
+        if (!reason) return;
+
+        setIsBulkArchiving(true);
+        try {
+            const clientsToArchive = clients.filter(c => selectedClientIds.includes(c.id));
+            for (const client of clientsToArchive) {
+                await updateClient({ ...client, status: 'arquivado', motivo_arquivamento: reason });
+            }
+            showToast('success', `${selectedClientIds.length} clientes arquivados.`);
+            setSelectedClientIds([]);
+        } catch (error) {
+            showToast('error', 'Erro no arquivamento em massa.');
+        } finally {
+            setIsBulkArchiving(false);
+        }
+    }, [selectedClientIds, clients, updateClient, showToast]);
+
+    const handleBulkDelete = useCallback(async () => {
+        if (selectedClientIds.length === 0) return;
+        const confirmText = "EXCLUIR";
+        const userInput = window.prompt(`CUIDADO: Você está prestes a excluir ${selectedClientIds.length} clientes e todos os seus processos vinculados.\n\nPara confirmar, digite ${confirmText} abaixo:`);
+
+        if (userInput !== confirmText) {
+            showToast('error', 'Exclusão cancelada ou texto incorreto.');
+            return;
+        }
+
+        const reason = window.prompt("Informe o motivo da exclusão em massa:");
+        if (!reason) return;
+
+        setIsBulkDeleting(true);
+        try {
+            for (const id of selectedClientIds) {
+                await deleteClient(id, reason);
+            }
+            showToast('success', `${selectedClientIds.length} clientes excluídos permanentemente.`);
+            setSelectedClientIds([]);
+        } catch (error) {
+            showToast('error', 'Erro na exclusão em massa.');
+        } finally {
+            setIsBulkDeleting(false);
+        }
+    }, [selectedClientIds, deleteClient, showToast]);
+
+    const activeFiltersRef = useRef(activeFilters);
+    useEffect(() => { activeFiltersRef.current = activeFilters; }, [activeFilters]);
 
     // Callbacks - Declared before usage
     const handleRestoreClient = useCallback(async (client: Client) => {
@@ -372,24 +442,73 @@ const Clients: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                <div>
-                    <h2 className="text-2xl font-bold text-white font-serif flex items-center gap-2">
-                        {showArchived ? <><Archive size={24} className="text-slate-400" /> Arquivo Morto</> : 'Clientes Ativos'}
-                    </h2>
-                    <p className="text-slate-400">Total: {totalClients}</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-4">
+                <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-gold-500/10 rounded-2xl text-gold-500 border border-gold-500/20 shadow-lg shadow-gold-500/5 transition-transform hover:scale-105">
+                        <Users size={24} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-white font-serif tracking-tight">
+                            {showArchived ? 'Arquivo Morto' : 'Base de Clientes'}
+                        </h1>
+                        <p className="text-slate-400 text-[11px] md:text-xs font-medium mt-0.5 opacity-80 uppercase tracking-widest">
+                            {showArchived ? 'Histórico de clientes desativados e arquivados.' : 'Gerencie todos os clientes vinculados ao escritório.'}
+                        </p>
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <button
+
+                <div className="flex items-center gap-3">
+                    <motion.button
+                        layout
+                        initial={false}
                         onClick={() => { setShowArchived(!showArchived); setCurrentPage(1); }}
-                        className={`px-4 py-2.5 rounded-lg border font-medium flex items-center gap-2 transition-all text-sm ${showArchived ? 'bg-gold-500/10 border-gold-500 text-gold-500' : 'bg-navy-900 border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-600'}`}
+                        className={`group relative h-10 rounded-xl border flex items-center transition-all duration-300 overflow-hidden text-[10px] font-black uppercase tracking-widest ${showArchived
+                            ? 'bg-gold-500/10 border-gold-500 text-gold-500 shadow-lg shadow-gold-500/10 w-auto px-4 gap-2'
+                            : 'bg-[#181818] border-white/10 text-slate-400 hover:text-white hover:border-white/20 w-10 hover:w-auto px-0 hover:px-4 justify-center hover:justify-start gap-0 hover:gap-2'
+                            }`}
                     >
-                        {showArchived ? 'Voltar para Ativos' : 'Ver Arquivo Morto'}
-                    </button>
+                        <Archive size={16} className={showArchived ? 'text-gold-500' : 'group-hover:text-white'} />
+                        <span className={`whitespace-nowrap transition-all duration-300 ${showArchived ? 'opacity-100 w-auto' : 'opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto'}`}>
+                            {showArchived ? 'Voltar para Ativos' : 'Ver Arquivo'}
+                        </span>
+                    </motion.button>
+
                     {!showArchived && (
-                        <button onClick={() => setIsNewClientModalOpen(true)} className="bg-gold-600 hover:bg-gold-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 transition-all shadow-lg shadow-gold-600/20 font-medium text-sm">
-                            <Plus size={18} /> Novo Cliente
-                        </button>
+                        <>
+                            {/* View Mode Toggle */}
+                            <div className="bg-[#181818] border border-white/10 rounded-xl flex p-1 items-center h-10">
+                                <button
+                                    onClick={() => { setViewMode('grid'); saveUserPreferences({ clientsViewMode: 'grid' }); }}
+                                    className={`p-1.5 rounded-lg transition-all duration-300 flex items-center gap-2 px-3 ${viewMode === 'grid'
+                                        ? 'bg-gold-600 text-black shadow-lg shadow-gold-600/20 font-bold'
+                                        : 'text-slate-500 hover:text-white hover:bg-white/5'
+                                        }`}
+                                >
+                                    <LayoutGrid size={16} />
+                                    <span className="text-[9px] uppercase font-black tracking-widest hidden sm:inline">Kanban</span>
+                                </button>
+                                <button
+                                    onClick={() => { setViewMode('list'); saveUserPreferences({ clientsViewMode: 'list' }); }}
+                                    className={`p-1.5 rounded-lg transition-all duration-300 flex items-center gap-2 px-3 ${viewMode === 'list'
+                                        ? 'bg-gold-600 text-black shadow-lg shadow-gold-600/20 font-bold'
+                                        : 'text-slate-500 hover:text-white hover:bg-white/5'
+                                        }`}
+                                >
+                                    <LayoutList size={16} />
+                                    <span className="text-[9px] uppercase font-black tracking-widest hidden sm:inline">Lista</span>
+                                </button>
+
+                            </div>
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setIsNewClientModalOpen(true)}
+                                className="group h-10 bg-gold-600 hover:bg-gold-700 text-black rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-gold-600/20 flex items-center justify-center hover:justify-start w-10 hover:w-auto overflow-hidden px-0 hover:px-4 gap-0 hover:gap-2 transition-all duration-300"
+                            >
+                                <Plus size={18} className="shrink-0" />
+                                <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-all duration-300 w-0 group-hover:w-auto">Novo Cliente</span>
+                            </motion.button>
+                        </>
                     )}
                 </div>
             </div>
@@ -446,6 +565,9 @@ const Clients: React.FC = () => {
                             handleDeleteClick={handleDeleteClick}
                             handleCopyPhone={handleCopyPhone}
                             mergedPreferences={mergedPreferences}
+                            selectedIds={selectedClientIds}
+                            onToggleSelect={handleToggleSelectClient}
+                            onSelectAll={() => handleSelectAllClients(paginatedClients.map(c => c.id))}
                         />
                     )}
 
@@ -458,6 +580,52 @@ const Clients: React.FC = () => {
                     </div>
                 </>
             )}
+
+            {/* Bulk Actions Bar */}
+            <AnimatePresence>
+                {selectedClientIds.length > 0 && (
+                    <motion.div
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{ y: 20, opacity: 1 }}
+                        exit={{ y: 100, opacity: 0 }}
+                        className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-6 px-6 py-4 bg-zinc-900 border border-gold-500/30 rounded-2xl shadow-2xl shadow-black/50 backdrop-blur-xl"
+                    >
+                        <div className="flex items-center gap-3 pr-6 border-r border-zinc-700">
+                            <div className="w-8 h-8 rounded-full bg-gold-600 flex items-center justify-center text-white font-bold text-sm">
+                                {selectedClientIds.length}
+                            </div>
+                            <span className="text-sm font-medium text-slate-200">Selecionados</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleBulkArchive}
+                                disabled={isBulkArchiving}
+                                className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-slate-300 hover:text-white rounded-xl transition-all font-medium text-xs border border-white/5 disabled:opacity-50"
+                            >
+                                {isBulkArchiving ? <Loader2 size={14} className="animate-spin" /> : <Archive size={14} />}
+                                Arquivar
+                            </button>
+                            <button
+                                onClick={handleBulkDelete}
+                                disabled={isBulkDeleting}
+                                className="flex items-center gap-2 px-4 py-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-xl transition-all font-medium text-xs border border-red-500/20 disabled:opacity-50"
+                            >
+                                {isBulkDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                Excluir Permanentemente
+                            </button>
+                            <div className="w-px h-6 bg-zinc-700 mx-2" />
+                            <button
+                                onClick={() => setSelectedClientIds([])}
+                                className="p-2 text-slate-500 hover:text-white transition-colors"
+                                title="Cancelar Seleção"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <ClientFormModal
                 isOpen={isNewClientModalOpen}
@@ -522,8 +690,16 @@ const Clients: React.FC = () => {
                 <ClientDetailsModal
                     client={selectedClient}
                     onClose={() => setSelectedClient(null)}
+                    onSelectCase={(c) => setSelectedCase(c)}
                     initialTab={(clientDetailTab as any) || 'info'}
                     initialEditMode={isClientEditMode}
+                />
+            )}
+
+            {selectedCase && (
+                <CaseDetailsModal
+                    caseItem={selectedCase}
+                    onClose={() => setSelectedCase(null)}
                 />
             )}
         </div>

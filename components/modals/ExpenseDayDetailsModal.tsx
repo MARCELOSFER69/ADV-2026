@@ -21,19 +21,19 @@ const ExpenseDayDetailsModal: React.FC<ExpenseDayDetailsModalProps> = ({
 
     return (
         <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
-            <div className="bg-navy-900 border border-slate-700 rounded-xl w-full max-w-md shadow-2xl flex flex-col max-h-[80vh]">
-                <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-navy-950 rounded-t-xl">
+            <div className="bg-[#0f1014] border border-white/10 rounded-xl w-full max-w-md shadow-2xl flex flex-col max-h-[80vh]">
+                <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#131418] rounded-t-xl">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
                         <Calendar size={18} className="text-gold-500" />
                         {expenses.length > 0 ? new Date(expenses[0].data_despesa).toLocaleDateString('pt-BR', { dateStyle: 'long' }) : 'Detalhes do Dia'}
                     </h3>
-                    <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={20} /></button>
+                    <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={20} /></button>
                 </div>
 
                 <div className="p-4 overflow-y-auto custom-scrollbar space-y-3 flex-1">
                     {expenses.length > 0 ? (
                         expenses.map(expense => (
-                            <div key={expense.id} className="p-3 bg-navy-950 border border-slate-800 rounded-lg flex flex-col gap-2">
+                            <div key={expense.id} className="p-3 bg-black/20 border border-white/10 rounded-lg flex flex-col gap-2">
                                 <div className="flex justify-between items-start">
                                     <h4 className="font-medium text-white text-sm">{expense.titulo}</h4>
                                     <span className="font-bold text-red-400 text-sm">
@@ -67,8 +67,8 @@ const ExpenseDayDetailsModal: React.FC<ExpenseDayDetailsModalProps> = ({
                     )}
                 </div>
 
-                <div className="p-4 border-t border-slate-800 bg-navy-950 rounded-b-xl flex justify-end">
-                    <button onClick={onClose} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors">Fechar</button>
+                <div className="p-4 border-t border-white/10 bg-[#131418] rounded-b-xl flex justify-end">
+                    <button onClick={onClose} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm font-medium transition-colors border border-white/5">Fechar</button>
                 </div>
             </div>
         </div>
