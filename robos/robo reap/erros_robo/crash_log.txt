@@ -1,0 +1,339 @@
+[2026-01-26 16:34:00] [CRASH] ERRO GERAL (ABIMAEL CONCEICAO SANTOS): Message: invalid session id; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidsessionidexception
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0x6f7d13
+	0x6f7d54
+	0x51b0ce
+	0x558765
+	0x587e76
+	0x583be1
+	0x5830e2
+	0x4ee00b
+	0x4ee5ae
+	0x4eea8d
+	0x96bb64
+	0x967215
+	0x983fad
+	0x711ef8
+	0x719b0d
+	0x4edb89
+	0x4ed1d0
+	0xad534f
+	0x74ddfcc9
+	0x76f982ae
+	0x76f9827e
+
+Traceback (most recent call last):
+  File "C:\Users\Marcelo\Downloads\ADV-2026-main\ADV-2026-main\robos\robo reap\robo_reap.py", line 755, in processar_pescador_v2
+    url_atual = driver.current_url
+                ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\undetected_chromedriver\__init__.py", line 806, in __getattribute__
+    return super().__getattribute__(item)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\remote\webdriver.py", line 542, in current_url
+    return self.execute(Command.GET_CURRENT_URL)["value"]
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\remote\webdriver.py", line 432, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.InvalidSessionIdException: Message: invalid session id; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidsessionidexception
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0x6f7d13
+	0x6f7d54
+	0x51b0ce
+	0x558765
+	0x587e76
+	0x583be1
+	0x5830e2
+	0x4ee00b
+	0x4ee5ae
+	0x4eea8d
+	0x96bb64
+	0x967215
+	0x983fad
+	0x711ef8
+	0x719b0d
+	0x4edb89
+	0x4ed1d0
+	0xad534f
+	0x74ddfcc9
+	0x76f982ae
+	0x76f9827e
+
+
+--------------------------------------------------
+[2026-01-26 16:40:48] [CRASH] ERRO GERAL (ADRIANA PAULINO QUIRINO): Message: session not created: cannot connect to chrome at 127.0.0.1:64522
+from chrome not reachable; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#sessionnotcreatedexception
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0xff7d13
+	0xff7d54
+	0xe1b0ce
+	0xe0e839
+	0xe55732
+	0xe4b9e5
+	0xe4b806
+	0xe9459f
+	0xe93db7
+	0xe87d56
+	0xe594d9
+	0xe5a294
+	0x126bb64
+	0x1267215
+	0x1283fad
+	0x1011ef8
+	0x1019b0d
+	0x1000738
+	0x1000902
+	0xfea1da
+	0x74ddfcc9
+	0x76f982ae
+	0x76f9827e
+
+Traceback (most recent call last):
+  File "C:\Users\Marcelo\Downloads\ADV-2026-main\ADV-2026-main\robos\robo reap\robo_reap.py", line 699, in processar_pescador_v2
+    driver = uc.Chrome(options=options, version_main=v_main)
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\undetected_chromedriver\__init__.py", line 466, in __init__
+    super(Chrome, self).__init__(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        service=service,
+        ^^^^^^^^^^^^^^^^
+        options=options,
+        ^^^^^^^^^^^^^^^^
+        keep_alive=keep_alive,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\chrome\webdriver.py", line 45, in __init__
+    super().__init__(
+    ~~~~~~~~~~~~~~~~^
+        browser_name=DesiredCapabilities.CHROME["browserName"],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        keep_alive=keep_alive,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\chromium\webdriver.py", line 66, in __init__
+    super().__init__(command_executor=executor, options=self.options)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\common\webdriver.py", line 25, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\remote\webdriver.py", line 257, in __init__
+    self.start_session(capabilities)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\undetected_chromedriver\__init__.py", line 724, in start_session
+    super(selenium.webdriver.chrome.webdriver.WebDriver, self).start_session(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        capabilities
+        ^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\remote\webdriver.py", line 352, in start_session
+    response = self.execute(Command.NEW_SESSION, caps)["value"]
+               ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\remote\webdriver.py", line 432, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.SessionNotCreatedException: Message: session not created: cannot connect to chrome at 127.0.0.1:64522
+from chrome not reachable; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#sessionnotcreatedexception
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0xff7d13
+	0xff7d54
+	0xe1b0ce
+	0xe0e839
+	0xe55732
+	0xe4b9e5
+	0xe4b806
+	0xe9459f
+	0xe93db7
+	0xe87d56
+	0xe594d9
+	0xe5a294
+	0x126bb64
+	0x1267215
+	0x1283fad
+	0x1011ef8
+	0x1019b0d
+	0x1000738
+	0x1000902
+	0xfea1da
+	0x74ddfcc9
+	0x76f982ae
+	0x76f9827e
+
+
+--------------------------------------------------
+[2026-01-26 16:41:55] [CRASH] ERRO GERAL (ADRIANA PAULINO QUIRINO): Message: session not created: cannot connect to chrome at 127.0.0.1:64753
+from chrome not reachable; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#sessionnotcreatedexception
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0xff7d13
+	0xff7d54
+	0xe1b0ce
+	0xe0e839
+	0xe55732
+	0xe4b9e5
+	0xe4b806
+	0xe9459f
+	0xe93db7
+	0xe87d56
+	0xe594d9
+	0xe5a294
+	0x126bb64
+	0x1267215
+	0x1283fad
+	0x1011ef8
+	0x1019b0d
+	0x1000738
+	0x1000902
+	0xfea1da
+	0x74ddfcc9
+	0x76f982ae
+	0x76f9827e
+
+Traceback (most recent call last):
+  File "C:\Users\Marcelo\Downloads\ADV-2026-main\ADV-2026-main\robos\robo reap\robo_reap.py", line 699, in processar_pescador_v2
+    driver = uc.Chrome(options=options, version_main=v_main)
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\undetected_chromedriver\__init__.py", line 466, in __init__
+    super(Chrome, self).__init__(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        service=service,
+        ^^^^^^^^^^^^^^^^
+        options=options,
+        ^^^^^^^^^^^^^^^^
+        keep_alive=keep_alive,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\chrome\webdriver.py", line 45, in __init__
+    super().__init__(
+    ~~~~~~~~~~~~~~~~^
+        browser_name=DesiredCapabilities.CHROME["browserName"],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        keep_alive=keep_alive,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\chromium\webdriver.py", line 66, in __init__
+    super().__init__(command_executor=executor, options=self.options)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\common\webdriver.py", line 25, in __init__
+    super().__init__(*args, **kwargs)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\remote\webdriver.py", line 257, in __init__
+    self.start_session(capabilities)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\undetected_chromedriver\__init__.py", line 724, in start_session
+    super(selenium.webdriver.chrome.webdriver.WebDriver, self).start_session(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        capabilities
+        ^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\remote\webdriver.py", line 352, in start_session
+    response = self.execute(Command.NEW_SESSION, caps)["value"]
+               ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\remote\webdriver.py", line 432, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.SessionNotCreatedException: Message: session not created: cannot connect to chrome at 127.0.0.1:64753
+from chrome not reachable; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#sessionnotcreatedexception
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0xff7d13
+	0xff7d54
+	0xe1b0ce
+	0xe0e839
+	0xe55732
+	0xe4b9e5
+	0xe4b806
+	0xe9459f
+	0xe93db7
+	0xe87d56
+	0xe594d9
+	0xe5a294
+	0x126bb64
+	0x1267215
+	0x1283fad
+	0x1011ef8
+	0x1019b0d
+	0x1000738
+	0x1000902
+	0xfea1da
+	0x74ddfcc9
+	0x76f982ae
+	0x76f9827e
+
+
+--------------------------------------------------
+[2026-01-26 17:20:30] [CRASH] ERRO GERAL (DORACI DE JESUS MARTINS ): Message: 
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0xff7d13
+	0xff7d54
+	0xe1b290
+	0xe656ea
+	0xe6598b
+	0xea7912
+	0xe88004
+	0xea5111
+	0xe87d56
+	0xe594d9
+	0xe5a294
+	0x126bb64
+	0x1267215
+	0x1283fad
+	0x1011ef8
+	0x1019b0d
+	0x1000738
+	0x1000902
+	0xfea1da
+	0x74ddfcc9
+	0x76f982ae
+	0x76f9827e
+
+Traceback (most recent call last):
+  File "C:\Users\Marcelo\Downloads\ADV-2026-main\ADV-2026-main\robos\robo reap\robo_reap.py", line 841, in processar_pescador_v2
+    WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, "//button[contains(., 'Janeiro')]")))
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Marcelo\AppData\Roaming\Python\Python314\site-packages\selenium\webdriver\support\wait.py", line 121, in until
+    raise TimeoutException(message, screen, stacktrace)
+selenium.common.exceptions.TimeoutException: Message: 
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0xff7d13
+	0xff7d54
+	0xe1b290
+	0xe656ea
+	0xe6598b
+	0xea7912
+	0xe88004
+	0xea5111
+	0xe87d56
+	0xe594d9
+	0xe5a294
+	0x126bb64
+	0x1267215
+	0x1283fad
+	0x1011ef8
+	0x1019b0d
+	0x1000738
+	0x1000902
+	0xfea1da
+	0x74ddfcc9
+	0x76f982ae
+	0x76f9827e
+
+
+--------------------------------------------------
