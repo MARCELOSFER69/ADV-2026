@@ -274,6 +274,17 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         }
     }, [user?.preferences?.lowPerformanceMode]);
 
+    // APLICA CLASSE CSS NO BODY PARA MODO DE BAIXO DESEMPENHO
+    useEffect(() => {
+        if (typeof document !== 'undefined') {
+            if (isLowPerformance) {
+                document.body.classList.add('low-performance');
+            } else {
+                document.body.classList.remove('low-performance');
+            }
+        }
+    }, [isLowPerformance]);
+
     const setClientToView = useCallback((id: string | null, tab?: 'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp') => {
         _setClientToView(id);
         if (tab) setClientDetailTab(tab);
