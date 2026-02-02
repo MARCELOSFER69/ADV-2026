@@ -5,11 +5,12 @@ import {
     Save, Trash2, Loader2, FileScan, Briefcase, ChevronDown, Calculator,
     Shield, Gavel, FileText, Building, HandCoins, CalendarCheck, Bell,
     UserCog, User, Stethoscope, MessageSquare, Cpu, Download,
-    Sun, Moon, Monitor, Bot
+    Sun, Moon, Monitor, Bot, Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BRAND_CONFIG } from '../../logoData';
 import NotificationsPanel from '../ui/NotificationsPanel';
+import SettingsModal from '../modals/SettingsModal';
 
 // --- SUB-COMPONENT: SIDEBAR ITEM (Already Memoized) ---
 const SidebarItem = React.memo(({ item, isActive, waitingChatsCount, onClick }: { item: any, isActive: boolean, waitingChatsCount: number, onClick: (id: any) => void }) => {
@@ -70,11 +71,14 @@ interface SidebarViewProps {
         canViewPersonal: boolean;
         canViewRobots: boolean;
     };
+    onOpenSettings: () => void;
+    isSettingsOpen: boolean;
 }
 
 const SidebarView = memo(({
     currentView, onNavigate, onLogout, user, mergedPreferences, unreadCount, waitingChatsCount,
-    setIsAssistantOpen, onOpenProfile, onOpenNotifications, isNotificationsOpen, permissions
+    setIsAssistantOpen, onOpenProfile, onOpenNotifications, isNotificationsOpen, permissions,
+    onOpenSettings, isSettingsOpen
 }: SidebarViewProps) => {
 
     // Local State for Accordions (UI logic only)
@@ -318,6 +322,17 @@ const SidebarView = memo(({
                                 </button>
                             </>
                         )}
+
+                        {/* Botão de Configurações */}
+                        <button onClick={onOpenSettings} className="w-full flex items-center h-14 group/settings relative">
+                            {isSettingsOpen && <div className="absolute left-0 h-8 w-1 bg-gold-500 rounded-r opacity-0 group-hover:opacity-100 transition-opacity" />}
+                            <div className="min-w-[70px] flex items-center justify-center">
+                                <div className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 ${isSettingsOpen ? 'bg-navy-900 text-gold-500' : 'text-slate-400 group-hover/settings:text-gold-500'}`}>
+                                    <Settings size={20} />
+                                </div>
+                            </div>
+                            <span className="whitespace-nowrap overflow-hidden text-sm font-medium transition-all duration-300 text-slate-400 group-hover/settings:text-white w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 group-hover:ml-1">Configurações</span>
+                        </button>
                     </nav>
 
                     {/* Footer User */}
@@ -354,6 +369,7 @@ const Sidebar: React.FC = () => {
 
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     // Edit Profile Local State
     const [isSaving, setIsSaving] = useState(false);
@@ -451,9 +467,14 @@ const Sidebar: React.FC = () => {
                 onOpenNotifications={() => setIsNotificationsOpen(!isNotificationsOpen)}
                 isNotificationsOpen={isNotificationsOpen}
                 permissions={permissions}
+                onOpenSettings={() => setIsSettingsOpen(true)}
+                isSettingsOpen={isSettingsOpen}
             />
 
             <NotificationsPanel isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} notifications={notifications} />
+
+            {/* Settings Modal */}
+            <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
             {/* Profile Modal (kept here as it needs state form logic) */}
             {isProfileModalOpen && (

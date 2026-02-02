@@ -134,6 +134,10 @@ interface AppContextType {
 
     // --- ANIMATIONS ---
     isStatusBlinking: boolean;
+
+    // --- PERFORMANCE MODE ---
+    isLowPerformance: boolean;
+    togglePerformanceMode: () => void;
 }
 
 interface ToastMessage {
@@ -234,6 +238,42 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const [clientDetailTab, setClientDetailTab] = useState<'visao360' | 'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp'>('visao360');
     const [isStatusBlinking, setIsStatusBlinking] = useState(false);
 
+    // --- PERFORMANCE MODE (Detecção Automática + Manual) ---
+    const detectLowPerformance = useCallback(() => {
+        // Verificar RAM (navigator.deviceMemory)
+        const lowMemory = typeof (navigator as any).deviceMemory === 'number' && (navigator as any).deviceMemory < 4;
+        // Verificar núcleos de CPU
+        const lowCpu = typeof navigator.hardwareConcurrency === 'number' && navigator.hardwareConcurrency < 4;
+        // Verificar preferência do sistema por movimento reduzido
+        const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+        return lowMemory || lowCpu || prefersReducedMotion;
+    }, []);
+
+    const [isLowPerformance, setIsLowPerformance] = useState<boolean>(() => {
+        // Primeiro, tenta ler do LocalStorage (cache)
+        try {
+            const stored = localStorage.getItem('app_low_performance_mode');
+            if (stored !== null) {
+                return stored === 'true';
+            }
+        } catch (e) {
+            // Ignore localStorage errors
+        }
+        // Fallback: detecção automática
+        return detectLowPerformance();
+    });
+
+    // Sincroniza com UserPreferences do Supabase quando o usuário loga
+    useEffect(() => {
+        if (user?.preferences?.lowPerformanceMode !== undefined) {
+            setIsLowPerformance(user.preferences.lowPerformanceMode);
+            try {
+                localStorage.setItem('app_low_performance_mode', String(user.preferences.lowPerformanceMode));
+            } catch (e) { /* ignore */ }
+        }
+    }, [user?.preferences?.lowPerformanceMode]);
+
     const setClientToView = useCallback((id: string | null, tab?: 'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp') => {
         _setClientToView(id);
         if (tab) setClientDetailTab(tab);
@@ -266,6 +306,30 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         setToasts((prev) => [...prev, { id, type, message: safeMessage }]);
         setTimeout(() => { setToasts((prev) => prev.filter((t) => t.id !== id)); }, 3000);
     }, []);
+
+    // --- TOGGLE PERFORMANCE MODE (Declarado após showToast) ---
+    const togglePerformanceMode = useCallback(async () => {
+        const newValue = !isLowPerformance;
+        setIsLowPerformance(newValue);
+
+        // Salvar no localStorage para persistência imediata
+        try {
+            localStorage.setItem('app_low_performance_mode', String(newValue));
+        } catch (e) { /* ignore */ }
+
+        // Salvar no Supabase (UserPreferences) se logado
+        if (user?.id) {
+            try {
+                const updatedPrefs = { ...(user.preferences || {}), lowPerformanceMode: newValue };
+                await supabase.from('users').update({ preferences: updatedPrefs }).eq('id', user.id);
+                setUser(prev => prev ? { ...prev, preferences: updatedPrefs } : null);
+            } catch (err) {
+                console.error('Erro ao salvar preferência de performance:', err);
+            }
+        }
+
+        showToast('success', newValue ? 'Modo de baixo desempenho ativado' : 'Modo de alto desempenho ativado');
+    }, [isLowPerformance, user, showToast]);
 
 
     // --- CARREGAMENTO DE DADOS ---
@@ -1006,12 +1070,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         addReminder, toggleReminder, deleteReminder, toasts, showToast, isLoading,
         isNewCaseModalOpen, setIsNewCaseModalOpen, isNewClientModalOpen, setIsNewClientModalOpen, newCaseParams, openNewCaseWithParams, caseToView, setCaseToView,
         chats, chatMessages, fetchChatMessages, assumeChat, sendMessage, markChatAsRead, deleteChat, finishChat, waitingChatsCount,
-        triggerRgpSync, triggerReapSync, isAssistantOpen, setIsAssistantOpen, isStatusBlinking
+        triggerRgpSync, triggerReapSync, isAssistantOpen, setIsAssistantOpen, isStatusBlinking,
+        isLowPerformance, togglePerformanceMode
     }), [
         user, globalPreferences, mergedPreferences, reloadData,
         financial, officeExpenses, officeBalances, personalCredentials, events, tasks, captadores, commissionReceipts, reminders, notifications,
         currentView, clientToView, clientDetailTab, toasts, isLoading, isNewCaseModalOpen, isNewClientModalOpen, newCaseParams, caseToView,
-        chats, chatMessages, waitingChatsCount, isAssistantOpen, isStatusBlinking
+        chats, chatMessages, waitingChatsCount, isAssistantOpen, isStatusBlinking, isLowPerformance, togglePerformanceMode
     ]);
 
     return <AppContext.Provider value={contextValue as any}>{children}</AppContext.Provider>;

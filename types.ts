@@ -546,6 +546,7 @@ export interface UserPreferences {
     tabs?: TabConfig[];
     sections?: SectionConfig[];
   };
+  lowPerformanceMode?: boolean;
 }
 
 export interface UserPermission {

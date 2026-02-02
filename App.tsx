@@ -46,20 +46,35 @@ import { motion, AnimatePresence } from 'framer-motion';
 const View = React.memo<{
   id: string | string[];
   activeView: string;
-  children: React.ReactNode
-}>(({ id, activeView, children }) => {
+  children: React.ReactNode;
+  isLowPerformance?: boolean;
+}>(({ id, activeView, children, isLowPerformance = false }) => {
   const ids = Array.isArray(id) ? id : [id];
   const isActive = ids.includes(activeView);
 
+  // Configurações condicionais baseadas no modo de performance
+  const motionProps = isLowPerformance
+    ? {
+      // Modo de baixo desempenho: sem animações
+      initial: false,
+      animate: undefined,
+      exit: undefined,
+      transition: { duration: 0 },
+    }
+    : {
+      // Modo normal: animações completas
+      initial: { opacity: 0, y: 10, scale: 0.99 },
+      animate: { opacity: 1, y: 0, scale: 1 },
+      exit: { opacity: 0, scale: 0.99 },
+      transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const }, // cubic-bezier equivalent to easeOut
+    };
+
   return (
-    <AnimatePresence>
+    <AnimatePresence mode={isLowPerformance ? "sync" : "wait"}>
       {isActive && (
         <motion.div
           key={Array.isArray(id) ? id[0] : id}
-          initial={{ opacity: 0, y: 10, scale: 0.99 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.99 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
+          {...motionProps}
           className="h-full w-full flex flex-col"
         >
           <Suspense fallback={<PageLoader />}>
@@ -74,7 +89,7 @@ const View = React.memo<{
 import TitleBar from './components/Layout/TitleBar';
 
 const AppContent: React.FC = () => {
-  const { currentView, user, isLoading, events, isNewCaseModalOpen, setIsNewCaseModalOpen, logout, showToast } = useApp();
+  const { currentView, user, isLoading, events, isNewCaseModalOpen, setIsNewCaseModalOpen, logout, showToast, isLowPerformance } = useApp();
   const [isPublicRoute, setIsPublicRoute] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
@@ -204,75 +219,77 @@ const AppContent: React.FC = () => {
       <TitleBar />
       <div className="flex-1 overflow-hidden">
         <Layout>
-          <View id="dashboard" activeView={currentView}>
+          <View id="dashboard" activeView={currentView} isLowPerformance={isLowPerformance}>
             <Dashboard />
           </View>
 
-          <View id="clients" activeView={currentView}>
+          <View id="clients" activeView={currentView} isLowPerformance={isLowPerformance}>
             <Clients />
           </View>
 
-          <View id="whatsapp" activeView={currentView}>
+          <View id="whatsapp" activeView={currentView} isLowPerformance={isLowPerformance}>
             <WhatsApp />
           </View>
 
           <View
             id={['cases', 'cases-judicial', 'cases-administrative', 'cases-insurance']}
             activeView={currentView}
+            isLowPerformance={isLowPerformance}
           >
             <Cases />
           </View>
 
-          <View id="expertise" activeView={currentView}>
+          <View id="expertise" activeView={currentView} isLowPerformance={isLowPerformance}>
             <Expertise />
           </View>
 
           <View
             id={['financial', 'commissions']}
             activeView={currentView}
+            isLowPerformance={isLowPerformance}
           >
             <Financial />
           </View>
 
-          <View id="office-expenses" activeView={currentView}>
+          <View id="office-expenses" activeView={currentView} isLowPerformance={isLowPerformance}>
             <OfficeExpenses />
           </View>
 
-          <View id="financial-calendar" activeView={currentView}>
+          <View id="financial-calendar" activeView={currentView} isLowPerformance={isLowPerformance}>
             <FinancialCalendar />
           </View>
 
-          <View id="retirements" activeView={currentView}>
+          <View id="retirements" activeView={currentView} isLowPerformance={isLowPerformance}>
             <Retirements />
           </View>
 
-          <View id="cnis" activeView={currentView}>
+          <View id="cnis" activeView={currentView} isLowPerformance={isLowPerformance}>
             <CnisReader />
           </View>
 
-          <View id="gps-calculator" activeView={currentView}>
+          <View id="gps-calculator" activeView={currentView} isLowPerformance={isLowPerformance}>
             <GpsCalculator />
           </View>
 
-          <View id="document-builder" activeView={currentView}>
+          <View id="document-builder" activeView={currentView} isLowPerformance={isLowPerformance}>
             <DocumentBuilder />
           </View>
 
-          <View id="robots" activeView={currentView}>
+          <View id="robots" activeView={currentView} isLowPerformance={isLowPerformance}>
             <Robots />
           </View>
 
           {/* --- NOVA TELA PESSOAL --- */}
-          <View id="personal" activeView={currentView}>
+          <View id="personal" activeView={currentView} isLowPerformance={isLowPerformance}>
             <Personal />
           </View>
           {/* ------------------------- */}
 
-          <View id="permissions" activeView={currentView}>
+          <View id="permissions" activeView={currentView} isLowPerformance={isLowPerformance}>
             <Permissions />
           </View>
 
-          <View id="download" activeView={currentView}>
+          <View id="download" activeView={currentView} isLowPerformance={isLowPerformance}>
             <DownloadPage />
           </View>
 

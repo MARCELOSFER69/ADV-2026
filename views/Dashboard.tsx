@@ -119,7 +119,7 @@ const PERIOD_LABELS: Record<WidgetPeriod, string> = {
 };
 
 const Dashboard: React.FC = () => {
-    const { financial, events, tasks, toggleTask, user, setCurrentView, setCaseToView, setClientToView, setIsNewCaseModalOpen, setIsNewClientModalOpen, saveUserPreferences, showToast, reminders, addReminder, toggleReminder, deleteReminder } = useApp();
+    const { financial, events, tasks, toggleTask, user, setCurrentView, setCaseToView, setClientToView, setIsNewCaseModalOpen, setIsNewClientModalOpen, saveUserPreferences, showToast, reminders, addReminder, toggleReminder, deleteReminder, isLowPerformance } = useApp();
 
     // Novos Hooks (React Query)
     const { data: cases = [], isLoading: isLoadingCases } = useAllCases();
@@ -287,6 +287,105 @@ const Dashboard: React.FC = () => {
         const customTitle = widget.config?.title;
         const dataType = widget.config?.dataType || 'financial';
         const financialViewMode = widget.config?.financialViewMode || 'all';
+
+        // --- MODO DE BAIXO DESEMPENHO: Substituir gráficos por KPIs simplificados ---
+        if (isLowPerformance) {
+            // Substituir gráficos pesados por versões simplificadas
+            if (widget.type === 'chart-cash-flow') {
+                const currentBalance = financial.reduce((acc, curr) => { if (!curr.status_pagamento) return acc; return acc + (curr.tipo === FinancialType.RECEITA ? curr.valor : -curr.valor); }, 0);
+                return (
+                    <KPITile
+                        title={customTitle || 'Fluxo de Caixa'}
+                        value={currentBalance}
+                        onClick={() => handleWidgetClick(widget.type)}
+                        icon={DollarSign}
+                        colorClass="text-emerald-500"
+                        bgColorClass="bg-emerald-500/10"
+                        format="currency"
+                        type={widget.type}
+                        outline={true}
+                    />
+                );
+            }
+            if (widget.type === 'radar-financial') {
+                const monthlyIncome = financial.filter(f => f.tipo === FinancialType.RECEITA && f.status_pagamento).reduce((acc, curr) => acc + curr.valor, 0);
+                return (
+                    <KPITile
+                        title={customTitle || 'Radar Financeiro'}
+                        value={monthlyIncome}
+                        onClick={() => handleWidgetClick(widget.type)}
+                        icon={RadarIcon}
+                        colorClass="text-blue-400"
+                        bgColorClass="bg-blue-500/10"
+                        format="currency"
+                        type={widget.type}
+                        outline={true}
+                    />
+                );
+            }
+            if (widget.type === 'chart-funnel') {
+                const activeCases = cases.filter(c => c.status !== CaseStatus.ARQUIVADO).length;
+                return (
+                    <KPITile
+                        title={customTitle || 'Processos Ativos'}
+                        value={activeCases}
+                        onClick={() => handleWidgetClick(widget.type)}
+                        icon={Briefcase}
+                        colorClass="text-purple-400"
+                        bgColorClass="bg-purple-500/10"
+                        format="number"
+                        type={widget.type}
+                        outline={true}
+                    />
+                );
+            }
+            if (widget.type === 'chart-types') {
+                return (
+                    <KPITile
+                        title={customTitle || 'Total de Tipos'}
+                        value={typeDistributionData.length}
+                        subtitle={`${cases.length} processos`}
+                        onClick={() => handleWidgetClick(widget.type)}
+                        icon={PieChartIcon}
+                        colorClass="text-orange-400"
+                        bgColorClass="bg-orange-500/10"
+                        format="number"
+                        type={widget.type}
+                        outline={true}
+                    />
+                );
+            }
+            if (widget.type === 'chart-financial') {
+                return (
+                    <KPITile
+                        title={customTitle || 'Gráfico Financeiro'}
+                        value={stats.kpis?.monthly_revenue || 0}
+                        onClick={() => handleWidgetClick(widget.type)}
+                        icon={BarChart}
+                        colorClass="text-emerald-500"
+                        bgColorClass="bg-emerald-500/10"
+                        format="currency"
+                        type={widget.type}
+                        outline={true}
+                    />
+                );
+            }
+            if (widget.type === 'chart-origin') {
+                return (
+                    <KPITile
+                        title={customTitle || 'Origem de Clientes'}
+                        value={clients.length}
+                        onClick={() => handleWidgetClick(widget.type)}
+                        icon={UserPlus}
+                        colorClass="text-purple-400"
+                        bgColorClass="bg-purple-500/10"
+                        format="number"
+                        type={widget.type}
+                        outline={true}
+                    />
+                );
+            }
+        }
 
         switch (widget.type) {
             // --- WIDGET CORRIGIDO: CLIENTES POR FILIAL ---
@@ -684,18 +783,19 @@ const Dashboard: React.FC = () => {
                     {widgets.map((widget, index) => (
                         <motion.div
                             key={widget.id}
-                            layout
-                            initial={{ opacity: 0, scale: 0.96, filter: 'blur(4px)' }}
-                            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                            transition={{ duration: 0.5, delay: index * 0.04, ease: [0.23, 1, 0.32, 1] }}
-                            className={`relative rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col
+                            layout={isLowPerformance ? false : true}
+                            initial={isLowPerformance ? false : { opacity: 0, scale: 0.96, filter: 'blur(4px)' }}
+                            animate={isLowPerformance ? undefined : { opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                            transition={isLowPerformance ? { duration: 0 } : { duration: 0.5, delay: index * 0.04, ease: [0.23, 1, 0.32, 1] }}
+                            className={`relative rounded-2xl transition-all duration-300 overflow-hidden flex flex-col
+                                ${isLowPerformance ? 'shadow-sm' : 'shadow-lg hover:shadow-xl'}
                                 ${isEditMode ? 'border-2 border-dashed border-gold-500/50 cursor-move bg-[#131418]/60' :
                                     (widget.type.startsWith('kpi-') ? 'bg-[#131418] border border-white/5 hover:border-gold-500/30' : 'bg-[#131418] border border-white/5 hover:border-white/10')}
                             `}
                             style={{ gridColumn: `span ${widget.width}` }}
                         >
                             {isEditMode && (
-                                <div className="absolute top-0 left-0 w-full h-full bg-black/60 z-20 flex items-center justify-center gap-2 backdrop-blur-sm">
+                                <div className={`absolute top-0 left-0 w-full h-full bg-black/60 z-20 flex items-center justify-center gap-2 ${isLowPerformance ? '' : 'backdrop-blur-sm'}`}>
                                     <button onClick={() => { const n = [...widgets]; if (index > 0) { [n[index], n[index - 1]] = [n[index - 1], n[index]]; setWidgets(n); } }} className="p-2 bg-[#18181b] rounded-xl text-white hover:bg-zinc-700 border border-white/10" title="Mover Esq"><ChevronLeft size={20} /></button>
                                     <button onClick={() => { const n = widgets.map(w => w.id === widget.id ? { ...w, width: (w.width === 4 ? 1 : w.width + 1) as any } : w); setWidgets(n); }} className="p-2 bg-[#18181b] border border-gold-500/50 rounded-xl text-gold-500 hover:bg-gold-500 hover:text-black transition-colors shadow-lg shadow-gold-500/20" title="Redimensionar"><Maximize2 size={20} /></button>
                                     <button onClick={() => openWidgetConfig(widget)} className="p-2 bg-[#18181b] rounded-xl text-gold-500 hover:bg-zinc-700 border border-white/10" title="Configurar"><Settings size={20} /></button>
