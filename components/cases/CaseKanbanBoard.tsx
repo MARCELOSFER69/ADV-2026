@@ -135,10 +135,12 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
         if (!over) return;
 
         const caseId = active.id as string;
-        const newStatus = over.id as CaseStatus;
 
-        // Optimistic update handled by parent or just wait for refetch?
-        // Logic was check if status diff then call update
+        // Se soltar sobre outro card, o 'over.id' é o ID do card.
+        // Precisamos pegar o container (coluna) desse card.
+        // O dnd-kit fornece isso em data.current.sortable.containerId
+        const newStatus = (over.data.current?.sortable?.containerId || over.id) as CaseStatus;
+
         const draggedCase = cases.find(c => c.id === caseId);
         if (draggedCase && draggedCase.status !== newStatus) {
             await onCaseDrop(caseId, newStatus);
