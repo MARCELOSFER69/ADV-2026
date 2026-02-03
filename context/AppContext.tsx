@@ -4,7 +4,7 @@ import {
     Client, Case, CaseType, FinancialRecord, Event, ViewState, Task, FinancialType, CaseHistory,
     UserPreferences, User, OfficeExpense, Captador, CaseInstallment, CommissionReceipt,
     AppNotification, Reminder, UserPermission, GPS, PersonalCredential, OfficeBalance, CaseStatus,
-    ClientHistory, EventType, Chat, ChatMessage
+    ClientHistory, EventType, Chat, ChatMessage, ClientDocument
 } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getTodayBrasilia } from '../utils/dateUtils';
@@ -589,7 +589,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 'interviewStatus', 'interviewDate', 'filial', 'captador',
                 'representante_nome', 'representante_cpf', 'pendencias',
                 'observacao', 'foto', 'status', 'senha_gov', 'senha_inss',
-                'motivo_arquivamento', 'rgp_status', 'reap_status'
+                'motivo_arquivamento', 'rgp_status', 'reap_status', 'documentos'
             ];
 
             const payload: any = {};
@@ -628,7 +628,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 'interviewStatus', 'interviewDate', 'filial', 'captador',
                 'representante_nome', 'representante_cpf', 'pendencias',
                 'observacao', 'foto', 'status', 'senha_gov', 'senha_inss',
-                'motivo_arquivamento', 'rgp_status', 'reap_status'
+                'motivo_arquivamento', 'rgp_status', 'reap_status', 'documentos'
             ];
 
             const payload: any = {
@@ -665,8 +665,65 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }, [queryClient, showToast]);
 
     const syncClientDocuments = useCallback(async (clientId: string) => {
-        await syncClientDocumentsStub(clientId);
-    }, []);
+        try {
+            console.log("Syncing docs for:", clientId);
+
+            // 1. Lista arquivos do R2
+            const r2Files = await listClientFilesFromR2(clientId);
+
+            if (!r2Files || r2Files.length === 0) {
+                showToast('error', 'Nenhum arquivo encontrado na nuvem para este cliente.');
+                return;
+            }
+
+            // 2. Formata para o tipo ClientDocument
+            const syncedDocs: ClientDocument[] = r2Files.map(file => ({
+                id: crypto.randomUUID(), // Gera novo ID para referência local se necessário
+                nome: file.path.split('/').pop() || 'Arquivo',
+                tipo: (file.path.toLowerCase().endsWith('.pdf')) ? 'PDF' : 'IMG',
+                data_upload: file.lastModified?.toISOString() || new Date().toISOString(),
+                url: file.url,
+                path: file.path
+            }));
+
+            // 3. Busca o cliente atual para não sobrescrever outros campos
+            const { data: client, error: fetchError } = await supabase
+                .from('clients')
+                .select('documentos')
+                .eq('id', clientId)
+                .single();
+
+            if (fetchError) throw fetchError;
+
+            // 4. União inteligente (evitar duplicatas pelo path)
+            const currentDocs = client?.documentos || [];
+            const mergedDocs = [...currentDocs];
+
+            syncedDocs.forEach(synced => {
+                const exists = mergedDocs.find(d => d.path === synced.path);
+                if (!exists) {
+                    mergedDocs.push(synced);
+                }
+            });
+
+            // 5. Atualiza o banco
+            const { error: updateError } = await supabase
+                .from('clients')
+                .update({ documentos: mergedDocs })
+                .eq('id', clientId);
+
+            if (updateError) throw updateError;
+
+            // 6. Invalida cache para forçar recarregamento UI
+            queryClient.invalidateQueries({ queryKey: ['clients'] });
+            queryClient.invalidateQueries({ queryKey: ['client', clientId] });
+
+            showToast('success', `${syncedDocs.length} documentos sincronizados com a nuvem!`);
+        } catch (error: any) {
+            console.error("Erro na sincronização:", error);
+            showToast('error', `Falha na sincronização: ${error.message}`);
+        }
+    }, [queryClient, showToast]);
 
     const addCase = useCallback(async (newCase: Case) => {
         try {
