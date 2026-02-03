@@ -1,8 +1,15 @@
 -- Migração para habilitar busca insensível a acentos
+-- EXECUTAR NO SUPABASE SQL EDITOR
+
+-- 1. Habilitar extensão unaccent
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
--- Atualizando view_clients_dashboard para incluir busca unaccent
-CREATE OR REPLACE VIEW view_clients_dashboard AS
+-- 2. Dropar views existentes para recriar com novas colunas
+DROP VIEW IF EXISTS view_clients_dashboard;
+DROP VIEW IF EXISTS view_cases_dashboard;
+
+-- 3. Recriar view_clients_dashboard com coluna unaccent
+CREATE VIEW view_clients_dashboard AS
 SELECT 
     c.*,
     unaccent(c.nome_completo) AS nome_completo_unaccent,
@@ -48,8 +55,8 @@ SELECT
     ) AS gps_status_calculado
 FROM clients c;
 
--- Atualizando view_cases_dashboard para incluir busca unaccent
-CREATE OR REPLACE VIEW view_cases_dashboard AS
+-- 4. Recriar view_cases_dashboard com colunas unaccent
+CREATE VIEW view_cases_dashboard AS
 SELECT 
     cs.*,
     c.nome_completo AS client_name,
