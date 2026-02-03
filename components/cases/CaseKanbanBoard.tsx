@@ -235,10 +235,10 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
                                     >
                                         <div className="space-y-3 min-h-[100px]">
                                             {columnCases.map(caseItem => {
-                                                // Synthesize lightweight client from case data
+                                                // Real client data from view_cases_dashboard
                                                 const client = {
                                                     id: caseItem.client_id,
-                                                    nome_completo: caseItem.client_name || `Cliente ${caseItem.client_id.substring(0, 4)}`
+                                                    nome_completo: caseItem.client_name || 'Desconhecido'
                                                 } as any;
                                                 return (
                                                     <CaseKanbanCard

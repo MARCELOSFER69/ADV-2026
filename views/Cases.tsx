@@ -397,13 +397,10 @@ const Cases: React.FC = () => {
                         onClose={() => setSelectedCase(null)}
                         onSelectCase={setSelectedCase}
                         onViewClient={(clientId) => {
-                            setClientToView(clientId);
-                            // Assuming parent component or Context handles routing, but strict refactor implies we use explicit navigation possibly?
-                            // Current context has setCurrentView.
-                            // setCurrentView('clients'); // Accessing context again inside modal or prop drilling?
-                            // Context access inside CaseDetailsModal is likely.
-                            useApp().setCurrentView('clients'); // HACK: calling hook conditionally might trigger warning but here we are in closure.
-                            // Better: Pass function.
+                            const app = useApp();
+                            app.setClientToView(clientId, 'info');
+                            app.setCurrentView('clients');
+                            setSelectedCase(null);
                         }}
                     />
                 )}

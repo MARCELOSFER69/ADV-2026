@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
+import { supabase } from '../../services/supabaseClient';
 import { CaseStatus, CaseType, Case } from '../../types';
-import { X, Save, FileText, User, Gavel, DollarSign, Hash, CreditCard, Search, ChevronDown, Check } from 'lucide-react';
+import { X, Save, FileText, User, Gavel, DollarSign, Hash, CreditCard, Search, ChevronDown, Check, AlertTriangle } from 'lucide-react';
 import { formatCurrencyInput, formatProcessNumber, parseCurrencyToNumber } from '../../services/formatters';
 import { formatDateForDB } from '../../utils/dateUtils';
 import { useLockBodyScroll } from '../../hooks/useLockBodyScroll';
@@ -57,6 +58,8 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
     // Async Search State
     const [clientsList, setClientsList] = useState<Partial<import('../../types').Client>[]>([]);
     const [isSearchingClients, setIsSearchingClients] = useState(false);
+    const [existingCasesForClient, setExistingCasesForClient] = useState<Case[]>([]);
+    const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
 
     // Ensure CaseType is defined before using it
     const safeAllTypes = useMemo(() => {
@@ -350,11 +353,46 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
         setNewCase(prev => ({ ...prev, client_id: client.id }));
         setClientSearchTerm(client.nome_completo);
         setIsClientListOpen(false);
+        // Clean up previous client's cases
+        setExistingCasesForClient([]);
     };
 
+    // Duplicate Check logic
+    useEffect(() => {
+        const checkDuplicate = async () => {
+            if (!newCase.client_id || !newCase.tipo) return;
+
+            setIsCheckingDuplicates(true);
+            try {
+                // Fetch active cases for this client in this category
+                const { data, error } = await supabase
+                    .from('view_cases_dashboard')
+                    .select('*')
+                    .eq('client_id', newCase.client_id)
+                    .eq('tipo', newCase.tipo)
+                    .neq('status', 'Arquivado');
+
+                if (error) throw error;
+                setExistingCasesForClient(data || []);
+            } catch (err) {
+                console.error("Error checking duplicates", err);
+            } finally {
+                setIsCheckingDuplicates(false);
+            }
+        };
+
+        checkDuplicate();
+    }, [newCase.client_id, newCase.tipo]);
+
+    const hasDuplicate = existingCasesForClient.length > 0;
     const handleCreateCase = (e: React.FormEvent) => {
         e.preventDefault();
         if (!newCase.client_id) { showToast('error', 'Selecione um cliente.'); return; }
+
+        if (hasDuplicate) {
+            const confirm = window.confirm(`O cliente já possui ${existingCasesForClient.length} processo(s) ativo(s) nesta categoria (${newCase.tipo}). Deseja criar mesmo assim?`);
+            if (!confirm) return;
+        }
 
         const modalidadeStr = newCase.modalidade ? ` (${newCase.modalidade})` : '';
 
@@ -430,6 +468,16 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
                         {isClientListOpen && clientSearchTerm.length >= 2 && !isSearchingClients && filteredClients.length === 0 && (
                             <div className="absolute top-full left-0 right-0 mt-1 bg-[#0f1014] border border-zinc-700 rounded-lg shadow-2xl p-4 text-center z-50">
                                 <span className="text-zinc-500 text-xs">Nenhum cliente encontrado.</span>
+                            </div>
+                        )}
+
+                        {hasDuplicate && (
+                            <div className="mt-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-1">
+                                <AlertTriangle className="text-red-500 shrink-0" size={18} />
+                                <div className="text-xs text-red-200">
+                                    <span className="font-bold block">Atenção: Duplicidade Detectada</span>
+                                    O cliente já possui {existingCasesForClient.length} processo(s) ativos nesta categoria ({newCase.tipo}).
+                                </div>
                             </div>
                         )}
                     </div>

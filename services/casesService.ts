@@ -86,8 +86,8 @@ export const fetchAllCasesData = async () => {
 export const fetchKanbanCases = async () => {
     try {
         const { data, error } = await supabase
-            .from('cases')
-            .select('id, titulo, numero_processo, status, valor_causa, client_id, data_abertura')
+            .from('view_cases_dashboard')
+            .select('id, titulo, numero_processo, status, valor_causa, client_id, data_abertura, client_name, client_cpf')
             .neq('status', 'Arquivado');
 
         if (error) throw error;
