@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Phone, Building2, AlertTriangle, MessageCircle, Edit2, Archive, RefreshCw, Trash2, Copy, Check } from 'lucide-react';
 import { Client, ColumnConfig } from '../../types';
 import { formatDateDisplay } from '../../utils/dateUtils';
+import { formatCPFOrCNPJ } from '../../services/formatters';
 import PendencyIndicator from '../ui/PendencyIndicator';
 import { motion } from 'framer-motion';
 
@@ -71,7 +72,7 @@ const ClientRow: React.FC<ClientRowProps> = ({
             </td>
             {columns.filter(c => c.visible).map(col => (
                 <td key={`${client.id}-${col.id}`} className="px-6 py-4 align-middle">
-                    {col.id === 'nome' && (
+                    {col.id === 'nome_completo' && (
                         <PendencyIndicator pendencies={client.pendencias} align="left" className="w-full">
                             <div className="flex items-center gap-3 cursor-help">
                                 {client.foto ? <img src={client.foto} alt={client.nome_completo} className="w-8 h-8 rounded-full border border-slate-700 object-cover" /> : (
@@ -82,14 +83,16 @@ const ClientRow: React.FC<ClientRowProps> = ({
                                         {String(client.nome_completo || '').substring(0, 2).toUpperCase()}
                                     </div>
                                 )}
-                                <div>
-                                    <p className="font-semibold text-slate-200 group-hover:text-amber-500 transition-colors flex items-center gap-2">
-                                        {String(client.nome_completo)}
-                                    </p>
-                                    <p className="opacity-50 text-[0.85em]">{String(client.cpf_cnpj || '')}</p>
-                                </div>
+                                <p className="font-semibold text-slate-200 group-hover:text-amber-500 transition-colors">
+                                    {String(client.nome_completo)}
+                                </p>
                             </div>
                         </PendencyIndicator>
+                    )}
+                    {col.id === 'cpf_cnpj' && (
+                        <span className="text-slate-400 text-xs font-medium">
+                            {formatCPFOrCNPJ(client.cpf_cnpj || '')}
+                        </span>
                     )}
                     {col.id === 'contato' && (
                         <div className="flex items-center gap-2 group/phone">

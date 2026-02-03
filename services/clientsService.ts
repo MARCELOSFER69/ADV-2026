@@ -42,6 +42,19 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
             } else if (filters.pendencia === 'sem_pendencia') {
                 query = query.eq('pendencias_count', 0);
             }
+
+            // Filtro de Situação GPS (Usando a coluna calculada da View)
+            if (filters.gps && filters.gps !== 'all') {
+                query = query.eq('gps_status_calculado', filters.gps);
+            }
+
+            // Filtro de Datas (Cadastro)
+            if (filters.dateStart) {
+                query = query.gte('data_cadastro', filters.dateStart);
+            }
+            if (filters.dateEnd) {
+                query = query.lte('data_cadastro', filters.dateEnd);
+            }
         }
 
         // Paginação e Ordenação
@@ -86,6 +99,68 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
         return { data: [], count: 0 };
     } catch (error) {
         console.error("Erro fetchClients:", error);
+        throw error;
+    }
+};
+
+export const fetchAllFilteredClientsData = async (search?: string, filters?: any): Promise<Client[]> => {
+    try {
+        let query = supabase.from('view_clients_dashboard').select('*');
+
+        // Filtro de Busca (Search)
+        if (search) {
+            const cleanSearch = search.replace(/\D/g, '');
+            if (cleanSearch.length > 0) {
+                query = query.or(`nome_completo.ilike.%${search}%,cpf_cnpj.ilike.%${search}%,cpf_cnpj.ilike.%${cleanSearch}%`);
+            } else {
+                query = query.ilike('nome_completo', `%${search}%`);
+            }
+        }
+
+        // Filtros Granulares
+        if (filters) {
+            if (filters.filial && filters.filial !== 'all') query = query.eq('filial', filters.filial);
+            if (filters.captador && filters.captador !== '') query = query.ilike('captador', `%${filters.captador}%`);
+            if (filters.city && filters.city !== '') query = query.ilike('cidade', `%${filters.city}%`);
+            if (filters.sexo && filters.sexo !== 'all') query = query.eq('sexo', filters.sexo);
+
+            if (filters.status === 'active') {
+                query = query.eq('status_calculado', 'Ativo');
+            } else if (filters.status === 'inactive') {
+                query = query.eq('status_calculado', 'Inativo');
+            } else if (filters.status === 'concedido') {
+                query = query.eq('status_calculado', 'Concedido');
+            } else if (filters.status === 'arquivado') {
+                query = query.eq('status', 'arquivado');
+            }
+
+            if (filters.pendencia === 'com_pendencia') {
+                query = query.gt('pendencias_count', 0);
+            } else if (filters.pendencia === 'sem_pendencia') {
+                query = query.eq('pendencias_count', 0);
+            }
+
+            if (filters.gps && filters.gps !== 'all') {
+                query = query.eq('gps_status_calculado', filters.gps);
+            }
+
+            if (filters.dateStart) {
+                query = query.gte('data_cadastro', filters.dateStart);
+            }
+            if (filters.dateEnd) {
+                query = query.lte('data_cadastro', filters.dateEnd);
+            }
+        }
+
+        const sortKey = filters?.sortKey || 'nome_completo';
+        const sortAsc = filters?.sortDirection !== 'desc';
+
+        const { data, error } = await query.order(sortKey, { ascending: sortAsc });
+
+        if (error) throw error;
+        return (data || []) as Client[];
+    } catch (error) {
+        console.error("Erro fetchAllFilteredClients:", error);
         throw error;
     }
 };

@@ -66,17 +66,17 @@ const ClientTableView: React.FC<ClientTableViewProps> = ({
                                     key={col.id}
                                     className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-white select-none"
                                     onClick={() => {
-                                        if (col.id === 'nome') handleSort('nome_completo');
+                                        if (col.id === 'nome_completo') handleSort('nome_completo');
                                         if (col.id === 'filial') handleSort('filial');
                                         if (col.id === 'captador') handleSort('captador');
                                     }}
                                 >
                                     <div className="flex items-center gap-1">
                                         {col.label}
-                                        {(col.id === 'nome' && sortConfig.key === 'nome_completo') || (col.id === 'filial' && sortConfig.key === 'filial') || (col.id === 'captador' && sortConfig.key === 'captador') ? (
+                                        {(col.id === 'nome_completo' && sortConfig.key === 'nome_completo') || (col.id === 'filial' && sortConfig.key === 'filial') || (col.id === 'captador' && sortConfig.key === 'captador') ? (
                                             sortConfig.direction === 'asc' ? <ArrowDown size={12} className="text-gold-500" /> : <ArrowUp size={12} className="text-gold-500" />
                                         ) : (
-                                            ['nome', 'filial', 'captador'].includes(col.id) && <ArrowUpDown size={12} className="text-slate-600" />
+                                            ['nome_completo', 'filial', 'captador'].includes(col.id) && <ArrowUpDown size={12} className="text-slate-600" />
                                         )}
                                     </div>
                                 </th>

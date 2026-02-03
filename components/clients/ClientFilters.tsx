@@ -105,6 +105,20 @@ const ClientFilters: React.FC<ClientFiltersProps> = ({
                             <Filter size={18} /> Filtros
                         </button>
 
+                        {viewMode === 'list' && (
+                            <button
+                                onClick={() => {
+                                    setShowColumnConfig(!showColumnConfig);
+                                    setShowSort(false);
+                                    setShowFilters(false);
+                                }}
+                                className={`px-3 py-2.5 rounded-lg border flex items-center gap-2 transition-all text-sm font-medium whitespace-nowrap ${showColumnConfig ? 'bg-navy-950 border-gold-500 text-gold-500' : 'bg-navy-950/50 border-white/10 text-slate-400 hover:text-white'}`}
+                            >
+                                <Settings size={18} />
+                                <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Colunas</span>
+                            </button>
+                        )}
+
                         <div className="bg-navy-950/50 border border-white/10 rounded-lg flex p-0.5 items-center">
                             {viewMode === 'grid' ? (
                                 <SizeScaler

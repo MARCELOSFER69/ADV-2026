@@ -123,6 +123,7 @@ export interface Client {
   reap_status?: 'Regular' | 'Pendente Anual' | 'Não Realizada';
   reap_ano_base?: number;
   updated_at?: string;
+  gps_status_calculado?: 'puxada' | 'pendente' | 'regular' | null;
 }
 
 export interface Task {

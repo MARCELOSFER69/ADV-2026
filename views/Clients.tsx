@@ -22,15 +22,16 @@ import ClientTableView from '../components/clients/ClientTableView';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const DEFAULT_CLIENT_COLUMNS: ColumnConfig[] = [
-    { id: 'nome', label: 'Nome / CPF', visible: true, order: 0 },
-    { id: 'contato', label: 'Contato', visible: true, order: 1 },
-    { id: 'filial', label: 'Filial', visible: true, order: 2 },
-    { id: 'status', label: 'Status', visible: true, order: 3 },
-    { id: 'gps', label: 'Situação GPS', visible: false, order: 4 },
-    { id: 'endereco', label: 'Endereço', visible: false, order: 5 },
-    { id: 'nascimento', label: 'Nascimento', visible: false, order: 6 },
-    { id: 'captador', label: 'Captador', visible: false, order: 7 },
-    { id: 'email', label: 'Email', visible: false, order: 8 },
+    { id: 'nome_completo', label: 'Nome', visible: true, order: 0 },
+    { id: 'cpf_cnpj', label: 'CPF / CNPJ', visible: true, order: 1 },
+    { id: 'contato', label: 'Contato', visible: true, order: 2 },
+    { id: 'filial', label: 'Filial', visible: true, order: 3 },
+    { id: 'status', label: 'Status', visible: true, order: 4 },
+    { id: 'gps', label: 'Situação GPS', visible: false, order: 5 },
+    { id: 'endereco', label: 'Endereço', visible: false, order: 6 },
+    { id: 'nascimento', label: 'Nascimento', visible: false, order: 7 },
+    { id: 'captador', label: 'Captador', visible: false, order: 8 },
+    { id: 'email', label: 'Email', visible: false, order: 9 },
 ];
 
 const PENDING_OPTIONS = [
@@ -56,7 +57,9 @@ const CIVIL_STATUS_OPTIONS = [
 
 const BRANCH_OPTIONS = Object.values(Branch).map(b => ({ label: b, value: b }));
 
+import { fetchAllFilteredClientsData } from '../services/clientsService';
 import { useClients } from '../hooks/useClients';
+import * as XLSX from 'xlsx';
 
 const Clients: React.FC = () => {
     const {
@@ -105,6 +108,7 @@ const Clients: React.FC = () => {
     const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
     const [isBulkArchiving, setIsBulkArchiving] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     // Hook useClients (React Query)
     const { data: paginatedClients, isLoading: isFetching, totalCount: totalClients, refetch } = useClients({
@@ -312,8 +316,14 @@ const Clients: React.FC = () => {
     useEffect(() => {
         if (user?.preferences?.clientsViewMode) setViewMode(user.preferences.clientsViewMode);
         if (user?.preferences?.clientsColumns) {
-            const merged = [...user.preferences.clientsColumns];
-            DEFAULT_CLIENT_COLUMNS.forEach(defCol => { if (!merged.find(c => c.id === defCol.id)) merged.push(defCol); });
+            // Filter out columns that are no longer in DEFAULT_CLIENT_COLUMNS (like the old 'nome' column)
+            const validColumnIds = DEFAULT_CLIENT_COLUMNS.map(c => c.id);
+            const filteredPreferences = user.preferences.clientsColumns.filter((c: any) => validColumnIds.includes(c.id));
+
+            const merged = [...filteredPreferences];
+            DEFAULT_CLIENT_COLUMNS.forEach(defCol => {
+                if (!merged.find(c => c.id === defCol.id)) merged.push(defCol);
+            });
             setColumns(merged.sort((a, b) => a.order - b.order));
         }
     }, [user]);
@@ -395,6 +405,85 @@ const Clients: React.FC = () => {
         showToast('success', 'Colunas restauradas.');
     }, [saveUserPreferences, showToast]);
 
+    const handleExportExcel = useCallback(async () => {
+        setIsExporting(true);
+        try {
+            const allFilteredClients = await fetchAllFilteredClientsData(debouncedSearch, {
+                ...activeFilters,
+                status: showArchived ? 'arquivado' : activeFilters.status,
+                sortKey: sortConfig.key,
+                sortDirection: sortConfig.direction
+            });
+
+            if (allFilteredClients.length === 0) {
+                showToast('error', 'Nenhum dado para exportar.');
+                return;
+            }
+
+            const visibleColumns = columns.filter(col => col.visible).sort((a, b) => a.order - b.order);
+
+            const exportData = allFilteredClients.map(client => {
+                const row: any = {};
+                visibleColumns.forEach(col => {
+                    let value = '';
+                    switch (col.id) {
+                        case 'nome_completo':
+                            value = client.nome_completo || 'N/A';
+                            break;
+                        case 'cpf_cnpj':
+                            value = client.cpf_cnpj ? formatCPFOrCNPJ(client.cpf_cnpj) : 'N/A';
+                            break;
+                        case 'contato':
+                            value = client.telefone ? formatPhone(client.telefone) : 'N/A';
+                            break;
+                        case 'filial':
+                            value = client.filial || 'N/A';
+                            break;
+                        case 'status':
+                            value = getClientStatus(client.id).label;
+                            break;
+                        case 'gps':
+                            if (client.gps_status_calculado) {
+                                value = client.gps_status_calculado === 'puxada' ? 'Puxada' :
+                                    client.gps_status_calculado === 'pendente' ? 'Pendente' : 'Regular';
+                            } else {
+                                value = 'N/A';
+                            }
+                            break;
+                        case 'endereco':
+                            value = `${client.endereco || ''}, ${client.bairro || ''}, ${client.cidade || ''} - ${client.uf || ''}`;
+                            break;
+                        case 'nascimento':
+                            value = client.data_nascimento ? formatDateDisplay(client.data_nascimento) : 'N/A';
+                            break;
+                        case 'captador':
+                            value = client.captador || 'N/A';
+                            break;
+                        case 'email':
+                            value = client.email || 'N/A';
+                            break;
+                    }
+                    row[col.label] = value;
+                });
+                return row;
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Clientes');
+
+            const fileName = `Relatorio_Clientes_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+
+            showToast('success', 'Relatório Excel gerado com sucesso!');
+        } catch (error) {
+            console.error('Erro ao exportar Excel:', error);
+            showToast('error', 'Erro ao gerar relatório Excel.');
+        } finally {
+            setIsExporting(false);
+        }
+    }, [debouncedSearch, activeFilters, showArchived, sortConfig, columns, getClientStatus, showToast]);
+
     const clearFilters = useCallback(() => setActiveFilters({ city: '', captador: '', status: 'all', filial: 'all', sexo: 'all', dateStart: '', dateEnd: '', pendencia: 'all', gps: 'all' }), []);
 
     const duplicateClient = null; // Removido useMemo de filtro local. Recomenda-se query JIT se necessário.
@@ -451,6 +540,18 @@ const Clients: React.FC = () => {
                         <span className={`whitespace-nowrap transition-all duration-300 ${showArchived ? 'opacity-100 w-auto' : 'opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto'}`}>
                             {showArchived ? 'Voltar para Ativos' : 'Ver Arquivo'}
                         </span>
+                    </motion.button>
+
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleExportExcel}
+                        disabled={isExporting}
+                        className="group h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center hover:justify-start w-10 hover:w-auto overflow-hidden px-0 hover:px-4 gap-0 hover:gap-2 transition-all duration-300 disabled:opacity-50"
+                        title="Exportar para Excel"
+                    >
+                        {isExporting ? <Loader2 size={18} className="animate-spin shrink-0" /> : <FileText size={18} className="shrink-0" />}
+                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-all duration-300 w-0 group-hover:w-auto">Exportar Excel</span>
                     </motion.button>
 
                     {!showArchived && (
