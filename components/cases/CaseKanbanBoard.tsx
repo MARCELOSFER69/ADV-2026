@@ -1,3 +1,4 @@
+// Kanban Board para gestão de processos jurídicos
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import {
     DndContext,
@@ -8,6 +9,8 @@ import {
     DragStartEvent,
     DragOverlay,
     defaultDropAnimationSideEffects,
+    useDroppable,
+    closestCorners,
 } from '@dnd-kit/core';
 import {
     SortableContext,
@@ -28,6 +31,35 @@ interface CaseKanbanBoardProps {
     setColumnWidth: (width: number) => void;
     cardScale: number;
 }
+
+const KanbanColumn: React.FC<{
+    status: CaseStatus;
+    columnWidth: number;
+    onColumnResizeDown: (e: React.MouseEvent) => void;
+    children: React.ReactNode;
+}> = ({ status, columnWidth, onColumnResizeDown, children }) => {
+    const { setNodeRef } = useDroppable({
+        id: status,
+    });
+
+    return (
+        <div
+            ref={setNodeRef}
+            className="flex-shrink-0 flex flex-col h-full relative group/col"
+            style={{ width: `${columnWidth}px` }}
+        >
+            {children}
+            {/* Resize Handle */}
+            <div
+                onMouseDown={onColumnResizeDown}
+                className="absolute right-[-12px] top-0 bottom-0 w-[6px] cursor-col-resize hover:bg-gold-500/50 transition-colors z-20 group-hover/col:bg-zinc-800/50 flex items-center justify-center"
+                title="Arraste para redimensionar coluna"
+            >
+                <div className="w-[1px] h-10 bg-zinc-700 group-hover:bg-gold-500/50" />
+            </div>
+        </div>
+    );
+};
 
 const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
     cases,
@@ -150,6 +182,7 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
     return (
         <DndContext
             sensors={sensors}
+            collisionDetection={closestCorners}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
@@ -168,10 +201,11 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
                         const totalColumnValue = columnCases.reduce((acc, curr) => acc + curr.valor_causa, 0);
 
                         return (
-                            <div
+                            <KanbanColumn
                                 key={status}
-                                className="flex-shrink-0 flex flex-col h-full relative group/col"
-                                style={{ width: `${columnWidth}px` }}
+                                status={status}
+                                columnWidth={columnWidth}
+                                onColumnResizeDown={handleColumnResizeDown}
                             >
                                 {/* PREMIUM HEADER */}
                                 <div className="mb-4 px-1">
@@ -188,15 +222,6 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
                                             {totalColumnValue > 0 && <span className="text-[9px] text-slate-500 ml-1 font-normal uppercase tracking-wider">Potencial</span>}
                                         </p>
                                     </div>
-                                </div>
-
-                                {/* Resize Handle */}
-                                <div
-                                    onMouseDown={handleColumnResizeDown}
-                                    className="absolute right-[-12px] top-0 bottom-0 w-[6px] cursor-col-resize hover:bg-gold-500/50 transition-colors z-20 group-hover/col:bg-zinc-800/50 flex items-center justify-center"
-                                    title="Arraste para redimensionar coluna"
-                                >
-                                    <div className="w-[1px] h-10 bg-zinc-700 group-hover:bg-gold-500/50" />
                                 </div>
 
                                 <SortableContext
@@ -229,7 +254,7 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
                                         </div>
                                     </div>
                                 </SortableContext>
-                            </div>
+                            </KanbanColumn>
                         );
                     })}
                 </div>
