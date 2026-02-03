@@ -583,7 +583,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         try {
             // WHITE LIST: Somente campos que REALMENTE existem na tabela 'clients'
             const validKeys = [
-                'nome_completo', 'cpf_cnpj', 'data_nascimento', 'sexo', 'telefone', 'email',
+                'id', 'nome_completo', 'cpf_cnpj', 'data_nascimento', 'sexo', 'telefone', 'email',
                 'rg', 'orgao_emissor', 'profissao', 'estado_civil', 'nacionalidade',
                 'cep', 'endereco', 'numero_casa', 'bairro', 'cidade', 'uf',
                 'interviewStatus', 'interviewDate', 'filial', 'captador',
@@ -729,7 +729,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         try {
             // WHITE LIST: Somente campos que REALMENTE existem na tabela 'cases'
             const validKeys = [
-                'client_id', 'numero_processo', 'titulo', 'tribunal', 'vara',
+                'id', 'client_id', 'numero_processo', 'titulo', 'tribunal', 'vara',
                 'status', 'fase_atual', 'prioridade', 'data_abertura', 'data_fatal',
                 'tipo', 'modalidade', 'valor_causa', 'status_pagamento',
                 'valor_honorarios_pagos', 'anotacoes', 'metadata', 'drive_folder_id',
