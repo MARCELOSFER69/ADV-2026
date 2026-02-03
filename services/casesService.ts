@@ -6,7 +6,8 @@ export const fetchCasesData = async (page: number, perPage: number, search?: str
         let query = supabase.from('view_cases_dashboard').select('*', { count: 'exact' });
 
         if (search) {
-            query = query.or(`titulo.ilike.%${search}%,numero_processo.ilike.%${search}%,client_name.ilike.%${search}%,client_cpf.ilike.%${search}%`);
+            const normalizedSearch = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            query = query.or(`titulo_unaccent.ilike.%${normalizedSearch}%,numero_processo.ilike.%${search}%,client_name_unaccent.ilike.%${normalizedSearch}%,client_cpf.ilike.%${search}%`);
         }
 
         // Lógica de Arquivo Morto vs Ativos

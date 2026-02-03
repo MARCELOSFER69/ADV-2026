@@ -30,7 +30,7 @@ const Cases: React.FC = () => {
         updateCase, deleteCase, deleteFinancialRecord,
         showToast, user, saveUserPreferences, isNewCaseModalOpen, setIsNewCaseModalOpen,
         caseToView, setCaseToView, currentView, mergedPreferences, setClientToView,
-        financial // Still using financial from context for delete checks? Ideally hook too but keeping for now.
+        financial, setCurrentView
     } = useApp();
 
     const [selectedCase, setSelectedCase] = useState<Case | null>(null);
@@ -397,9 +397,8 @@ const Cases: React.FC = () => {
                         onClose={() => setSelectedCase(null)}
                         onSelectCase={setSelectedCase}
                         onViewClient={(clientId) => {
-                            const app = useApp();
-                            app.setClientToView(clientId, 'info');
-                            app.setCurrentView('clients');
+                            setClientToView(clientId, 'info');
+                            setCurrentView('clients');
                             setSelectedCase(null);
                         }}
                     />

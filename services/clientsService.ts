@@ -8,13 +8,14 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
         // Usamos a VIEW customizada para performance máxima
         let query = supabase.from('view_clients_dashboard').select('*', { count: 'exact' });
 
-        // Filtro de Busca (Search)
+        // Filtro de Busca (Search) com Unaccent suporte
         if (search) {
+            const normalizedSearch = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const cleanSearch = search.replace(/\D/g, '');
             if (cleanSearch.length > 0) {
-                query = query.or(`nome_completo.ilike.%${search}%,cpf_cnpj.ilike.%${search}%,cpf_cnpj.ilike.%${cleanSearch}%`);
+                query = query.or(`nome_completo_unaccent.ilike.%${normalizedSearch}%,cpf_cnpj.ilike.%${search}%,cpf_cnpj.ilike.%${cleanSearch}%`);
             } else {
-                query = query.ilike('nome_completo', `%${search}%`);
+                query = query.ilike('nome_completo_unaccent', `%${normalizedSearch}%`);
             }
         }
 
@@ -107,13 +108,14 @@ export const fetchAllFilteredClientsData = async (search?: string, filters?: any
     try {
         let query = supabase.from('view_clients_dashboard').select('*');
 
-        // Filtro de Busca (Search)
+        // Filtro de Busca (Search) com Unaccent suporte
         if (search) {
+            const normalizedSearch = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const cleanSearch = search.replace(/\D/g, '');
             if (cleanSearch.length > 0) {
-                query = query.or(`nome_completo.ilike.%${search}%,cpf_cnpj.ilike.%${search}%,cpf_cnpj.ilike.%${cleanSearch}%`);
+                query = query.or(`nome_completo_unaccent.ilike.%${normalizedSearch}%,cpf_cnpj.ilike.%${search}%,cpf_cnpj.ilike.%${cleanSearch}%`);
             } else {
-                query = query.ilike('nome_completo', `%${search}%`);
+                query = query.ilike('nome_completo_unaccent', `%${normalizedSearch}%`);
             }
         }
 
