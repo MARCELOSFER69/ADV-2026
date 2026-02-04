@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 // import { useAllCases } from '../../hooks/useCases'; // REMOVED
 import { Client, Case } from '../../types';
 import ProcessTimeline from '../ProcessTimeline';
-import { Briefcase, DollarSign, CheckCircle2, AlertTriangle, ChevronRight, LayoutDashboard, Send, Clock } from 'lucide-react';
+import { Briefcase, DollarSign, CheckCircle2, AlertTriangle, ChevronRight, LayoutDashboard, Send, Clock, Check, X, Settings2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Client360TabProps {
@@ -13,23 +13,33 @@ interface Client360TabProps {
 }
 
 const Client360Tab: React.FC<Client360TabProps> = ({ client, onSelectCase, cases = [] }) => {
-    const { getUnifiedClientHistory, showToast } = useApp();
-    // REMOVED: const { data: cases = [] } = useAllCases();
+    const { getUnifiedClientHistory, showToast, user, saveUserPreferences } = useApp();
     const [history, setHistory] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isEditingPercentage, setIsEditingPercentage] = useState(false);
 
-    // --- DEFENSIVE PROGRAMMING ---
-    // If cases are passed, they are typically already filtered for this client,
-    // but we can double check or rely on the prop.
-    // If the prop `cases` comes from `ClientDetailsModal`, it is `clientCases` (already filtered).
+    // Preference: Estimated Fee Percentage (default 30)
+    const feePercentage = user?.preferences?.estimatedFeePercentage ?? 30;
+    const [tempPercentage, setTempPercentage] = useState(feePercentage);
+
     const clientCases = cases.length > 0 ? cases : (client.cases || []);
 
     // KPIs específicos do cliente
     const stats = {
         totalCases: clientCases.length,
         activeCases: clientCases.filter(c => c.status !== 'Arquivado' && !c.status.includes('Concluído')).length,
-        potentialFees: clientCases.reduce((acc, c) => acc + (c.valor_causa ? c.valor_causa * 0.3 : 0), 0),
+        potentialFees: clientCases.reduce((acc, c) => acc + (c.valor_causa ? c.valor_causa * (feePercentage / 100) : 0), 0),
         pendingDocs: client.pendencias?.length || 0
+    };
+
+    const handleSavePercentage = async () => {
+        try {
+            await saveUserPreferences({ estimatedFeePercentage: tempPercentage });
+            setIsEditingPercentage(false);
+            showToast('success', `Estimativa atualizada para ${tempPercentage}%`);
+        } catch (err) {
+            showToast('error', 'Falha ao salvar preferência.');
+        }
     };
 
     useEffect(() => {
@@ -37,7 +47,6 @@ const Client360Tab: React.FC<Client360TabProps> = ({ client, onSelectCase, cases
             setIsLoading(true);
             try {
                 const data = await getUnifiedClientHistory(client.id);
-                // Mapear campos da RPC para o formato esperado pelo ProcessTimeline
                 const mappedHistory = data.map((item: any) => ({
                     id: item.id,
                     action: item.action,
@@ -70,13 +79,55 @@ const Client360Tab: React.FC<Client360TabProps> = ({ client, onSelectCase, cases
                     icon={Briefcase}
                     color="text-blue-400"
                 />
-                <Card
-                    title="Honorários Est."
-                    value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.potentialFees)}
-                    subtitle="Estimativa 30%"
-                    icon={DollarSign}
-                    color="text-emerald-400"
-                />
+                <div className="bg-[#18181b] border border-white/5 p-4 rounded-2xl relative overflow-hidden group">
+                    <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform text-emerald-400`}>
+                        <DollarSign size={40} />
+                    </div>
+                    <span className="text-[10px] font-black uppercase text-zinc-500 tracking-widest block mb-1">
+                        Honorários Est.
+                    </span>
+                    <div className={`text-xl font-black text-emerald-400 tracking-tight`}>
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.potentialFees)}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                        {isEditingPercentage ? (
+                            <div className="flex items-center gap-1 animate-in zoom-in duration-200">
+                                <input
+                                    type="number"
+                                    value={tempPercentage}
+                                    onChange={(e) => setTempPercentage(Number(e.target.value))}
+                                    className="w-12 bg-zinc-800 border border-gold-500/50 rounded text-[10px] text-white px-1 outline-none font-bold"
+                                    autoFocus
+                                />
+                                <span className="text-[10px] text-zinc-400">%</span>
+                                <button
+                                    onClick={handleSavePercentage}
+                                    className="p-1 bg-emerald-500/20 text-emerald-500 rounded hover:bg-emerald-500 hover:text-white transition-colors"
+                                >
+                                    <Check size={10} />
+                                </button>
+                                <button
+                                    onClick={() => { setIsEditingPercentage(false); setTempPercentage(feePercentage); }}
+                                    className="p-1 bg-red-500/20 text-red-500 rounded hover:bg-red-500 hover:text-white transition-colors"
+                                >
+                                    <X size={10} />
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <span className="text-[10px] text-zinc-600 font-medium">
+                                    Estimativa {feePercentage}%
+                                </span>
+                                <button
+                                    onClick={() => setIsEditingPercentage(true)}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/5 rounded text-zinc-500 hover:text-gold-500"
+                                >
+                                    <Settings2 size={10} />
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
                 <Card
                     title="Pendências"
                     value={stats.pendingDocs}

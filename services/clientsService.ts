@@ -204,7 +204,7 @@ export const fetchClientById = async (id: string): Promise<Client | null> => {
     try {
         // Fetch client data
         const { data: client, error } = await supabase
-            .from('clients')
+            .from('view_clients_dashboard')
             .select('*')
             .eq('id', id)
             .single();

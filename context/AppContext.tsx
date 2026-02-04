@@ -642,14 +642,25 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 }
             });
 
+            // 2. Atualização otimista com merge
+            queryClient.setQueryData(['client', client.id], (old: any) => ({ ...old, ...payload }));
+
             const { error } = await supabase.from('clients').update(payload).eq('id', client.id);
 
             if (error) {
                 console.error("Erro detalhado Supabase (updateClient):", JSON.stringify(error, null, 2));
+                queryClient.invalidateQueries({ queryKey: ['client', client.id] }); // Rollback if error
                 throw error;
             }
 
+            // 3. Invalidação em cascata (Pre-fixo garante que todos os 'case' e 'client' individuais atualizem)
             queryClient.invalidateQueries({ queryKey: ['clients'] });
+            queryClient.invalidateQueries({ queryKey: ['client'] });
+            queryClient.invalidateQueries({ queryKey: ['cases'] });
+            queryClient.invalidateQueries({ queryKey: ['case'] });
+
+
+
             showToast('success', 'Cliente atualizado!');
         } catch (err: any) {
             console.error("Falha ao atualizar cliente:", err);
@@ -766,15 +777,15 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             // 1. Obter estado anterior para log e segurança
             const { data: oldCase } = await supabase.from('cases').select('*').eq('id', updatedCase.id).single();
 
-            // 2. Atualização otimista
-            queryClient.setQueryData(['case', updatedCase.id], updatedCase);
+            // 2. Atualização otimista com merge (Preserva campos de join como client_name)
+            queryClient.setQueryData(['case', updatedCase.id], (old: any) => ({ ...old, ...updatedCase }));
 
             // 3. WHITE LIST: Somente campos que REALMENTE existem na tabela 'cases' do banco de dados.
             // Isso evita erros 400 por enviar campos da View (como client_name) ou do UI.
             const validKeys = [
                 'client_id', 'numero_processo', 'titulo', 'tribunal', 'vara',
                 'status', 'fase_atual', 'prioridade', 'data_abertura', 'data_fatal',
-                'tipo', 'modalidade', 'valor_causa', 'status_pagamento',
+                'tipo', 'modalidade', 'valor_causa', 'status_pagamento', 'forma_recebimento',
                 'valor_honorarios_pagos', 'anotacoes', 'metadata', 'drive_folder_id',
                 'motivo_arquivamento', 'nit', 'der', 'nis', 'renda_familiar',
                 'data_parto', 'cid', 'data_incapacidade', 'gps_lista'
@@ -823,7 +834,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             }
 
             queryClient.invalidateQueries({ queryKey: ['cases'] });
-            queryClient.invalidateQueries({ queryKey: ['case', updatedCase.id] });
+            queryClient.invalidateQueries({ queryKey: ['case'] }); // Invalida todos para garantir sync
+
             showToast('success', 'Processo atualizado!');
         } catch (err: any) {
             console.error("Erro final updateCase:", err);
@@ -841,13 +853,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }, [queryClient, showToast]);
 
     const getCaseHistory = useCallback(async (caseId: string) => {
-        const { data, error } = await supabase.from('case_history').select('*').eq('case_id', caseId).order('timestamp', { ascending: false });
+        const { data, error } = await supabase.from('case_history').select('*').eq('case_id', caseId).order('created_at', { ascending: false });
         if (error) throw error;
         return data || [];
     }, []);
 
     const getClientHistory = useCallback(async (clientId: string) => {
-        const { data, error } = await supabase.from('client_history').select('*').eq('client_id', clientId).order('timestamp', { ascending: false });
+        const { data, error } = await supabase.from('client_history').select('*').eq('client_id', clientId).order('created_at', { ascending: false });
         if (error) throw error;
         return data || [];
     }, []);
@@ -856,17 +868,19 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
     const addEvent = useCallback(async (newEvent: Event) => {
         const { error } = await supabase.from('events').insert([newEvent]);
-        if (error) throw error;
-        setEvents(prev => [...prev, newEvent]);
+        queryClient.invalidateQueries({ queryKey: ['events'] });
+        if (newEvent.case_id) queryClient.invalidateQueries({ queryKey: ['case_events', newEvent.case_id] });
         showToast('success', 'Evento adicionado!');
-    }, [showToast]);
+    }, [showToast, queryClient]);
 
     const updateEvent = useCallback(async (updatedEvent: Event) => {
         const { error } = await supabase.from('events').update(updatedEvent).eq('id', updatedEvent.id);
         if (error) throw error;
         setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+        queryClient.invalidateQueries({ queryKey: ['events'] });
+        if (updatedEvent.case_id) queryClient.invalidateQueries({ queryKey: ['case_events', updatedEvent.case_id] });
         showToast('success', 'Evento atualizado!');
-    }, [showToast]);
+    }, [showToast, queryClient]);
 
     const deleteEvent = useCallback(async (id: string) => {
         const { error } = await supabase.from('events').delete().eq('id', id);
@@ -879,8 +893,10 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         const { error } = await supabase.from('tasks').insert([newTask]);
         if (error) throw error;
         setTasks(prev => [...prev, newTask]);
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        if (newTask.case_id) queryClient.invalidateQueries({ queryKey: ['case_tasks', newTask.case_id] });
         showToast('success', 'Tarefa adicionada!');
-    }, [showToast]);
+    }, [showToast, queryClient]);
 
     const toggleTask = useCallback(async (taskId: string) => {
         const task = tasks.find(t => t.id === taskId);
@@ -888,14 +904,19 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         const { error } = await supabase.from('tasks').update({ concluido: !task.concluido }).eq('id', taskId);
         if (error) throw error;
         setTasks(prev => prev.map(t => t.id === taskId ? { ...t, concluido: !t.concluido } : t));
-    }, [tasks]);
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        if (task.case_id) queryClient.invalidateQueries({ queryKey: ['case_tasks', task.case_id] });
+    }, [tasks, queryClient]);
 
     const deleteTask = useCallback(async (taskId: string) => {
+        const task = tasks.find(t => t.id === taskId);
         const { error } = await supabase.from('tasks').delete().eq('id', taskId);
         if (error) throw error;
         setTasks(prev => prev.filter(t => t.id !== taskId));
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        if (task?.case_id) queryClient.invalidateQueries({ queryKey: ['case_tasks', task.case_id] });
         showToast('success', 'Tarefa excluída!');
-    }, [showToast]);
+    }, [showToast, queryClient, tasks]);
 
     const addFinancialRecord = useCallback(async (record: FinancialRecord) => {
         if (!record.client_id && !record.case_id) {
@@ -903,18 +924,58 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             showToast('error', errorMsg);
             throw new Error(errorMsg);
         }
-        const { error } = await supabase.from('financial').insert([record]);
-        if (error) throw error;
+
+        // WHITE LIST para evitar erros 400 com campos virtuais/join
+        const validKeys = [
+            'id', 'client_id', 'case_id', 'titulo', 'tipo', 'valor',
+            'data_vencimento', 'status_pagamento', 'data_pagamento',
+            'forma_pagamento', 'recebedor', 'tipo_conta', 'conta', 'tipo_movimentacao', 'is_honorary'
+        ];
+
+        const payload: any = {};
+        validKeys.forEach(key => {
+            const value = (record as any)[key];
+            if (value !== undefined) {
+                payload[key] = value;
+            }
+        });
+
+        const { error } = await supabase.from('financial_records').insert([payload]);
+        if (error) {
+            console.error("Erro Supabase (addFinancialRecord):", error);
+            throw error;
+        }
+        queryClient.invalidateQueries({ queryKey: ['financial'] });
+        queryClient.invalidateQueries({ queryKey: ['financial_summary'] });
+        if (record.case_id) {
+            queryClient.invalidateQueries({ queryKey: ['case_financials', record.case_id] });
+            queryClient.invalidateQueries({ queryKey: ['case', record.case_id] });
+            queryClient.invalidateQueries({ queryKey: ['cases'] }); // Para atualizar ícones de pagamento na lista
+        }
+        if (record.client_id) {
+            queryClient.invalidateQueries({ queryKey: ['client_financials', record.client_id] });
+        }
         setFinancial(prev => [...prev, record]);
         showToast('success', 'Lançamento efetuado!');
-    }, [showToast]);
+    }, [showToast, queryClient, setFinancial]);
 
-    const deleteFinancialRecord = useCallback(async (id: string) => {
-        const { error } = await supabase.from('financial').delete().eq('id', id);
+    const deleteFinancialRecord = useCallback(async (id: string, caseId?: string, clientId?: string) => {
+        const { error } = await supabase.from('financial_records').delete().eq('id', id);
         if (error) throw error;
+
+        queryClient.invalidateQueries({ queryKey: ['financial'] });
+        queryClient.invalidateQueries({ queryKey: ['financial_summary'] });
+        if (caseId) {
+            queryClient.invalidateQueries({ queryKey: ['case_financials', caseId] });
+            queryClient.invalidateQueries({ queryKey: ['case'] }); // Prefix invalidation for all cases
+        }
+        if (clientId) {
+            queryClient.invalidateQueries({ queryKey: ['client_financials', clientId] });
+        }
+
         setFinancial(prev => prev.filter(f => f.id !== id));
         showToast('success', 'Registro excluído!');
-    }, [showToast]);
+    }, [showToast, queryClient]);
 
     const addOfficeExpense = useCallback(async (expense: OfficeExpense) => {
         const { error } = await supabase.from('office_expenses').insert([expense]);
@@ -1007,24 +1068,127 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
     const getInstallments = useCallback(async (caseId: string) => {
         const { data } = await supabase.from('case_installments').select('*').eq('case_id', caseId).order('parcela_numero');
-        return data || [];
+        return (data || []) as CaseInstallment[];
     }, []);
 
     const generateInstallments = useCallback(async (caseId: string, start: string) => {
-        // Logica simplificada para brevidade
-        showToast('success', 'Parcelas geradas!');
-    }, [showToast]);
+        try {
+            // Regra: Só pode gerar parcelas se o benefício estiver Concedido
+            const { data: currentCase } = await supabase.from('cases').select('status').eq('id', caseId).single();
+            if (currentCase?.status !== 'Concluído (Concedido)') {
+                showToast('error', 'Apenas processos com o status "Concluído (Concedido)" podem gerar parcelas de benefício.');
+                return;
+            }
 
-    const updateInstallment = useCallback(async (inst: CaseInstallment) => {
-        await supabase.from('case_installments').update(inst).eq('id', inst.id);
-        showToast('success', 'Parcela atualizada!');
-    }, [showToast]);
+            const installments: any[] = [];
+            const baseDate = new Date(start);
 
-    const toggleInstallmentPaid = useCallback(async (inst: CaseInstallment, clientName: string) => {
-        const newState = !inst.pago;
-        await supabase.from('case_installments').update({ pago: newState }).eq('id', inst.id);
-        showToast('success', newState ? 'Paga!' : 'Pendente.');
-    }, [showToast]);
+            // Valor do Salário Mínimo Atualizado
+            const valorParcela = 1621.00;
+
+            for (let i = 1; i <= 4; i++) {
+                const date = new Date(baseDate);
+                date.setMonth(baseDate.getMonth() + (i - 1));
+
+                installments.push({
+                    id: crypto.randomUUID(),
+                    case_id: caseId,
+                    parcela_numero: i,
+                    data_vencimento: date.toISOString().split('T')[0],
+                    valor: valorParcela,
+                    pago: false,
+                    destino: 'Cliente'
+                });
+            }
+
+            const { error } = await supabase.from('case_installments').insert(installments);
+            if (error) throw error;
+
+            showToast('success', '4 parcelas geradas com sucesso!');
+            queryClient.invalidateQueries({ queryKey: ['case_installments', caseId] });
+        } catch (err: any) {
+            showToast('error', 'Erro ao gerar parcelas: ' + err.message);
+        }
+    }, [showToast, queryClient]);
+
+    const updateInstallment = useCallback(async (inst: CaseInstallment, clientName: string) => {
+        try {
+            const { error } = await supabase.from('case_installments').update(inst).eq('id', inst.id);
+            if (error) throw error;
+            showToast('success', 'Parcela atualizada!');
+            queryClient.invalidateQueries({ queryKey: ['case_installments', inst.case_id] });
+        } catch (err: any) {
+            showToast('error', 'Erro ao atualizar: ' + err.message);
+        }
+    }, [showToast, queryClient]);
+
+    const toggleInstallmentPaid = useCallback(async (inst: CaseInstallment, clientName: string, paymentDetails?: any) => {
+        try {
+            const newState = !inst.pago;
+            const payload: any = {
+                pago: newState,
+                data_pagamento: newState ? new Date().toISOString() : null
+            };
+
+            if (paymentDetails) {
+                Object.assign(payload, paymentDetails);
+            }
+
+            const { error } = await supabase.from('case_installments').update(payload).eq('id', inst.id);
+
+            if (error) throw error;
+
+            // Integração Financeira: Se destino for Escritório e marcado como PAGO, gera lançamento
+            if (newState && inst.destino === 'Escritório') {
+                const financialRecord = {
+                    id: crypto.randomUUID(),
+                    case_id: inst.case_id,
+                    client_id: (await supabase.from('cases').select('client_id').eq('id', inst.case_id).single()).data?.client_id,
+                    titulo: `${inst.parcela_numero}ª Parcela - Seguro Defeso (Ref. ${inst.data_vencimento})`,
+                    tipo: 'Receita',
+                    tipo_movimentacao: 'Honorários',
+                    valor: inst.valor,
+                    data_vencimento: inst.data_vencimento,
+                    status_pagamento: true,
+                    is_honorary: true,
+                    forma_pagamento: paymentDetails?.forma_pagamento,
+                    recebedor: paymentDetails?.recebedor,
+                    conta: paymentDetails?.conta
+                };
+
+                const { error: finError } = await supabase.from('financial_records').insert([financialRecord]);
+                if (finError) throw finError;
+
+                queryClient.invalidateQueries({ queryKey: ['financial'] });
+                queryClient.invalidateQueries({ queryKey: ['financial_summary'] });
+                queryClient.invalidateQueries({ queryKey: ['case_financials', inst.case_id] });
+                queryClient.invalidateQueries({ queryKey: ['case', inst.case_id] });
+                queryClient.invalidateQueries({ queryKey: ['cases'] });
+                setFinancial(prev => [...prev, financialRecord as any]);
+            }
+            // Limpeza Financeira: Se desmarcou como PAGO, remove o lançamento automático
+            else if (!newState && inst.destino === 'Escritório') {
+                const targetTitulo = `${inst.parcela_numero}ª Parcela - Seguro Defeso (Ref. ${inst.data_vencimento})`;
+                const { error: delError } = await supabase.from('financial_records')
+                    .delete()
+                    .eq('case_id', inst.case_id)
+                    .eq('titulo', targetTitulo);
+
+                if (delError) console.error("Erro ao remover lançamento financeiro da parcela:", delError);
+
+                queryClient.invalidateQueries({ queryKey: ['financial'] });
+                queryClient.invalidateQueries({ queryKey: ['financial_summary'] });
+                queryClient.invalidateQueries({ queryKey: ['case_financials', inst.case_id] });
+                queryClient.invalidateQueries({ queryKey: ['case', inst.case_id] });
+                queryClient.invalidateQueries({ queryKey: ['cases'] });
+            }
+
+            queryClient.invalidateQueries({ queryKey: ['case_installments', inst.case_id] });
+            showToast('success', newState ? `Parcela de ${clientName} marcada como Paga!` : 'Parcela marcada como Pendente.');
+        } catch (err: any) {
+            showToast('error', 'Erro ao alterar status: ' + err.message);
+        }
+    }, [showToast, queryClient, setFinancial]);
 
     const updateGPS = useCallback(async (caseId: string, list: GPS[]) => {
         await supabase.from('cases').update({ gps_lista: list }).eq('id', caseId);

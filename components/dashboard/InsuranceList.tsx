@@ -21,7 +21,7 @@ const InsuranceList: React.FC<InsuranceListProps> = ({ title, data, onCollection
                 {data.length > 0 ? data.map(item => (
                     <div key={item.id} className="flex justify-between items-center p-2 rounded-lg bg-black/20 border border-white/5 hover:border-blue-500/30 transition-all cursor-pointer" onClick={(e) => onCollection(e, item)}>
                         <div>
-                            <p className="text-xs font-bold text-zinc-200">{item.descricao.replace(' - Seguro Defeso', '')}</p>
+                            <p className="text-xs font-bold text-zinc-200">{item.titulo.replace(' - Seguro Defeso', '')}</p>
                             <p className="text-[10px] text-zinc-500">{formatDateDisplay(item.data_vencimento)}</p>
                         </div>
                         <span className="text-xs font-bold text-emerald-500">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}</span>

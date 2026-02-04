@@ -17,6 +17,15 @@ export enum CaseType {
   APOSENTADORIA = 'Aposentadoria',
   BPC_LOAS = 'BPC/LOAS',
   AUXILIO_DOENCA = 'Auxílio Doença',
+  PENSAO_POR_MORTE = 'Pensão por Morte',
+  AUXILIO_RECLUSAO = 'Auxílio Reclusão',
+  AUXILIO_ACIDENTE = 'Auxílio Acidente',
+  PENSAO_VITALICIA = 'Pensão Vitalícia',
+  SALARIO_FAMILIA = 'Salário Família',
+  AUXILIO_INCLUSAO = 'Auxílio-Inclusão',
+  REVISAO = 'Revisão de Benefício',
+  CTC = 'CTC',
+  RECURSO = 'Recurso INSS',
   TRABALHISTA = 'Trabalhista',
   CIVIL = 'Cível/Outros',
 }
@@ -197,6 +206,7 @@ export interface Case {
   modalidade?: string;
   data_abertura: string;
   titulo: string;
+  forma_recebimento?: 'Completo' | 'Parcelado';
   acessos?: SystemAccess[];
   status_pagamento: 'Pendente' | 'Parcial' | 'Pago';
   valor_honorarios_pagos?: number;
@@ -275,7 +285,7 @@ export interface FinancialRecord {
   id: UUID;
   case_id?: UUID;
   client_id?: UUID;
-  descricao: string;
+  titulo: string;
   tipo: FinancialType;
   tipo_movimentacao?: string;
   valor: number;
@@ -548,6 +558,7 @@ export interface UserPreferences {
     sections?: SectionConfig[];
   };
   lowPerformanceMode?: boolean;
+  estimatedFeePercentage?: number;
 }
 
 export interface UserPermission {

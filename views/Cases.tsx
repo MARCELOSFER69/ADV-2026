@@ -5,7 +5,7 @@ import {
     Plus, Gavel, FileText, Shield, Inbox, Archive, Trash2, X, Loader2, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useCases } from '../hooks/useCases';
+import { useCases, useKanbanCases } from '../hooks/useCases';
 // import { useAllClients } from '../hooks/useClients'; // REMOVED FOR PERFORMANCE
 import CaseDetailsModal from '../components/modals/CaseDetailsModal';
 import NewCaseModal from '../components/modals/NewCaseModal';
@@ -86,35 +86,42 @@ const Cases: React.FC = () => {
         return 'Todos';
     }, [currentView]);
 
-    const { data: paginatedCases, isLoading: isFetching, totalCount: totalCases, refetch } = useCases(
+    const queryFilters = useMemo(() => ({
+        ...filters,
+        search: debouncedSearch,
+        viewMode,
+        category: activeCategory as any,
+        sortKey: sortConfig.key,
+        sortDirection: sortConfig.direction,
+        quickFilter
+    }), [filters, debouncedSearch, viewMode, activeCategory, sortConfig, quickFilter]);
+
+    // Paginated list for table view
+    const { data: paginatedCases, isLoading: isFetchingList, totalCount: totalCases, refetch: refetchList } = useCases(
         currentPage,
         ITEMS_PER_PAGE,
-        {
-            ...filters,
-            search: debouncedSearch,
-            viewMode,
-            category: activeCategory as any,
-            sortKey: sortConfig.key,
-            sortDirection: sortConfig.direction,
-            quickFilter
-        }
+        queryFilters
     );
+
+    // Full (but lightweight) list for Kanban view
+    const { data: kanbanData, isLoading: isFetchingKanban, refetch: refetchKanban } = useKanbanCases(
+        debouncedSearch,
+        queryFilters
+    );
+
+    const isFetching = layoutMode === 'list' ? isFetchingList : isFetchingKanban;
+    const refetch = layoutMode === 'list' ? refetchList : refetchKanban;
 
     // const { data: clients = [] } = useAllClients(); // REMOVED: Heavy and unnecessary
     // Instead we rely on case.captador and case.client_name now available
     const clients: any[] = []; // Placeholder to satisfy types if any leftover usage exist (though we removed them)
 
     const displayedCases = useMemo(() => {
-        let result = paginatedCases || [];
+        let result = layoutMode === 'list' ? (paginatedCases || []) : (kanbanData || []);
 
-        // Apply quick filters locally if not yet supported by server completely
         if (quickFilter === 'mine') {
-            result = result.filter(c => {
-                // Using optimized field 'captador' from view
-                return c.captador === user?.name || true;
-            });
+            result = result.filter(c => c.captador === user?.name || true);
         }
-        // Deadlines and Stale handled by query normally if backend supports, but keeping existing logic structure
         if (quickFilter === 'deadlines') {
             result = result.filter(c => c.data_fatal).sort((a, b) => new Date(a.data_fatal!).getTime() - new Date(b.data_fatal!).getTime());
         } else if (quickFilter === 'stale') {
@@ -124,7 +131,7 @@ const Cases: React.FC = () => {
         }
 
         return result;
-    }, [paginatedCases, quickFilter, clients, user]);
+    }, [paginatedCases, kanbanData, layoutMode, quickFilter, user]);
 
     // Handlers
     const handleToggleSelectCase = useCallback((id: string) => {
@@ -266,9 +273,26 @@ const Cases: React.FC = () => {
 
     const activeKanbanColumns = useMemo(() => {
         if (viewMode === 'archived') return [CaseStatus.ARQUIVADO];
-        if (activeCategory === 'Seguro Defeso') return [CaseStatus.PROTOCOLAR, CaseStatus.ANALISE, CaseStatus.EXIGENCIA, CaseStatus.CONCLUIDO_CONCEDIDO, CaseStatus.CONCLUIDO_INDEFERIDO];
-        if (activeCategory === 'Administrativo') return [CaseStatus.PROTOCOLAR, CaseStatus.ANALISE, CaseStatus.EXIGENCIA, CaseStatus.CONCLUIDO_CONCEDIDO, CaseStatus.CONCLUIDO_INDEFERIDO];
-        return [CaseStatus.PROTOCOLAR, CaseStatus.ANALISE, CaseStatus.AGUARDANDO_AUDIENCIA, CaseStatus.EM_RECURSO, CaseStatus.CONCLUIDO_CONCEDIDO, CaseStatus.CONCLUIDO_INDEFERIDO];
+
+        // Expand columns for all views to ensure consistency even if status changes
+        const commonColumns = [
+            CaseStatus.PROTOCOLAR,
+            CaseStatus.ANALISE,
+            CaseStatus.EXIGENCIA,
+            CaseStatus.AGUARDANDO_AUDIENCIA,
+            CaseStatus.EM_RECURSO,
+            CaseStatus.CONCLUIDO_CONCEDIDO,
+            CaseStatus.CONCLUIDO_INDEFERIDO
+        ];
+
+        if (activeCategory === 'Seguro Defeso' || activeCategory === 'Administrativo') {
+            return commonColumns.filter(status =>
+                status !== CaseStatus.AGUARDANDO_AUDIENCIA &&
+                status !== CaseStatus.EM_RECURSO
+            );
+        }
+
+        return commonColumns;
     }, [activeCategory, viewMode]);
 
 

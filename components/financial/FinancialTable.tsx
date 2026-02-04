@@ -99,7 +99,7 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                                                                         <td className="py-2 px-4 text-xs text-zinc-400 w-32 font-mono">{formatDateDisplay(child.data_vencimento)}</td>
                                                                         <td className="py-2 px-4 text-xs text-zinc-300">
                                                                             {child.tipo === FinancialType.COMISSAO && <span className="mr-2 text-[9px] font-bold bg-purple-500/20 text-purple-300 px-1 py-0.5 rounded uppercase">COMISSÃO</span>}
-                                                                            {child.descricao}
+                                                                            {child.titulo}
                                                                         </td>
                                                                         <td className="py-2 px-4">
                                                                             {renderPaymentDetails(child)}
@@ -128,7 +128,7 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                                             <div className="flex items-center gap-3">
                                                 <div className={`p-1.5 rounded-md bg-transparent border border-white/10 text-zinc-500`}>{record.is_office_expense ? <Building size={16} /> : <DollarSign size={16} />}</div>
                                                 <div>
-                                                    <span className="font-medium text-zinc-300 block group-hover:text-white transition-colors text-sm">{record.descricao}</span>
+                                                    <span className="font-medium text-zinc-300 block group-hover:text-white transition-colors text-sm">{record.titulo}</span>
                                                     <span className="text-[10px] text-zinc-500 flex items-center gap-1 mt-0.5"><Calendar size={10} /> {formatDateDisplay(record.data_vencimento)}</span>
                                                 </div>
                                             </div>

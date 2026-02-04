@@ -24,7 +24,7 @@ const ReceivablesList: React.FC<ReceivablesListProps> = ({ title, data, onCollec
                     return (
                         <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5 hover:border-emerald-500/30 transition-all group">
                             <div className="min-w-0 flex-1">
-                                <h4 className="text-xs font-bold text-zinc-200 truncate group-hover:text-white">{item.descricao}</h4>
+                                <h4 className="text-xs font-bold text-zinc-200 truncate group-hover:text-white">{item.titulo}</h4>
                                 <p className={`text-[10px] mt-0.5 ${isLate ? 'text-red-400' : 'text-zinc-500'}`}>
                                     {new Date(item.data_vencimento).toLocaleDateString('pt-BR')} • {isLate ? 'Atrasado' : 'No prazo'}
                                 </p>

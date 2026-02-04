@@ -200,6 +200,10 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
                         const columnCases = cases.filter(c => c.status === status);
                         const totalColumnValue = columnCases.reduce((acc, curr) => acc + curr.valor_causa, 0);
 
+                        // Performance optimization: limit rendered cards to 50
+                        const RENDER_LIMIT = 50;
+                        const visibleCases = columnCases.slice(0, RENDER_LIMIT);
+
                         return (
                             <KanbanColumn
                                 key={status}
@@ -214,7 +218,9 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
                                             <span className={`w-2 h-2 rounded-full ${getStatusHeaderColor(status)} shadow-[0_0_8px_currentColor]`} />
                                             {status}
                                         </h3>
-                                        <span className="text-[10px] font-bold text-slate-400 bg-[#18181b] border border-white/10 px-2.5 py-1 rounded-lg">{columnCases.length}</span>
+                                        <span className="text-[10px] font-bold text-slate-400 bg-[#18181b] border border-white/10 px-2.5 py-1 rounded-lg">
+                                            {columnCases.length}
+                                        </span>
                                     </div>
                                     <div className="pl-4">
                                         <p className={`text-xs font-bold ${totalColumnValue > 0 ? 'text-emerald-400' : 'text-slate-600'}`}>
@@ -234,7 +240,7 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
                                         style={{ zoom: cardScale }}
                                     >
                                         <div className="space-y-3 min-h-[100px]">
-                                            {columnCases.map(caseItem => {
+                                            {visibleCases.map(caseItem => {
                                                 // Real client data from view_cases_dashboard
                                                 const client = {
                                                     id: caseItem.client_id,
@@ -250,6 +256,11 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
                                                     />
                                                 );
                                             })}
+                                            {columnCases.length > RENDER_LIMIT && (
+                                                <div className="text-center py-4 text-zinc-500 text-[10px] uppercase tracking-widest opacity-60">
+                                                    + {columnCases.length - RENDER_LIMIT} processos ocultos (vistos na Lista)
+                                                </div>
+                                            )}
                                             {columnCases.length === 0 && <div className="text-center py-12 text-zinc-600 text-xs italic opacity-50">Sem processos</div>}
                                         </div>
                                     </div>

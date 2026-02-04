@@ -128,10 +128,10 @@ export const dashboardService = {
 
         const { data, error } = await supabase
             .from('financial_records')
-            .select('id, descricao, valor, data_vencimento, client_id, case_id')
+            .select('id, titulo, valor, data_vencimento, client_id, case_id')
             .eq('status_pagamento', false)
             .eq('tipo', 'Receita')
-            .ilike('descricao', '%Seguro Defeso%')
+            .ilike('titulo', '%Seguro Defeso%')
             .gte('data_vencimento', today.toISOString())
             .lte('data_vencimento', nextWeek.toISOString())
             .limit(10); // LIMIT OBRIGATÓRIO
@@ -143,7 +143,7 @@ export const dashboardService = {
     async fetchReceivables() {
         const { data, error } = await supabase
             .from('financial_records')
-            .select('id, descricao, valor, data_vencimento, client_id, case_id')
+            .select('id, titulo, valor, data_vencimento, client_id, case_id')
             .eq('status_pagamento', false)
             .eq('tipo', 'Receita')
             .order('data_vencimento', { ascending: true })

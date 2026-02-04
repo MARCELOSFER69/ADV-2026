@@ -55,9 +55,11 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
         financials: caseFinancials,
         events: caseEvents,
         tasks: caseTasks,
+        installments: caseInstallments,
         refetchFinancials,
         refetchEvents,
-        refetchTasks
+        refetchTasks,
+        refetchInstallments
     } = useCaseRelatedData(liveCase.id);
 
     // 2. Local State
@@ -312,6 +314,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                             {activeTab === 'financial' && (
                                 <CaseFinancialTab
                                     financials={caseFinancials}
+                                    installments={caseInstallments}
                                     caseItem={liveCase}
                                     client={client}
                                     onAddFinancial={async (rec) => { await addFinancialRecord(rec as any); refetchFinancials(); }}

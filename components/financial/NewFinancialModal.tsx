@@ -31,8 +31,8 @@ const NewFinancialModal: React.FC<NewFinancialModalProps> = ({
                         <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Descrição</label>
                         <input
                             className="w-full bg-black border border-zinc-700 rounded p-2 text-white outline-none focus:border-emerald-500"
-                            value={newRecord.descricao}
-                            onChange={e => setNewRecord({ ...newRecord, descricao: e.target.value })}
+                            value={newRecord.titulo}
+                            onChange={e => setNewRecord({ ...newRecord, titulo: e.target.value })}
                             autoFocus
                         />
                     </div>

@@ -138,7 +138,16 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
             'Aposentadoria',
             'Salário Maternidade',
             'BPC/LOAS',
-            'Auxílio Doença'
+            'Auxílio Doença',
+            'Pensão por Morte',
+            'Auxílio Reclusão',
+            'Auxílio Acidente',
+            'Pensão Vitalícia',
+            'Salário Família',
+            'Auxílio-Inclusão',
+            'Revisão de Benefício',
+            'CTC',
+            'Recurso INSS'
         ];
 
         // Flexible check
@@ -209,7 +218,12 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
                 }
 
                 // Adjust tribunal
-                const adminTypes = [APOSENTADORIA, 'BPC/LOAS', 'Salário Maternidade', 'Auxílio Doença'];
+                const adminTypes = [
+                    'Aposentadoria', 'BPC/LOAS', 'Salário Maternidade', 'Auxílio Doença',
+                    'Pensão por Morte', 'Auxílio Reclusão', 'Auxílio Acidente',
+                    'Pensão Vitalícia', 'Salário Família', 'Auxílio-Inclusão',
+                    'Revisão de Benefício', 'CTC', 'Recurso INSS'
+                ];
 
                 if (initialType === SEGURO) {
                     initialTribunal = 'INSS';

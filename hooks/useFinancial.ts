@@ -46,14 +46,14 @@ export const useFinancial = ({ periodMode, selectedDate, filters = {}, enabled =
         queryFn: () => fetchFinancialRecords(startDate, endDate, filters),
         placeholderData: keepPreviousData,
         enabled: enabled,
-        staleTime: 1000 * 60 * 5, // Cache por 5 minutos
+        staleTime: 1000 * 30, // Reduzido para 30s para garantir reatividade
     });
 
     const { data: summaryData } = useQuery({
         queryKey: ['financial_summary', periodMode, startDate, endDate],
         queryFn: () => import('../services/financialService').then(m => m.fetchFinancialSummary(startDate, endDate)),
         enabled: enabled,
-        staleTime: 1000 * 60 * 10, // Cache por 10 minutos
+        staleTime: 1000 * 30, // Reduzido para 30s
     });
 
     return {

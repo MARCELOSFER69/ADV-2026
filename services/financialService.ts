@@ -68,7 +68,7 @@ export const fetchFinancialRecords = async (
         // Busca textual. Nota: 'ilike' em todas as colunas pode ser pesado.
         // Idealmente, usar Search index do Postgres, mas 'ilike' resolve para volumes médios.
         const term = `%${filters.search}%`;
-        query = query.or(`descricao.ilike.${term},recebedor.ilike.${term},captador_nome.ilike.${term}`);
+        query = query.or(`titulo.ilike.${term},recebedor.ilike.${term},captador_nome.ilike.${term}`);
     }
 
     const { data, error } = await query.order('data_vencimento', { ascending: false });

@@ -58,10 +58,10 @@ export const useCase = (id: string | undefined) => {
     });
 };
 
-export const useKanbanCases = () => {
+export const useKanbanCases = (search?: string, filters?: UseCasesFilters) => {
     const { data, isLoading, error, refetch } = useQuery({
-        queryKey: ['cases', 'kanban'],
-        queryFn: () => import('../services/casesService').then(m => m.fetchKanbanCases()),
+        queryKey: ['cases', 'kanban', search, filters],
+        queryFn: () => import('../services/casesService').then(m => m.fetchKanbanCases(search, filters)),
         staleTime: 1000 * 60 * 5, // Cache for 5 minutes
     });
 

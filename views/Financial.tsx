@@ -75,7 +75,7 @@ const Financial: React.FC = () => {
     // Estados Modal Novo Lançamento (Avulso)
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newRecord, setNewRecord] = useState<Partial<FinancialRecord>>({
-        descricao: '', valor: 0, tipo: FinancialType.RECEITA, data_vencimento: new Date().toISOString().split('T')[0], status_pagamento: true
+        titulo: '', valor: 0, tipo: FinancialType.RECEITA, data_vencimento: new Date().toISOString().split('T')[0], status_pagamento: true
     });
     const [amountStr, setAmountStr] = useState('');
 
@@ -106,10 +106,10 @@ const Financial: React.FC = () => {
         return `${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`;
     };
 
-    const processedData = useMemo(() => {
-        if (!financial) return [];
+    const { processedData, totals } = useMemo(() => {
+        if (!financial) return { processedData: [], totals: { income: 0, expense: 0, balance: 0 } };
         const groups: Record<string, any> = {};
-        const standaloneItems: FinancialViewItem[] = [];
+        const standaloneItems: any[] = [];
 
         // Filtrar Despesas do Escritório pelo período selecionado
         const filteredOfficeExpenses = officeExpenses.filter(e => {
@@ -142,7 +142,7 @@ const Financial: React.FC = () => {
                 const date = `${monthKey}-01`;
                 return {
                     id: `office-agg-${monthKey}`,
-                    descricao: `Despesas Administrativas (Ref: ${month}/${year})`,
+                    titulo: `Despesas Administrativas (Ref: ${month}/${year})`,
                     tipo: FinancialType.DESPESA,
                     valor: totalValue,
                     data_vencimento: date,
@@ -157,7 +157,7 @@ const Financial: React.FC = () => {
         const filteredRecords = allRecords.filter(record => {
             if (record.is_office_expense) return true;
             if (searchTerm) {
-                const desc = record.descricao?.toLowerCase() || '';
+                const desc = record.titulo?.toLowerCase() || '';
                 const search = searchTerm.toLowerCase();
                 const clientName = record.clients?.nome_completo?.toLowerCase() || '';
                 const cpf = record.clients?.cpf_cnpj || '';
@@ -172,6 +172,9 @@ const Financial: React.FC = () => {
             }
             return true;
         });
+
+        let calculatedIncome = 0;
+        let calculatedExpense = 0;
 
         filteredRecords.forEach(record => {
             let effectiveClientId = record.client_id;
@@ -205,11 +208,27 @@ const Financial: React.FC = () => {
                 }
 
                 if (record.status_pagamento) {
-                    if (record.tipo === FinancialType.RECEITA) g.totalEntradas += Number(record.valor);
-                    else g.totalSaidas += Number(record.valor);
+                    const val = Number(record.valor) || 0;
+                    const cleanTipo = (record.tipo || '').toString().toLowerCase().trim();
+                    if (cleanTipo === 'receita') {
+                        g.totalEntradas += val;
+                        calculatedIncome += val;
+                    } else if (cleanTipo === 'despesa' || cleanTipo === 'comissao' || cleanTipo === 'comissão') {
+                        g.totalSaidas += val;
+                        calculatedExpense += val;
+                    }
                 }
             } else {
                 standaloneItems.push({ type: 'single', data: record });
+                if (record.status_pagamento) {
+                    const val = Number(record.valor) || 0;
+                    const cleanTipo = (record.tipo || '').toString().toLowerCase().trim();
+                    if (cleanTipo === 'receita') {
+                        calculatedIncome += val;
+                    } else if (cleanTipo === 'despesa' || cleanTipo === 'comissao' || cleanTipo === 'comissão') {
+                        calculatedExpense += val;
+                    }
+                }
             }
         });
 
@@ -227,37 +246,30 @@ const Financial: React.FC = () => {
             return { ...g, saldo, status, valorColorClass, children: g.children.sort((a: any, b: any) => new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime()) } as FinancialViewItem;
         });
 
-        return [...processedGroups, standaloneItems].flat().sort((a, b) => {
+        const sortedData = [...processedGroups, ...standaloneItems].flat().sort((a, b) => {
             const dateA = a.type === 'group' ? a.dataReferencia : a.data.data_vencimento;
             const dateB = b.type === 'group' ? b.dataReferencia : b.data.data_vencimento;
             return sortConfig.direction === 'asc'
                 ? new Date(dateA).getTime() - new Date(dateB).getTime()
                 : new Date(dateB).getTime() - new Date(dateA).getTime();
         });
+
+        return {
+            processedData: sortedData,
+            totals: {
+                income: calculatedIncome,
+                expense: calculatedExpense,
+                balance: calculatedIncome - calculatedExpense
+            }
+        };
     }, [financial, officeExpenses, searchTerm, periodMode, selectedDate, sortConfig]);
 
     const commissionsData = useMemo(() => {
-        return financial.filter(f => f.tipo === FinancialType.COMISSAO || f.tipo_movimentacao === 'Comissao')
+        return (financial || []).filter(f => f.tipo === FinancialType.COMISSAO || f.tipo_movimentacao === 'Comissao')
             .sort((a, b) => new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime());
     }, [financial]);
 
-    const totals = useMemo(() => {
-        const hasExtraFilters = filterType !== 'all' || filterStatus !== 'all' || filterMethod !== 'all' || searchTerm;
-        if (serverSummary && !hasExtraFilters) {
-            return { income: serverSummary.income, expense: serverSummary.expense, balance: serverSummary.balance };
-        }
-        let income = 0;
-        let expense = 0;
-        processedData.forEach(item => {
-            if (item.type === 'group') { income += item.totalEntradas; expense += item.totalSaidas; }
-            else if (item.data.status_pagamento) {
-                if (item.data.tipo === FinancialType.RECEITA) income += item.data.valor; else expense += item.data.valor;
-            }
-        });
-        return { income, expense, balance: income - expense };
-    }, [processedData, serverSummary, filterType, filterStatus, filterMethod, searchTerm]);
-
-    const totalCommissions = useMemo(() => commissionsData.reduce((acc, curr) => acc + (curr.status_pagamento ? curr.valor : 0), 0), [commissionsData]);
+    const totalCommissions = useMemo(() => commissionsData.reduce((acc, curr) => acc + (curr.status_pagamento ? Number(curr.valor) : 0), 0), [commissionsData]);
 
     const toggleGroup = (id: string) => { const newSet = new Set(expandedGroups); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setExpandedGroups(newSet); };
     const navigateToCase = (caseId: string) => { setCaseToView(caseId); setCurrentView('cases'); };
@@ -268,7 +280,7 @@ const Financial: React.FC = () => {
         const firstSelectedId = Array.from(selectedCommissionIds)[0];
         if (firstSelectedId) {
             const firstRecord = commissionsData.find(c => c.id === firstSelectedId);
-            const getCaptador = (r?: FinancialRecord) => r?.captador_nome || r?.descricao?.split(' - ')[1] || 'Unknown';
+            const getCaptador = (r?: FinancialRecord) => r?.captador_nome || r?.titulo?.split(' - ')[1] || 'Unknown';
             if (getCaptador(firstRecord) !== getCaptador(record)) {
                 if (!confirm(`Atenção: Seleção de outro captador. Limpar atual?`)) return;
                 setSelectedCommissionIds(new Set([record.id])); return;
@@ -283,7 +295,7 @@ const Financial: React.FC = () => {
         if (selectedCommissionIds.size === 0) return '';
         const firstId = Array.from(selectedCommissionIds)[0];
         const record = commissionsData.find(c => c.id === firstId);
-        return record?.captador_nome || record?.descricao?.split(' - ')[1] || 'Não identificado';
+        return record?.captador_nome || record?.titulo?.split(' - ')[1] || 'Não identificado';
     }, [selectedCommissionIds, commissionsData]);
 
     const handleOpenReceipt = (receipt: CommissionReceipt) => { setSelectedReceipt(receipt); setReceiptModalOpen(true); };
@@ -293,9 +305,9 @@ const Financial: React.FC = () => {
     };
 
     const handleAddAvulso = async () => {
-        if (!newRecord.descricao || !newRecord.valor) { showToast('error', 'Preencha dados.'); return; }
+        if (!newRecord.titulo || !newRecord.valor) { showToast('error', 'Preencha dados.'); return; }
         await addFinancialRecord({ id: crypto.randomUUID(), ...newRecord as FinancialRecord });
-        setIsModalOpen(false); setNewRecord({ descricao: '', valor: 0, tipo: FinancialType.RECEITA, data_vencimento: new Date().toISOString().split('T')[0], status_pagamento: true }); setAmountStr('');
+        setIsModalOpen(false); setNewRecord({ titulo: '', valor: 0, tipo: FinancialType.RECEITA, data_vencimento: new Date().toISOString().split('T')[0], status_pagamento: true }); setAmountStr('');
         showToast('success', 'Adicionado!');
     };
 

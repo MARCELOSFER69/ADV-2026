@@ -1,47 +1,56 @@
 import { supabase } from './supabaseClient';
 import { Case } from '../types';
 
+const applyCaseFilters = (query: any, search?: string, filters?: any) => {
+    if (search) {
+        const normalizedSearch = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        query = query.or(`titulo_unaccent.ilike.%${normalizedSearch}%,numero_processo.ilike.%${search}%,client_name_unaccent.ilike.%${normalizedSearch}%,client_cpf.ilike.%${search}%`);
+    }
+
+    // Lógica de Arquivo Morto vs Ativos
+    if (filters?.viewMode === 'archived') {
+        query = query.eq('status', 'Arquivado');
+    } else {
+        query = query.neq('status', 'Arquivado');
+    }
+
+    if (filters) {
+        if (filters.tipo && filters.tipo !== 'all') query = query.eq('tipo', filters.tipo);
+        if (filters.status && filters.status !== 'all' && filters.status !== 'active') {
+            query = query.eq('status', filters.status);
+        }
+        if (filters.tribunal && filters.tribunal !== 'all') {
+            query = query.ilike('tribunal', `%${filters.tribunal}%`);
+        }
+        if (filters.dateStart) query = query.gte('data_abertura', filters.dateStart);
+        if (filters.dateEnd) query = query.lte('data_abertura', filters.dateEnd);
+
+        if (filters.category) {
+            if (filters.category === 'Seguro Defeso') {
+                query = query.eq('tipo', 'Seguro Defeso');
+            }
+            else if (filters.category === 'Judicial') {
+                // Judicial: Qualquer processo que TENHA tribunal e NÃO seja INSS
+                query = query.neq('tipo', 'Seguro Defeso');
+                query = query.not('tribunal', 'is', null);
+                query = query.neq('tribunal', '');
+                query = query.not('tribunal', 'ilike', '%INSS%');
+                query = query.not('tribunal', 'ilike', '%Administrativo%');
+            }
+            else if (filters.category === 'Administrativo') {
+                // Administrativo: Qualquer processo que seja INSS ou sem tribunal (e não seja Seguro Defeso)
+                query = query.neq('tipo', 'Seguro Defeso');
+                query = query.or('tribunal.is.null,tribunal.eq.,tribunal.ilike.%INSS%,tribunal.ilike.%Administrativo%');
+            }
+        }
+    }
+    return query;
+};
+
 export const fetchCasesData = async (page: number, perPage: number, search?: string, filters?: any) => {
     try {
         let query = supabase.from('view_cases_dashboard').select('*', { count: 'exact' });
-
-        if (search) {
-            const normalizedSearch = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            query = query.or(`titulo_unaccent.ilike.%${normalizedSearch}%,numero_processo.ilike.%${search}%,client_name_unaccent.ilike.%${normalizedSearch}%,client_cpf.ilike.%${search}%`);
-        }
-
-        // Lógica de Arquivo Morto vs Ativos
-        if (filters?.viewMode === 'archived') {
-            query = query.eq('status', 'Arquivado');
-        } else {
-            query = query.neq('status', 'Arquivado');
-        }
-
-        if (filters) {
-            if (filters.tipo && filters.tipo !== 'all') query = query.eq('tipo', filters.tipo);
-            if (filters.status && filters.status !== 'all' && filters.status !== 'active') {
-                query = query.eq('status', filters.status);
-            }
-            if (filters.tribunal && filters.tribunal !== 'all') {
-                query = query.ilike('tribunal', `%${filters.tribunal}%`);
-            }
-            if (filters.dateStart) query = query.gte('data_abertura', filters.dateStart);
-            if (filters.dateEnd) query = query.lte('data_abertura', filters.dateEnd);
-
-            if (filters.category) {
-                if (filters.category === 'Seguro Defeso') {
-                    query = query.eq('tipo', 'Seguro Defeso');
-                }
-                else if (filters.category === 'Judicial') {
-                    query = query.or('tipo.eq.Trabalhista,tipo.eq.Cível/Outros,and(tribunal.neq.INSS,tribunal.neq.)');
-                    query = query.neq('tipo', 'Seguro Defeso');
-                }
-                else if (filters.category === 'Administrativo') {
-                    query = query.in('tipo', ['Salário Maternidade', 'Aposentadoria', 'BPC/LOAS', 'Auxílio Doença']);
-                    query = query.or('tribunal.is.null,tribunal.eq.,tribunal.eq.INSS');
-                }
-            }
-        }
+        query = applyCaseFilters(query, search, filters);
 
         const from = (page - 1) * perPage;
         const to = from + perPage - 1;
@@ -84,12 +93,15 @@ export const fetchAllCasesData = async () => {
  * Optimized fetch for Kanban.
  * Fetches only what is needed to display the card.
  */
-export const fetchKanbanCases = async () => {
+export const fetchKanbanCases = async (search?: string, filters?: any) => {
     try {
-        const { data, error } = await supabase
+        let query = supabase
             .from('view_cases_dashboard')
-            .select('id, titulo, numero_processo, status, valor_causa, client_id, data_abertura, client_name, client_cpf')
-            .neq('status', 'Arquivado');
+            .select('id, titulo, numero_processo, status, valor_causa, client_id, data_abertura, client_name, client_cpf');
+
+        query = applyCaseFilters(query, search, filters);
+
+        const { data, error } = await query;
 
         if (error) throw error;
         return (data || []) as unknown as Case[];
@@ -102,7 +114,7 @@ export const fetchKanbanCases = async () => {
 export const fetchCaseById = async (id: string) => {
     try {
         const { data, error } = await supabase
-            .from('cases')
+            .from('view_cases_dashboard')
             .select('*')
             .eq('id', id)
             .single();
@@ -145,6 +157,21 @@ export const fetchCaseTasks = async (caseId: string) => {
         return data as any[];
     } catch (error) {
         console.error(`Erro fetchCaseTasks (${caseId}):`, error);
+        throw error;
+    }
+};
+export const fetchCaseInstallments = async (caseId: string) => {
+    try {
+        const { data, error } = await supabase
+            .from('case_installments')
+            .select('*')
+            .eq('case_id', caseId)
+            .order('parcela_numero', { ascending: true });
+
+        if (error) throw error;
+        return data as any[];
+    } catch (error) {
+        console.error(`Erro fetchCaseInstallments (${caseId}):`, error);
         throw error;
     }
 };

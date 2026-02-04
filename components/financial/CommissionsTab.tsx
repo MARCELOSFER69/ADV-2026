@@ -24,7 +24,7 @@ interface CommissionsTabProps {
 const getImplicitCaptador = (record?: FinancialRecord) => {
     if (!record) return 'Desconhecido';
     if (record.captador_nome) return record.captador_nome;
-    if (record.descricao && record.descricao.includes(' - ')) return record.descricao.split(' - ')[1];
+    if (record.titulo && record.titulo.includes(' - ')) return record.titulo.split(' - ')[1];
     return 'Não identificado';
 };
 

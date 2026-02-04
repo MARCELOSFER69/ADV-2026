@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchFinancialsByCaseId } from '../services/financialService';
-import { fetchCaseEvents, fetchCaseTasks } from '../services/casesService';
-import { FinancialRecord, Event, Task } from '../types';
+import { fetchCaseEvents, fetchCaseTasks, fetchCaseInstallments } from '../services/casesService';
+import { FinancialRecord, Event, Task, CaseInstallment } from '../types';
 
 export const useCaseRelatedData = (caseId: string) => {
     // 1. Financeiro do Caso
@@ -37,18 +37,32 @@ export const useCaseRelatedData = (caseId: string) => {
         enabled: !!caseId
     });
 
+    // 4. Parcelas do Caso
+    const {
+        data: installments = [],
+        isLoading: isLoadingInstallments,
+        refetch: refetchInstallments
+    } = useQuery({
+        queryKey: ['case_installments', caseId],
+        queryFn: (() => fetchCaseInstallments(caseId)) as any,
+        enabled: !!caseId
+    });
+
     return {
         financials: financials as FinancialRecord[],
         events: events as Event[],
         tasks: tasks as Task[],
-        isLoading: isLoadingFinancials || isLoadingEvents || isLoadingTasks,
+        installments: installments as CaseInstallment[],
+        isLoading: isLoadingFinancials || isLoadingEvents || isLoadingTasks || isLoadingInstallments,
         refetchAll: () => {
             refetchFinancials();
             refetchEvents();
             refetchTasks();
+            refetchInstallments();
         },
         refetchFinancials,
         refetchEvents,
-        refetchTasks
+        refetchTasks,
+        refetchInstallments
     };
 };
