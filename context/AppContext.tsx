@@ -146,9 +146,37 @@ interface ToastMessage {
     message: string;
 }
 
-// Implementação futura ou placeholder para syncClientDocuments
-const syncClientDocumentsStub = async (clientId: string) => {
-    console.log("Sync docs for:", clientId);
+// Helper to determine notification urgency
+const getUrgency = (dateStr: string): 'today' | 'tomorrow' | 'upcoming' => {
+    if (!dateStr) return 'upcoming';
+    const todayStr = getTodayBrasilia();
+    const date = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+
+    if (date === todayStr) return 'today';
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    if (date === tomorrowStr) return 'tomorrow';
+    return 'upcoming';
+};
+
+// Map database notification_queue item to AppNotification interface
+const mapDBNotification = (dbItem: any): AppNotification => {
+    return {
+        id: dbItem.id,
+        type: 'benefit',
+        title: 'Atualização de Sistema',
+        message: dbItem.message,
+        date: dbItem.scheduled_for || dbItem.created_at,
+        amount: 0,
+        urgency: getUrgency(dbItem.scheduled_for || dbItem.created_at),
+        clientName: dbItem.clients?.nome_completo || 'Notificação',
+        clientId: dbItem.client_id,
+        caseId: dbItem.case_id,
+        status: 'unread'
+    };
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -378,9 +406,70 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
                 // if (financeData) setFinancial(financeData as any);
 
-                // Fetch Notifications
-                const { data: notifData } = await supabase.from('notification_queue').select('*').eq('status', 'pendente');
-                if (notifData) setNotifications(notifData as any);
+                // --- Notification System: Database + Dynamic Map ---
+                const today = getTodayBrasilia();
+                const nextWeek = new Date();
+                nextWeek.setDate(nextWeek.getDate() + 7);
+                const nextWeekStr = nextWeek.toISOString().split('T')[0];
+
+                // 1. Fetch from notification_queue (Real notifications/Bot updates)
+                const { data: dbNotifs } = await supabase
+                    .from('notification_queue')
+                    .select('*, clients(nome_completo)')
+                    .eq('status', 'pendente');
+
+                const mappedDbNotifs = (dbNotifs || []).map(mapDBNotification);
+
+                // 2. Dynamic Notifications: Financial (Near due)
+                const { data: nearDueFinancial } = await supabase
+                    .from('financial_records')
+                    .select('*, clients(nome_completo)')
+                    .eq('status_pagamento', false)
+                    .gte('data_vencimento', today)
+                    .lte('data_vencimento', nextWeekStr)
+                    .limit(20);
+
+                const financialNotifs: AppNotification[] = (nearDueFinancial || []).map(f => ({
+                    id: `fin-${f.id}`,
+                    type: f.tipo === 'Receita' ? 'income' : 'expense',
+                    title: f.tipo === 'Receita' ? 'Recebimento Pendente' : 'Pagamento Pendente',
+                    message: f.titulo,
+                    date: f.data_vencimento,
+                    amount: f.valor,
+                    urgency: getUrgency(f.data_vencimento),
+                    clientName: f.clients?.nome_completo || 'Escritório',
+                    clientId: f.client_id,
+                    caseId: f.case_id,
+                    status: 'unread'
+                }));
+
+                // 3. Dynamic Notifications: Events (Near due)
+                const { data: nearDueEvents } = await supabase
+                    .from('events')
+                    .select('*, cases(titulo, client_id, clients(nome_completo))')
+                    .gte('data_hora', today)
+                    .lte('data_hora', nextWeekStr)
+                    .limit(20);
+
+                const eventNotifs: AppNotification[] = (nearDueEvents || []).map(e => ({
+                    id: `evt-${e.id}`,
+                    type: e.tipo === 'Perícia' ? 'interview' : 'reminder',
+                    title: e.tipo || 'Evento Agendado',
+                    message: e.titulo,
+                    date: e.data_hora,
+                    amount: 0,
+                    urgency: getUrgency(e.data_hora),
+                    clientName: (e.cases as any)?.clients?.nome_completo || 'Agenda',
+                    clientId: (e.cases as any)?.client_id,
+                    caseId: e.case_id,
+                    status: 'unread'
+                }));
+
+                // Combined & Sorted by urgency
+                const combinedNotifications = [...mappedDbNotifs, ...financialNotifs, ...eventNotifs]
+                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+                setNotifications(combinedNotifications);
                 if (eventsData) setEvents(eventsData);
                 if (tasksData) setTasks(tasksData);
                 if (expensesData) setOfficeExpenses(expensesData);
