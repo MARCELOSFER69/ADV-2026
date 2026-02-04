@@ -137,7 +137,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                 await addFinancialRecord({
                     id: crypto.randomUUID(),
                     case_id: liveCase.id,
-                    descricao: `GPS ${gps.competencia}`,
+                    titulo: `GPS ${gps.competencia}`,
                     tipo: FinancialType.DESPESA,
                     valor: gps.valor,
                     data_vencimento: getTodayBrasilia(),

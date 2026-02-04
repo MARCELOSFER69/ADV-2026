@@ -227,7 +227,7 @@ const Dashboard: React.FC = () => {
 
     const insuranceDueData = useMemo(() => {
         const today = new Date(); const nextWeek = new Date(); nextWeek.setDate(today.getDate() + 7);
-        return financial.filter(f => !f.status_pagamento && f.tipo === FinancialType.RECEITA && (f.descricao.includes('Seguro Defeso') || f.descricao.includes('Benefício')) && new Date(f.data_vencimento) >= today && new Date(f.data_vencimento) <= nextWeek).sort((a, b) => new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime());
+        return financial.filter(f => !f.status_pagamento && f.tipo === FinancialType.RECEITA && (f.titulo.includes('Seguro Defeso') || f.titulo.includes('Benefício')) && new Date(f.data_vencimento) >= today && new Date(f.data_vencimento) <= nextWeek).sort((a, b) => new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime());
     }, [financial]);
 
     const overdueOrImpendingDeadlines = useMemo(() => cases.filter(c => c.data_fatal && c.status !== CaseStatus.ARQUIVADO && c.status !== CaseStatus.CONCLUIDO_CONCEDIDO).sort((a, b) => new Date(a.data_fatal!).getTime() - new Date(b.data_fatal!).getTime()).slice(0, 5), [cases]);

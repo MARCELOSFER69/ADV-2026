@@ -139,7 +139,7 @@ export const mockFinancial: FinancialRecord[] = [
   {
     id: 'f1',
     case_id: 'p1',
-    descricao: 'Entrada Honorários',
+    titulo: 'Entrada Honorários',
     tipo: FinancialType.RECEITA,
     valor: 500.00,
     data_vencimento: '2023-11-01T00:00:00Z',
@@ -148,7 +148,7 @@ export const mockFinancial: FinancialRecord[] = [
   {
     id: 'f2',
     case_id: 'p2',
-    descricao: 'Custas Iniciais',
+    titulo: 'Custas Iniciais',
     tipo: FinancialType.DESPESA,
     valor: 200.50,
     data_vencimento: '2023-04-05T00:00:00Z',
@@ -157,7 +157,7 @@ export const mockFinancial: FinancialRecord[] = [
   {
     id: 'f3',
     case_id: 'p4',
-    descricao: 'Honorários Finais BPC',
+    titulo: 'Honorários Finais BPC',
     tipo: FinancialType.RECEITA,
     valor: 420.00,
     data_vencimento: '2024-02-15T00:00:00Z',

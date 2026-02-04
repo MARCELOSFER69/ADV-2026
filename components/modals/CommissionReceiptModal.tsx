@@ -139,7 +139,7 @@ const CommissionReceiptModal: React.FC<CommissionReceiptModalProps> = ({ isOpen,
               <body>
                 <div class="header"><h2>${safeTitle}</h2><h1 class="title">RECIBO DE PAGAMENTO</h1></div>
                 <p>Eu, <strong>${safeName}</strong> (CPF ${safeCpf}), recebi a importância de <strong>${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue)}</strong> referente a comissões.</p>
-                <table class="table"><tbody>${selectedRecords.map(r => `<tr><td>${new Date(r.data_vencimento).toLocaleDateString('pt-BR')}</td><td>${safeString(r.descricao)}</td><td align="right">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(r.valor) || 0)}</td></tr>`).join('')}</tbody></table>
+                <table class="table"><tbody>${selectedRecords.map(r => `<tr><td>${new Date(r.data_vencimento).toLocaleDateString('pt-BR')}</td><td>${safeString(r.titulo)}</td><td align="right">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(r.valor) || 0)}</td></tr>`).join('')}</tbody></table>
                 <div class="total">TOTAL: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue)}</div>
                 <p align="right">Santa Inês - MA, ${safeDate}.</p>
                 <div class="signatures"><div class="sig-line"><strong>${safeTitle}</strong><br>Pagador</div><div class="sig-line"><strong>${safeName}</strong><br>Recebedor</div></div>
