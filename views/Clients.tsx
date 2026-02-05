@@ -57,7 +57,7 @@ const CIVIL_STATUS_OPTIONS = [
 
 const BRANCH_OPTIONS = Object.values(Branch).map(b => ({ label: b, value: b }));
 
-import { fetchAllFilteredClientsData } from '../services/clientsService';
+import { fetchAllFilteredClientsData, checkCpfExists } from '../services/clientsService';
 import { useClients } from '../hooks/useClients';
 import * as XLSX from 'xlsx';
 
@@ -109,6 +109,7 @@ const Clients: React.FC = () => {
     const [isBulkArchiving, setIsBulkArchiving] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const [duplicateClient, setDuplicateClient] = useState<Client | null>(null);
 
     // Hook useClients (React Query)
     const { data: paginatedClients, isLoading: isFetching, totalCount: totalClients, refetch } = useClients({
@@ -302,6 +303,32 @@ const Clients: React.FC = () => {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
+    // Check for duplicate CPF/CNPJ
+    useEffect(() => {
+        const checkDuplicate = async () => {
+            const rawCpf = newClient.cpf_cnpj?.replace(/\D/g, '');
+            if (!rawCpf || rawCpf.length < 11) {
+                setDuplicateClient(null);
+                return;
+            }
+
+            try {
+                const { exists, client } = await checkCpfExists(newClient.cpf_cnpj!);
+                if (exists && client) {
+                    setDuplicateClient(client as any);
+                } else {
+                    setDuplicateClient(null);
+                }
+            } catch (error) {
+                console.error("Erro ao verificar duplicidade:", error);
+                setDuplicateClient(null);
+            }
+        };
+
+        const timer = setTimeout(checkDuplicate, 500);
+        return () => clearTimeout(timer);
+    }, [newClient.cpf_cnpj]);
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.altKey && e.key.toLowerCase() === 'p') {
@@ -486,7 +513,7 @@ const Clients: React.FC = () => {
 
     const clearFilters = useCallback(() => setActiveFilters({ city: '', captador: '', status: 'all', filial: 'all', sexo: 'all', dateStart: '', dateEnd: '', pendencia: 'all', gps: 'all' }), []);
 
-    const duplicateClient = null; // Removido useMemo de filtro local. Recomenda-se query JIT se necessário.
+    // const duplicateClient = null; // Removido useMemo de filtro local. Recomenda-se query JIT se necessário.
 
     const filteredCaptadores = useMemo(() => {
         if (!newClient.filial) return [];
