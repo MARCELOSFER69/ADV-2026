@@ -16,7 +16,7 @@ interface ClientInfoTabProps {
     setIsWhatsAppModalOpen: (val: boolean) => void;
     cases: Case[];
     onSelectCase?: (caseItem: Case) => void;
-    openNewCaseWithParams: (clientId: string, type: any) => void;
+    openNewCaseWithParams: (clientId: string, type: any, clientName?: string) => void;
     onClose: () => void;
 }
 
@@ -441,13 +441,13 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
                                 <div className="px-3 py-2 bg-zinc-950/50 border-b border-white/5 text-[10px] uppercase font-bold text-zinc-500">
                                     Tipo de Processo
                                 </div>
-                                <button onClick={() => { openNewCaseWithParams(client.id, 'Seguro Defeso' as any); setShowNewCaseMenu(false); onClose(); }} className="text-left px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-gold-500 transition-colors border-b border-white/5 flex items-center gap-2">
+                                <button onClick={() => { openNewCaseWithParams(client.id, 'Seguro Defeso' as any, client.nome_completo); setShowNewCaseMenu(false); onClose(); }} className="text-left px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-gold-500 transition-colors border-b border-white/5 flex items-center gap-2">
                                     <Shield size={16} /> Seguro Defeso
                                 </button>
-                                <button onClick={() => { openNewCaseWithParams(client.id, 'Aposentadoria' as any); setShowNewCaseMenu(false); onClose(); }} className="text-left px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-gold-500 transition-colors border-b border-white/5 flex items-center gap-2">
+                                <button onClick={() => { openNewCaseWithParams(client.id, 'Aposentadoria' as any, client.nome_completo); setShowNewCaseMenu(false); onClose(); }} className="text-left px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-gold-500 transition-colors border-b border-white/5 flex items-center gap-2">
                                     <FileText size={16} /> Administrativo
                                 </button>
-                                <button onClick={() => { openNewCaseWithParams(client.id, 'Cível/Outros' as any); setShowNewCaseMenu(false); onClose(); }} className="text-left px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-gold-500 transition-colors flex items-center gap-2">
+                                <button onClick={() => { openNewCaseWithParams(client.id, 'Cível/Outros' as any, client.nome_completo); setShowNewCaseMenu(false); onClose(); }} className="text-left px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-gold-500 transition-colors flex items-center gap-2">
                                     <Gavel size={16} /> Judicial
                                 </button>
                             </div>

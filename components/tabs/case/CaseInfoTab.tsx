@@ -46,10 +46,24 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
     onAddCaseType
 }) => {
     // Local state for GPS inputs
-    const [newGpsCompetencia, setNewGpsCompetencia] = useState('');
+    const [newGpsMonth, setNewGpsMonth] = useState('');
+    const [newGpsYear, setNewGpsYear] = useState('');
     const [isAddingGps, setIsAddingGps] = useState(false);
     const [editingGpsId, setEditingGpsId] = useState<string | null>(null);
     const [editingGpsValue, setEditingGpsValue] = useState('');
+
+    const MONTH_OPTIONS = [
+        { label: 'JAN', value: '01' }, { label: 'FEV', value: '02' }, { label: 'MAR', value: '03' },
+        { label: 'ABR', value: '04' }, { label: 'MAI', value: '05' }, { label: 'JUN', value: '06' },
+        { label: 'JUL', value: '07' }, { label: 'AGO', value: '08' }, { label: 'SET', value: '09' },
+        { label: 'OUT', value: '10' }, { label: 'NOV', value: '11' }, { label: 'DEZ', value: '12' }
+    ];
+
+    const currentYear = new Date().getFullYear();
+    const YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => {
+        const y = (currentYear - 5 + i).toString();
+        return { label: y, value: y };
+    });
 
     // Local state for dynamic selects
     const [showNewModalityInput, setShowNewModalityInput] = useState(false);
@@ -59,9 +73,10 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
 
     // Handlers
     const handleAddGpsClick = () => {
-        if (!newGpsCompetencia) return;
-        onAddGps(newGpsCompetencia);
-        setNewGpsCompetencia('');
+        if (!newGpsMonth || !newGpsYear) return;
+        onAddGps(`${newGpsMonth}/${newGpsYear}`);
+        setNewGpsMonth('');
+        setNewGpsYear('');
         setIsAddingGps(false);
     };
 
@@ -264,13 +279,25 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
 
                         {isAddingGps && (
                             <div className="flex gap-2 mb-4 animate-in fade-in slide-in-from-top-2">
-                                <input
-                                    className="flex-1 bg-[#131418] border border-white/10 rounded px-3 py-2 text-sm text-white"
-                                    placeholder="Competência (MM/AAAA)"
-                                    value={newGpsCompetencia}
-                                    onChange={e => setNewGpsCompetencia(e.target.value)}
-                                />
-                                <button onClick={handleAddGpsClick} className="bg-gold-500 text-black px-4 rounded font-bold text-xs">Salvar</button>
+                                <div className="w-28">
+                                    <CustomSelect
+                                        label=""
+                                        options={MONTH_OPTIONS}
+                                        value={newGpsMonth}
+                                        onChange={setNewGpsMonth}
+                                        placeholder="Mês"
+                                    />
+                                </div>
+                                <div className="w-24">
+                                    <CustomSelect
+                                        label=""
+                                        options={YEAR_OPTIONS}
+                                        value={newGpsYear}
+                                        onChange={setNewGpsYear}
+                                        placeholder="Ano"
+                                    />
+                                </div>
+                                <button onClick={handleAddGpsClick} className="bg-gold-500 text-black px-4 rounded font-bold text-xs h-[38px] mt-0.5">Salvar</button>
                                 <button onClick={() => setIsAddingGps(false)} className="text-zinc-500 px-2"><Trash2 size={14} /></button>
                             </div>
                         )}
@@ -308,7 +335,14 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
                                             <div className="flex gap-1">
                                                 {gps.status !== 'Paga' && (
                                                     <button
-                                                        onClick={() => onUpdateGps(gps.id, gps.status, gps.valor)}
+                                                        onClick={() => {
+                                                            if (gps.status === 'Pendente') {
+                                                                setEditingGpsId(gps.id);
+                                                                setEditingGpsValue(formatCurrencyInput(gps.valor.toFixed(2)));
+                                                            } else {
+                                                                onUpdateGps(gps.id, gps.status, gps.valor);
+                                                            }
+                                                        }}
                                                         className={`p-1.5 rounded hover:bg-white/10 ${gps.status === 'Pendente' ? 'text-zinc-500' : 'text-green-500'}`}
                                                         title={gps.status === 'Pendente' ? "Definir Valor" : "Pagar"}
                                                     >
