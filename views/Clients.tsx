@@ -92,7 +92,7 @@ const Clients: React.FC = () => {
     const [isDocEditorOpen, setIsDocEditorOpen] = useState(false);
     const [docContent, setDocContent] = useState('');
     const [docTitle, setDocTitle] = useState('');
-    const [newClient, setNewClient] = useState<Partial<Client>>({ nacionalidade: 'Brasileira', uf: 'MA', pendencias: [] });
+    const [newClient, setNewClient] = useState<Partial<Client>>({ nacionalidade: 'Brasileiro(a)', uf: 'MA', pendencias: [] });
     const [isLoadingCep, setIsLoadingCep] = useState(false);
     const [isLoadingCnpj, setIsLoadingCnpj] = useState(false);
     const [isAddingCaptador, setIsAddingCaptador] = useState(false);
@@ -393,7 +393,7 @@ const Clients: React.FC = () => {
         try {
             await addClient({ ...newClient, id: crypto.randomUUID(), status: 'ativo', data_cadastro: new Date().toISOString() } as Client);
             setIsNewClientModalOpen(false);
-            setNewClient({ nacionalidade: 'Brasileira', uf: 'MA', pendencias: [] });
+            setNewClient({ nacionalidade: 'Brasileiro(a)', uf: 'MA', pendencias: [] });
             refetch();
         } catch (error) { showToast('error', 'Erro ao salvar cliente'); }
     };

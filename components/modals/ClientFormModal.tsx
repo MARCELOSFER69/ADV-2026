@@ -176,7 +176,7 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
                                 <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Nacionalidade</label>
                                 <div className="relative group">
                                     <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-yellow-600 transition-colors" size={18} />
-                                    <input className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 pl-10 pr-4 py-2.5 rounded-xl focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600/20 outline-none placeholder:text-zinc-600" value={newClient.nacionalidade || 'Brasileira'} onChange={e => setNewClient({ ...newClient, nacionalidade: e.target.value })} />
+                                    <input className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 pl-10 pr-4 py-2.5 rounded-xl focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600/20 outline-none placeholder:text-zinc-600" value={newClient.nacionalidade || 'Brasileiro(a)'} onChange={e => setNewClient({ ...newClient, nacionalidade: e.target.value })} />
                                 </div>
                             </div>
 
