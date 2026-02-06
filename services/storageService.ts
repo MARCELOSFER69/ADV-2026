@@ -25,10 +25,11 @@ const r2Client = new S3Client({
  */
 export const uploadFileToR2 = async (file: File, folder: string) => {
   try {
-    // Cria nome único: id_cliente/timestamp_nome-limpo.ext
-    // Remove acentos e caracteres especiais para evitar erros na URL
-    const cleanName = file.name.replace(/[^a-zA-Z0-9.]/g, '-');
-    const fileName = `${folder}/${Date.now()}_${cleanName}`;
+    // Cria nome único: id_cliente_nome-limpo/timestamp_nome-limpo.ext
+    // Trim para evitar espaços no final/início que quebram a URL
+    const cleanFolder = folder.trim().replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/-$/, '');
+    const cleanFileName = file.name.trim().replace(/[^a-zA-Z0-9.]/g, '-').replace(/-+/g, '-');
+    const fileName = `${cleanFolder}/${Date.now()}_${cleanFileName}`;
 
     // --- CORREÇÃO CRÍTICA AQUI ---
     // Converte o arquivo para Buffer para evitar o erro "getReader is not a function"

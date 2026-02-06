@@ -11,6 +11,7 @@ import {
     LayoutDashboard, ChevronLeft, Fish, Briefcase, DollarSign, Send
 } from 'lucide-react';
 import WhatsAppModal from './WhatsAppModal';
+import ConfirmModal from '../ui/ConfirmModal';
 import { formatCPFOrCNPJ, formatPhone, formatCurrencyInput, parseCurrencyToNumber } from '../../services/formatters';
 import { motion } from 'framer-motion';
 import { fetchAddressByCep } from '../../services/cepService';
@@ -115,6 +116,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
 
     const [isUploading, setIsUploading] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; doc?: ClientDocument }>({ isOpen: false });
 
     // --- DEFENSIVE PROGRAMMING: LOG & NULL CHECK ---
     useEffect(() => {
@@ -325,7 +327,13 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
     }, [client]);
 
     const handleDeleteDocument = useCallback(async (doc: ClientDocument) => {
-        if (!confirm(`Deseja excluir o documento "${doc.nome}"?`)) return;
+        setConfirmDelete({ isOpen: true, doc });
+    }, []);
+
+    const executeDeleteDocument = async () => {
+        const doc = confirmDelete.doc;
+        if (!doc) return;
+
         try {
             if (doc.path) await deleteFileFromR2(doc.path);
             const updatedDocs = (client.documentos || []).filter(d => d.id !== doc.id);
@@ -337,7 +345,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
             console.error(error);
             showToast('error', 'Erro ao excluir documento.');
         }
-    }, [client]);
+    };
 
     // Verificação de duplicidade OTIMIZADA via banco
     const [duplicateClient, setDuplicateClient] = useState<{ id: string, nome_completo: string } | null>(null);
@@ -613,6 +621,16 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                     />
                 )
             }
+
+            <ConfirmModal
+                isOpen={confirmDelete.isOpen}
+                onClose={() => setConfirmDelete({ isOpen: false })}
+                onConfirm={executeDeleteDocument}
+                title="Excluir Documento"
+                message={`Deseja realmente excluir o documento "${confirmDelete.doc?.nome}"? Esta ação não pode ser desfeita.`}
+                confirmLabel="Excluir"
+                variant="danger"
+            />
         </div>,
         document.body
     );
