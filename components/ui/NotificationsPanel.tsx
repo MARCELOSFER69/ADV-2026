@@ -266,94 +266,95 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
                         </p>
                     </div>
 
-                    <AnimatePresence>
-                        {selectedNotification && (
-                            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                                    onClick={() => setSelectedNotification(null)}
-                                />
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                                    className="relative w-full max-w-[340px] bg-[#0c0d12] rounded-2xl flex flex-col border border-zinc-800 shadow-[0_30px_90px_rgba(0,0,0,0.9)] overflow-hidden max-h-[85vh]"
-                                >
-                                    <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-[#0f111a]">
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="text-xs font-black text-gold-500 uppercase tracking-wider">Detalhes</h4>
-                                            <span className="text-xs font-bold text-zinc-400 font-mono tracking-tight">
-                                                • {formatDate(selectedNotification.date)}
-                                            </span>
-                                        </div>
-                                        <button onClick={() => setSelectedNotification(null)} className="p-1.5 hover:bg-white/5 rounded-full text-zinc-500 hover:text-white transition-colors">
-                                            <X size={18} />
-                                        </button>
-                                    </div>
-
-                                    <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
-                                        <div className="flex flex-col items-center text-center space-y-3 mb-6">
-                                            <div className="p-4 rounded-full bg-gold-500/10 border border-gold-500/20 text-gold-500">
-                                                <Bell size={24} />
-                                            </div>
-                                            <h2 className="text-sm font-bold text-white leading-tight px-2">{selectedNotification.title}</h2>
-                                            {selectedNotification.amount > 0 && (
-                                                <div className="text-xl font-black text-emerald-500">
-                                                    {formatMoney(selectedNotification.amount)}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                                                <label className="text-[9px] text-zinc-500 uppercase font-black block mb-1.5">Mensagem</label>
-                                                <p className="text-xs text-zinc-200 leading-relaxed font-medium">{selectedNotification.message}</p>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <button
-                                                    onClick={() => handleNavigate('client', selectedNotification.clientName, selectedNotification.clientId)}
-                                                    className="bg-navy-900/50 hover:bg-navy-900 border border-navy-800 p-3 rounded-xl flex flex-col items-center gap-1.5 group transition-all"
-                                                >
-                                                    <Users size={16} className="text-blue-400 group-hover:scale-110 transition-transform" />
-                                                    <span className="text-[9px] font-bold text-zinc-500 uppercase">Cliente</span>
-                                                    <p className="text-[10px] text-zinc-200 truncate w-full text-center">{selectedNotification.clientName}</p>
-                                                </button>
-                                                <button
-                                                    onClick={() => handleNavigate('case', selectedNotification.message, selectedNotification.caseId)}
-                                                    className="bg-zinc-900/50 hover:bg-zinc-900 border border-zinc-800 p-3 rounded-xl flex flex-col items-center gap-1.5 group transition-all"
-                                                >
-                                                    <Scale size={16} className="text-gold-500 group-hover:scale-110 transition-transform" />
-                                                    <span className="text-[9px] font-bold text-zinc-500 uppercase">Processo</span>
-                                                    <p className="text-[10px] text-zinc-200 truncate w-full text-center">Ver Processo</p>
-                                                </button>
-                                            </div>
-
-                                            <div className="flex justify-end px-1">
-                                                <span className="bg-zinc-800/50 px-2 py-0.5 rounded text-gold-500 text-[9px] font-bold uppercase tracking-widest border border-gold-500/10">
-                                                    {typeLabels[selectedNotification.type] || selectedNotification.type.toUpperCase()}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-4 border-t border-zinc-800 bg-[#0f111a]">
-                                        <button
-                                            onClick={() => setSelectedNotification(null)}
-                                            className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-bold transition-all shadow-lg active:scale-95 border border-white/5"
-                                        >
-                                            Voltar para Lista
-                                        </button>
-                                    </div>
-                                </motion.div>
-                            </div>
-                        )}
-                    </AnimatePresence>
                 </div>
             </motion.div>
+
+            <AnimatePresence>
+                {selectedNotification && (
+                    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => setSelectedNotification(null)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="relative w-full max-w-[340px] bg-[#0c0d12] rounded-2xl flex flex-col border border-zinc-800 shadow-[0_30px_90px_rgba(0,0,0,0.9)] overflow-hidden max-h-[85vh]"
+                        >
+                            <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-[#0f111a]">
+                                <div className="flex items-center gap-2">
+                                    <h4 className="text-xs font-black text-gold-500 uppercase tracking-wider">Detalhes</h4>
+                                    <span className="text-xs font-bold text-zinc-400 font-mono tracking-tight">
+                                        • {formatDate(selectedNotification.date)}
+                                    </span>
+                                </div>
+                                <button onClick={() => setSelectedNotification(null)} className="p-1.5 hover:bg-white/5 rounded-full text-zinc-500 hover:text-white transition-colors">
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+                                <div className="flex flex-col items-center text-center space-y-3 mb-6">
+                                    <div className="p-4 rounded-full bg-gold-500/10 border border-gold-500/20 text-gold-500">
+                                        <Bell size={24} />
+                                    </div>
+                                    <h2 className="text-sm font-bold text-white leading-tight px-2">{selectedNotification.title}</h2>
+                                    {selectedNotification.amount > 0 && (
+                                        <div className="text-xl font-black text-emerald-500">
+                                            {formatMoney(selectedNotification.amount)}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                                        <label className="text-[9px] text-zinc-500 uppercase font-black block mb-1.5">Mensagem</label>
+                                        <p className="text-xs text-zinc-200 leading-relaxed font-medium">{selectedNotification.message}</p>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            onClick={() => handleNavigate('client', selectedNotification.clientName, selectedNotification.clientId)}
+                                            className="bg-navy-900/50 hover:bg-navy-900 border border-navy-800 p-3 rounded-xl flex flex-col items-center gap-1.5 group transition-all"
+                                        >
+                                            <Users size={16} className="text-blue-400 group-hover:scale-110 transition-transform" />
+                                            <span className="text-[9px] font-bold text-zinc-500 uppercase">Cliente</span>
+                                            <p className="text-[10px] text-zinc-200 truncate w-full text-center">{selectedNotification.clientName}</p>
+                                        </button>
+                                        <button
+                                            onClick={() => handleNavigate('case', selectedNotification.message, selectedNotification.caseId)}
+                                            className="bg-zinc-900/50 hover:bg-zinc-900 border border-zinc-800 p-3 rounded-xl flex flex-col items-center gap-1.5 group transition-all"
+                                        >
+                                            <Scale size={16} className="text-gold-500 group-hover:scale-110 transition-transform" />
+                                            <span className="text-[9px] font-bold text-zinc-500 uppercase">Processo</span>
+                                            <p className="text-[10px] text-zinc-200 truncate w-full text-center">Ver Processo</p>
+                                        </button>
+                                    </div>
+
+                                    <div className="flex justify-end px-1">
+                                        <span className="bg-zinc-800/50 px-2 py-0.5 rounded text-gold-500 text-[9px] font-bold uppercase tracking-widest border border-gold-500/10">
+                                            {typeLabels[selectedNotification.type] || selectedNotification.type.toUpperCase()}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-4 border-t border-zinc-800 bg-[#0f111a]">
+                                <button
+                                    onClick={() => setSelectedNotification(null)}
+                                    className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-bold transition-all shadow-lg active:scale-95 border border-white/5"
+                                >
+                                    Voltar para Lista
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </>
     );
 };
