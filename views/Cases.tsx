@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAppContext as useApp } from '../context/AppContext';
 import { CaseStatus, Case, CaseType, ColumnConfig } from '../types';
 import {
-    Plus, Gavel, FileText, Shield, Inbox, Archive, Trash2, X, Loader2, RefreshCw, AlertTriangle
+    Plus, Gavel, FileText, Shield, Inbox, Archive, Trash2, X, Loader2, RefreshCw, AlertTriangle, LayoutGrid, LayoutList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import BranchSelector from '../components/Layout/BranchSelector';
 import { useCases, useKanbanCases } from '../hooks/useCases';
 // import { useAllClients } from '../hooks/useClients'; // REMOVED FOR PERFORMANCE
 import CaseDetailsModal from '../components/modals/CaseDetailsModal';
@@ -12,6 +13,7 @@ import NewCaseModal from '../components/modals/NewCaseModal';
 import CaseFilters from '../components/cases/CaseFilters';
 import CaseKanbanBoard from '../components/cases/CaseKanbanBoard';
 import CaseList from '../components/cases/CaseList';
+import ExportCasesModal from '../components/modals/ExportCasesModal';
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
     { id: 'titulo', label: 'Prazos/Alertas', visible: true, order: 0 },
@@ -30,7 +32,7 @@ const Cases: React.FC = () => {
         updateCase, deleteCase, deleteFinancialRecord,
         showToast, user, saveUserPreferences, isNewCaseModalOpen, setIsNewCaseModalOpen,
         caseToView, setCaseToView, currentView, mergedPreferences, setClientToView,
-        financial, setCurrentView
+        financial, setCurrentView, caseTypeFilter, globalBranchFilter
     } = useApp();
 
     const [selectedCase, setSelectedCase] = useState<Case | null>(null);
@@ -38,6 +40,7 @@ const Cases: React.FC = () => {
     // View State
     const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
     const [layoutMode, setLayoutMode] = useState<'kanban' | 'list'>('kanban');
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
     // Filter States
     const [searchTerm, setSearchTerm] = useState('');
@@ -51,7 +54,8 @@ const Cases: React.FC = () => {
         dateStart: '',
         dateEnd: '',
         minVal: '',
-        maxVal: ''
+        maxVal: '',
+        filial: 'all'
     });
 
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'data_abertura', direction: 'desc' });
@@ -93,8 +97,24 @@ const Cases: React.FC = () => {
         category: activeCategory as any,
         sortKey: sortConfig.key,
         sortDirection: sortConfig.direction,
-        quickFilter
-    }), [filters, debouncedSearch, viewMode, activeCategory, sortConfig, quickFilter]);
+        quickFilter,
+        filial: filters.filial !== 'all' ? filters.filial : globalBranchFilter
+    }), [filters, debouncedSearch, viewMode, activeCategory, sortConfig, quickFilter, globalBranchFilter]);
+
+    // Sincroniza filtro global de filial
+    useEffect(() => {
+        if (globalBranchFilter !== 'all') {
+            setFilters(prev => ({ ...prev, filial: globalBranchFilter }));
+        }
+    }, [globalBranchFilter]);
+
+    // Opcional: Sincroniza de volta se o usuário mudar no Filtros modal
+    useEffect(() => {
+        if (filters.filial !== 'all' && filters.filial !== globalBranchFilter) {
+            // Se o usuário mudou explicitamente no modal, podemos querer atualizar o global?
+            // Para consistência com Clientes.tsx, vamos manter o global como master.
+        }
+    }, [filters.filial, globalBranchFilter]);
 
     // Paginated list for table view
     const { data: paginatedCases, isLoading: isFetchingList, totalCount: totalCases, refetch: refetchList } = useCases(
@@ -190,13 +210,20 @@ const Cases: React.FC = () => {
 
     // Determine Title and Description
     const pageHeader = useMemo(() => {
-        switch (activeCategory) {
-            case 'Judicial': return { title: 'Processos Judiciais', desc: 'Ações Cíveis, Trabalhistas e Federais.', icon: Gavel };
-            case 'Administrativo': return { title: 'Processos Administrativos', desc: 'Requerimentos INSS e Benefícios.', icon: FileText };
-            case 'Seguro Defeso': return { title: 'Seguro Defeso', desc: 'Gestão de benefícios de pescadores.', icon: Shield };
-            default: return { title: 'Todos os Processos', desc: 'Visão geral de todos os casos do escritório.', icon: Inbox };
+        const typeLabel = caseTypeFilter && caseTypeFilter !== 'all' ? ` - ${caseTypeFilter}` : '';
+
+        // Special case for Seguro Defeso icon/desc even if in Administrativo
+        if (caseTypeFilter === 'Seguro Defeso') {
+            return { title: `Processos Administrativos - Seguro Defeso`, desc: 'Gestão de benefícios de pescadores.', icon: Shield };
         }
-    }, [activeCategory]);
+
+        switch (activeCategory) {
+            case 'Judicial': return { title: `Processos Judiciais${typeLabel}`, desc: 'Ações Cíveis, Trabalhistas e Federais.', icon: Gavel };
+            case 'Administrativo': return { title: `Processos Administrativos${typeLabel}`, desc: 'Requerimentos INSS e Benefícios.', icon: FileText };
+            case 'Seguro Defeso': return { title: `Seguro Defeso${typeLabel}`, desc: 'Gestão de benefícios de pescadores.', icon: Shield };
+            default: return { title: `Todos os Processos${typeLabel}`, desc: 'Visão geral de todos os casos do escritório.', icon: Inbox };
+        }
+    }, [activeCategory, caseTypeFilter]);
 
     const searchInputRef = useRef<HTMLInputElement>(null);
     useEffect(() => {
@@ -209,7 +236,12 @@ const Cases: React.FC = () => {
         };
         window.addEventListener('keydown', handleKeyDown, { capture: true });
         return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
-    }, []);
+    });
+    useEffect(() => {
+        if (caseTypeFilter) {
+            setFilters(prev => ({ ...prev, tipo: caseTypeFilter }));
+        }
+    }, [caseTypeFilter]);
 
     // Effects for Preferences, Search, etc
     useEffect(() => {
@@ -246,7 +278,7 @@ const Cases: React.FC = () => {
     }, []);
 
     const clearFilters = useCallback(() => {
-        setFilters({ tipo: 'all', status: 'all', dateStart: '', dateEnd: '', minVal: '', maxVal: '' });
+        setFilters({ tipo: 'all', status: 'all', dateStart: '', dateEnd: '', minVal: '', maxVal: '', filial: 'all' });
         setQuickFilter('all');
         setSearchTerm('');
     }, []);
@@ -335,23 +367,73 @@ const Cases: React.FC = () => {
                 <div className="flex items-center gap-4">
                     <div className="p-2.5 bg-gold-500/10 rounded-2xl text-gold-500 border border-gold-500/20 shadow-lg shadow-gold-500/5 hover:scale-105 transition-transform"><pageHeader.icon size={24} /></div>
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-white font-serif tracking-tight">{viewMode === 'active' ? pageHeader.title : `Arquivo Morto (${activeCategory})`}</h1>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-2xl md:text-3xl font-bold text-white font-serif tracking-tight">{viewMode === 'active' ? pageHeader.title : `Arquivo Morto (${activeCategory})`}</h1>
+                            {isFetching && <Loader2 size={20} className="text-gold-500 animate-spin" />}
+                        </div>
                         <p className="text-slate-400 text-[11px] md:text-xs font-medium mt-0.5 opacity-80 uppercase tracking-widest">{viewMode === 'active' ? pageHeader.desc : 'Histórico arquivado.'}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button onClick={() => { setViewMode(viewMode === 'active' ? 'archived' : 'active'); setCurrentPage(1); }} className={`group h-10 rounded-xl border flex items-center px-4 gap-2 transition-all font-bold text-[10px] uppercase tracking-widest ${viewMode === 'archived' ? 'bg-gold-500/10 border-gold-500 text-gold-500' : 'bg-[#181818] border-white/10 text-slate-400 hover:text-white'}`}>
-                        <Archive size={16} /> {viewMode === 'archived' ? 'Ver Ativos' : 'Ver Arquivo'}
-                    </button>
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => { setViewMode(viewMode === 'active' ? 'archived' : 'active'); setCurrentPage(1); }}
+                        className={`group h-10 rounded-xl border flex items-center justify-center hover:justify-start w-10 hover:w-auto overflow-hidden px-0 hover:px-4 gap-0 hover:gap-2 transition-all duration-300 font-bold text-[10px] uppercase tracking-widest ${viewMode === 'archived' ? 'bg-gold-500/10 border-gold-500 text-gold-500' : 'bg-[#181818] border-white/10 text-slate-400 hover:text-white'}`}
+                        title={viewMode === 'archived' ? 'Ver Ativos' : 'Arquivo Morto'}
+                    >
+                        <Archive size={16} className="shrink-0" />
+                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-all duration-300 w-0 group-hover:w-auto">
+                            {viewMode === 'archived' ? 'Ver Ativos' : 'Arquivo Morto'}
+                        </span>
+                    </motion.button>
+
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setIsExportModalOpen(true)}
+                        className="group h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center hover:justify-start w-10 hover:w-auto overflow-hidden px-0 hover:px-4 gap-0 hover:gap-2 transition-all duration-300"
+                        title="Gerar Relatório Excel"
+                    >
+                        <FileText size={18} className="shrink-0" />
+                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-all duration-300 w-0 group-hover:w-auto">Relatório Excel</span>
+                    </motion.button>
+
                     {/* Layout Toggles */}
                     <div className="flex items-center bg-[#131418] border border-white/10 rounded-xl p-1 h-10">
-                        {/* Simplified Logic for Buttons */}
-                        <button onClick={() => saveLayoutMode('kanban')} className={`p-1.5 rounded-lg px-3 flex gap-2 ${layoutMode === 'kanban' ? 'bg-gold-600 text-black font-bold' : 'text-slate-500'}`}>Kanban</button>
-                        <button onClick={() => saveLayoutMode('list')} className={`p-1.5 rounded-lg px-3 flex gap-2 ${layoutMode === 'list' ? 'bg-gold-600 text-black font-bold' : 'text-slate-500'}`}>Lista</button>
+                        <button
+                            onClick={() => saveLayoutMode('kanban')}
+                            className={`p-1.5 rounded-lg px-3 flex items-center gap-2 transition-all duration-300 ${layoutMode === 'kanban'
+                                ? 'bg-gold-600 text-black shadow-lg shadow-gold-600/20 font-bold'
+                                : 'text-slate-500 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            <LayoutGrid size={16} />
+                            <span className="text-[9px] uppercase font-black tracking-widest hidden sm:inline">Kanban</span>
+                        </button>
+                        <button
+                            onClick={() => saveLayoutMode('list')}
+                            className={`p-1.5 rounded-lg px-3 flex items-center gap-2 transition-all duration-300 ${layoutMode === 'list'
+                                ? 'bg-gold-600 text-black shadow-lg shadow-gold-600/20 font-bold'
+                                : 'text-slate-500 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            <LayoutList size={16} />
+                            <span className="text-[9px] uppercase font-black tracking-widest hidden sm:inline">Lista</span>
+                        </button>
                     </div>
-                    <button onClick={() => setIsNewCaseModalOpen(true)} className="h-10 bg-gold-600 hover:bg-gold-700 text-black rounded-xl font-bold text-[10px] uppercase px-4 flex items-center gap-2">
-                        <Plus size={18} /> Novo Processo
-                    </button>
+
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setIsNewCaseModalOpen(true)}
+                        className="group h-10 bg-gold-600 hover:bg-gold-700 text-black rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-gold-600/20 flex items-center justify-center hover:justify-start w-10 hover:w-auto overflow-hidden px-0 hover:px-4 gap-0 hover:gap-2 transition-all duration-300"
+                    >
+                        <Plus size={18} className="shrink-0" />
+                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-all duration-300 w-0 group-hover:w-auto">Novo Processo</span>
+                    </motion.button>
+
+                    <BranchSelector />
                 </div>
             </div>
 
@@ -425,6 +507,23 @@ const Cases: React.FC = () => {
                             setCurrentView('clients');
                             setSelectedCase(null);
                         }}
+                    />
+                )}
+
+                {isNewCaseModalOpen && (
+                    <NewCaseModal
+                        isOpen={isNewCaseModalOpen}
+                        onClose={() => setIsNewCaseModalOpen(false)}
+                    />
+                )}
+
+                {isExportModalOpen && (
+                    <ExportCasesModal
+                        isOpen={isExportModalOpen}
+                        onClose={() => setIsExportModalOpen(false)}
+                        currentFilters={queryFilters}
+                        searchTerm={debouncedSearch}
+                        showToast={showToast}
                     />
                 )}
             </AnimatePresence>

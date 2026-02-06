@@ -49,7 +49,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
     // 1. Data Fetching
     const { data: fullCase } = useCase(caseItem.id);
     const liveCase = fullCase || caseItem;
-    const { data: fullClient } = useClient(liveCase.client_id);
+    const { data: fullClient, isLoading: isLoadingClient } = useClient(liveCase.client_id);
     const client = fullClient;
     const {
         financials: caseFinancials,
@@ -290,6 +290,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                 <CaseInfoTab
                                     caseItem={liveCase}
                                     client={client}
+                                    isLoadingClient={isLoadingClient}
                                     isEditMode={isEditMode}
                                     onUpdateCase={handleUpdateCase}
                                     onViewClient={onViewClient}

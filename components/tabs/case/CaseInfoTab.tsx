@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Case, Client, GPS, CaseStatus, CaseType } from '../../../types';
-import { User, ClipboardList, MapPin, Edit2, Check, AlertTriangle, Trash2, Plus, Info, Globe, DollarSign } from 'lucide-react';
+import { User, ClipboardList, MapPin, Edit2, Check, AlertTriangle, Trash2, Plus, Info, Globe, DollarSign, Loader2 } from 'lucide-react';
 import { formatCPFOrCNPJ, formatCurrencyInput, parseCurrencyToNumber } from '../../../services/formatters';
 import CustomSelect from '../../ui/CustomSelect';
 
@@ -20,6 +20,7 @@ interface CaseInfoTabProps {
     onAddModality: (val: string) => Promise<void>;
     caseTypes: string[];
     onAddCaseType: (val: string) => Promise<void>;
+    isLoadingClient?: boolean;
 }
 
 const COMMON_SYSTEMS = [
@@ -43,7 +44,8 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
     modalities,
     onAddModality,
     caseTypes,
-    onAddCaseType
+    onAddCaseType,
+    isLoadingClient = false
 }) => {
     // Local state for GPS inputs
     const [newGpsMonth, setNewGpsMonth] = useState('');
@@ -110,7 +112,12 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
                     <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                         <User size={16} /> Cliente Vinculado
                     </h3>
-                    {client ? (
+                    {isLoadingClient ? (
+                        <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
+                            <Loader2 className="animate-spin text-gold-500" size={20} />
+                            <span className="text-sm text-zinc-400">Buscando informações do cliente...</span>
+                        </div>
+                    ) : client ? (
                         <div className="flex items-start gap-4">
                             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-zinc-800 to-black border border-white/10 flex items-center justify-center text-lg font-serif text-gold-500">
                                 {client.nome_completo.charAt(0)}

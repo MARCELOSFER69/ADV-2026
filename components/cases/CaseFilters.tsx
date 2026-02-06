@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAppContext } from '../../context/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, SortAsc, ChevronDown, Filter, Settings, LayoutGrid, LayoutList, ArrowDown, ArrowUp, User, AlertTriangle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Branch, ColumnConfig, Case, CaseType, CaseStatus } from '../../types';
@@ -228,6 +229,17 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
                             className="overflow-hidden border-t border-white/5 mt-4"
                         >
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Filial</label>
+                                    <select
+                                        className="w-full bg-navy-900 text-white px-3 py-2 border border-white/10 rounded-lg text-sm outline-none focus:border-gold-500"
+                                        value={filters.filial || 'all'}
+                                        onChange={(e) => setFilters({ ...filters, filial: e.target.value })}
+                                    >
+                                        <option value="all">Todas</option>
+                                        {Object.values(Branch).map(branch => <option key={branch} value={branch}>{branch}</option>)}
+                                    </select>
+                                </div>
                                 <div>
                                     <label className="block text-xs font-medium text-slate-500 mb-1">Tipo de Ação</label>
                                     <select

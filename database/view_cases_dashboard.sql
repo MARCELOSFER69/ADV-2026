@@ -1,13 +1,20 @@
--- view_cases_dashboard
--- Otimização para o sistema jurídico ADV-2026
--- Esta view centraliza a busca de processos com dados dos clientes,
--- permitindo filtros eficientes por nome e CPF sem joins no frontend.
+-- Habilita a extensão unaccent se não existir
+CREATE EXTENSION IF NOT EXISTS unaccent;
 
-CREATE OR REPLACE VIEW view_cases_dashboard AS
+-- Derruba a view existente para permitir mudanças nas colunas
+DROP VIEW IF EXISTS view_cases_dashboard CASCADE;
+
+CREATE VIEW view_cases_dashboard AS
 SELECT 
     cs.*,
     c.nome_completo AS client_name,
-    c.cpf_cnpj AS client_cpf
+    unaccent(c.nome_completo) AS client_name_unaccent,
+    c.cpf_cnpj AS client_cpf,
+    unaccent(cs.titulo) AS titulo_unaccent,
+    c.filial AS filial,
+    c.data_nascimento AS client_birth_date,
+    c.cidade AS client_city,
+    c.captador AS captador
 FROM cases cs
 JOIN clients c ON cs.client_id = c.id;
 

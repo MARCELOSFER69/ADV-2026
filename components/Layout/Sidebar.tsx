@@ -51,7 +51,7 @@ const SidebarItem = React.memo(({ item, isActive, waitingChatsCount, onClick }: 
 // --- INNER COMPONENT: HEAVY UI (Memoized) ---
 interface SidebarViewProps {
     currentView: string;
-    onNavigate: (viewId: any) => void;
+    onNavigate: (viewId: any, typeFilter?: string) => void;
     onLogout: () => void;
     user: any; // User object ref
     mergedPreferences: any;
@@ -73,18 +73,20 @@ interface SidebarViewProps {
     };
     onOpenSettings: () => void;
     isSettingsOpen: boolean;
+    caseTypeFilter: string;
 }
 
 const SidebarView = memo(({
     currentView, onNavigate, onLogout, user, mergedPreferences, unreadCount, waitingChatsCount,
     setIsAssistantOpen, onOpenProfile, onOpenNotifications, isNotificationsOpen, permissions,
-    onOpenSettings, isSettingsOpen
+    onOpenSettings, isSettingsOpen, caseTypeFilter
 }: SidebarViewProps) => {
 
     // Local State for Accordions (UI logic only)
     const [isToolsOpen, setIsToolsOpen] = useState(false);
     const [isCasesOpen, setIsCasesOpen] = useState(false);
     const [isFinancialOpen, setIsFinancialOpen] = useState(false);
+    const [expandedCaseCategory, setExpandedCaseCategory] = useState<string | null>(null);
 
     // Auto-open accordions based on view (Effect stays local to View)
     useEffect(() => {
@@ -106,10 +108,26 @@ const SidebarView = memo(({
         ...(canViewCases ? [{ id: 'retirements', label: 'Aposentadorias', icon: Hourglass }] : []),
     ], [canViewCases]);
 
+    const judicialSubItems = [
+        { id: 'Aposentadoria', label: 'Aposentadoria' },
+        { id: 'Salário Maternidade', label: 'Salário Família/Materno' },
+        { id: 'BPC/LOAS', label: 'BPC/LOAS' },
+        { id: 'Auxílio Doença', label: 'Auxílio Doença' },
+        { id: 'Pensão por Morte', label: 'Pensão por Morte' },
+    ];
+
+    const administrativeSubItems = [
+        { id: 'Aposentadoria', label: 'Aposentadoria' },
+        { id: 'Salário Maternidade', label: 'Salário Família/Materno' },
+        { id: 'BPC/LOAS', label: 'BPC/LOAS' },
+        { id: 'Auxílio Doença', label: 'Auxílio Doença' },
+        { id: 'Pensão por Morte', label: 'Pensão por Morte' },
+        { id: 'Seguro Defeso', label: 'Seguro Defeso' },
+    ];
+
     const caseItems = useMemo(() => [
-        ...((isAdmin || user?.permissions?.access_cases_judicial) ? [{ id: 'cases-judicial', label: 'Judicial', icon: Gavel }] : []),
-        ...((isAdmin || user?.permissions?.access_cases_administrative) ? [{ id: 'cases-administrative', label: 'Administrativo', icon: FileText }] : []),
-        ...((isAdmin || user?.permissions?.access_cases_insurance) ? [{ id: 'cases-insurance', label: 'Seguro Defeso', icon: Shield }] : []),
+        ...((isAdmin || user?.permissions?.access_cases_judicial) ? [{ id: 'cases-judicial', label: 'Judicial', icon: Gavel, subItems: judicialSubItems }] : []),
+        ...((isAdmin || user?.permissions?.access_cases_administrative) ? [{ id: 'cases-administrative', label: 'Administrativo', icon: FileText, subItems: administrativeSubItems }] : []),
         { id: 'expertise', label: 'Perícias', icon: Stethoscope },
     ], [isAdmin, user?.permissions]);
 
@@ -199,13 +217,61 @@ const SidebarView = memo(({
                                         <motion.div initial="collapsed" animate="open" exit="collapsed" variants={menuVariants} className="overflow-hidden space-y-1 bg-navy-950/50">
                                             {caseItems.map((item, i) => {
                                                 const isActive = currentView === item.id;
+                                                const hasSubItems = item.subItems && item.subItems.length > 0;
+                                                const isExpanded = expandedCaseCategory === item.id;
+
                                                 return (
-                                                    <motion.button key={item.id} variants={itemVariants} initial="hidden" animate="visible" transition={{ delay: i * 0.05 }} onClick={() => onNavigate(item.id)} className="w-full flex items-center h-10 group/subitem relative active-scale">
-                                                        <div className="min-w-[70px] flex justify-end pr-6"></div>
-                                                        <div className={`flex items-center gap-3 whitespace-nowrap overflow-hidden w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-300 pl-2 rounded-lg py-1.5 pr-3 ${isActive ? 'bg-navy-900 text-gold-500' : 'text-slate-500 hover:text-slate-300 hover:bg-navy-900/50'}`}>
-                                                            <item.icon size={16} /><span className="text-sm">{item.label}</span>
-                                                        </div>
-                                                    </motion.button>
+                                                    <div key={item.id} className="w-full">
+                                                        <motion.button
+                                                            variants={itemVariants}
+                                                            initial="hidden"
+                                                            animate="visible"
+                                                            transition={{ delay: i * 0.05 }}
+                                                            onClick={() => {
+                                                                if (hasSubItems) {
+                                                                    setExpandedCaseCategory(isExpanded ? null : item.id);
+                                                                }
+                                                                onNavigate(item.id);
+                                                            }}
+                                                            className="w-full flex items-center h-10 group/subitem relative active-scale"
+                                                        >
+                                                            <div className="min-w-[70px] flex justify-end pr-6"></div>
+                                                            <div className={`flex flex-1 items-center justify-between gap-3 whitespace-nowrap overflow-hidden w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-300 pl-2 rounded-lg py-1.5 pr-3 ${isActive ? 'bg-navy-900 text-gold-500' : 'text-slate-500 hover:text-slate-300 hover:bg-navy-900/50'}`}>
+                                                                <div className="flex items-center gap-3">
+                                                                    <item.icon size={16} />
+                                                                    <span className="text-sm">{item.label}</span>
+                                                                </div>
+                                                                {hasSubItems && (
+                                                                    <ChevronDown size={12} className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                                                                )}
+                                                            </div>
+                                                        </motion.button>
+
+                                                        {hasSubItems && isExpanded && (
+                                                            <motion.div
+                                                                initial={{ height: 0, opacity: 0 }}
+                                                                animate={{ height: 'auto', opacity: 1 }}
+                                                                exit={{ height: 0, opacity: 0 }}
+                                                                className="overflow-hidden space-y-1 ml-[70px]"
+                                                            >
+                                                                {item.subItems.map((sub, si) => {
+                                                                    const isSubActive = currentView === item.id && caseTypeFilter === sub.id;
+                                                                    return (
+                                                                        <button
+                                                                            key={sub.id}
+                                                                            onClick={() => {
+                                                                                (onNavigate as any)(item.id, sub.id);
+                                                                            }}
+                                                                            className={`w-full text-left py-1.5 pl-8 pr-3 text-[11px] font-medium transition-colors uppercase tracking-wider flex items-center gap-2 ${isSubActive ? 'text-gold-500' : 'text-slate-500 hover:text-slate-300'}`}
+                                                                        >
+                                                                            <span className={`w-1.5 h-px shrink-0 transition-colors ${isSubActive ? 'bg-gold-500' : 'bg-slate-700'}`} />
+                                                                            {sub.label}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </motion.div>
+                                                        )}
+                                                    </div>
                                                 )
                                             })}
                                         </motion.div>
@@ -364,7 +430,7 @@ const Sidebar: React.FC = () => {
         currentView, setCurrentView, logout, user, updateUserProfile,
         notifications, mergedPreferences, saveUserPreferences,
         isAssistantOpen, setIsAssistantOpen,
-        waitingChatsCount
+        waitingChatsCount, setCaseTypeFilter, caseTypeFilter
     } = useApp();
 
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -396,10 +462,11 @@ const Sidebar: React.FC = () => {
         };
     }, [user]);
 
-    const handleNavigation = React.useCallback((viewId: any) => {
+    const handleNavigation = React.useCallback((viewId: any, typeFilter?: string) => {
         setCurrentView(viewId);
+        setCaseTypeFilter(typeFilter || 'all');
         setIsNotificationsOpen(false);
-    }, [setCurrentView]);
+    }, [setCurrentView, setCaseTypeFilter]);
 
     // --- Profile Handlers ---
     useEffect(() => {
@@ -469,6 +536,7 @@ const Sidebar: React.FC = () => {
                 permissions={permissions}
                 onOpenSettings={() => setIsSettingsOpen(true)}
                 isSettingsOpen={isSettingsOpen}
+                caseTypeFilter={caseTypeFilter}
             />
 
             <NotificationsPanel isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} notifications={notifications} />

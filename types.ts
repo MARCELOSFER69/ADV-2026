@@ -229,6 +229,9 @@ export interface Case {
   client_name?: string;
   client_cpf?: string;
   captador?: string; // Para filtro "Meus Processos"
+  filial?: string;
+  client_birth_date?: string;
+  client_city?: string;
 
   registered_by?: string;
   updated_by?: string;
@@ -559,6 +562,7 @@ export interface UserPreferences {
   };
   lowPerformanceMode?: boolean;
   estimatedFeePercentage?: number;
+  selectedBranch?: Branch | 'all';
 }
 
 export interface UserPermission {
@@ -632,4 +636,12 @@ export interface CnisData {
   totalTime: CnisDuration;
   bonds: CnisBond[];
   benefits: CnisBenefit[];
+}
+export interface GeneratedReport {
+  id: string;
+  name: string;
+  storage_path: string;
+  url: string;
+  user_id: string;
+  created_at: string;
 }

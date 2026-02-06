@@ -4,7 +4,7 @@ import {
     Client, Case, CaseType, FinancialRecord, Event, ViewState, Task, FinancialType, CaseHistory,
     UserPreferences, User, OfficeExpense, Captador, CaseInstallment, CommissionReceipt,
     AppNotification, Reminder, UserPermission, GPS, PersonalCredential, OfficeBalance, CaseStatus,
-    ClientHistory, EventType, Chat, ChatMessage, ClientDocument
+    ClientHistory, EventType, Chat, ChatMessage, ClientDocument, Branch
 } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getTodayBrasilia } from '../utils/dateUtils';
@@ -41,6 +41,10 @@ interface AppContextType {
 
     currentView: ViewState;
     setCurrentView: (view: ViewState) => void;
+    caseTypeFilter: string | 'all';
+    setCaseTypeFilter: (filter: string | 'all') => void;
+    globalBranchFilter: Branch | 'all';
+    setGlobalBranchFilter: (branch: Branch | 'all') => void;
     clientToView: string | null;
     setClientToView: (id: string | null, tab?: 'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp') => void;
     clientDetailTab: 'visao360' | 'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp';
@@ -261,6 +265,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
     const [currentView, setCurrentView] = useState<ViewState>('dashboard');
+    const [caseTypeFilter, setCaseTypeFilter] = useState<string | 'all'>('all');
+    const [globalBranchFilter, _setGlobalBranchFilter] = useState<Branch | 'all'>('all');
     const [isAssistantOpen, setIsAssistantOpen] = useState(false);
     const [clientToView, _setClientToView] = useState<string | null>(null);
     const [clientDetailTab, setClientDetailTab] = useState<'visao360' | 'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp'>('visao360');
@@ -621,6 +627,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 setPersonalCredentials([]);
                 setReminders([]);
                 setNotifications([]);
+                setCaseTypeFilter('all');
                 isDataLoaded.current = false;
                 isLoadingRef.current = false;
             }
@@ -667,6 +674,21 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         if (error) throw error;
         setGlobalPreferences(prefs);
     }, []);
+
+    // Sincroniza filial quando usuario carrega
+    useEffect(() => {
+        if (user?.preferences?.selectedBranch) {
+            _setGlobalBranchFilter(user.preferences.selectedBranch);
+        }
+    }, [user?.preferences?.selectedBranch]);
+
+    const setGlobalBranchFilter = useCallback(async (branch: Branch | 'all') => {
+        _setGlobalBranchFilter(branch);
+        if (user?.id) {
+            const updatedPrefs = { ...(user.preferences || {}), selectedBranch: branch };
+            await saveUserPreferences(updatedPrefs);
+        }
+    }, [user, saveUserPreferences]);
 
     const addClient = useCallback(async (newClient: Client) => {
         try {
@@ -1381,7 +1403,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         globalPreferences, mergedPreferences, saveGlobalPreferences,
         reloadData,
         financial, officeExpenses, officeBalances, personalCredentials, events, tasks, captadores, commissionReceipts, reminders, notifications,
-        currentView, setCurrentView, clientToView, setClientToView, clientDetailTab, setClientDetailTab,
+        currentView, setCurrentView, caseTypeFilter, setCaseTypeFilter, globalBranchFilter, setGlobalBranchFilter, clientToView, setClientToView, clientDetailTab, setClientDetailTab,
         addClient, updateClient, deleteClient, syncClientDocuments, addCase, updateCase, deleteCase, getCaseHistory, getClientHistory, getUnifiedClientHistory,
         addEvent, updateEvent, deleteEvent, addTask, toggleTask, deleteTask,
         addFinancialRecord, deleteFinancialRecord, addRetirementCalculation, promoteCalculationToCase, addOfficeExpense, updateOfficeExpense, deleteOfficeExpense, toggleOfficeExpenseStatus, addOfficeBalance,
@@ -1396,7 +1418,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }), [
         user, globalPreferences, mergedPreferences, reloadData,
         financial, officeExpenses, officeBalances, personalCredentials, events, tasks, captadores, commissionReceipts, reminders, notifications,
-        currentView, clientToView, clientDetailTab, toasts, isLoading, isNewCaseModalOpen, isNewClientModalOpen, newCaseParams, caseToView,
+        currentView, caseTypeFilter, globalBranchFilter, clientToView, clientDetailTab, toasts, isLoading, isNewCaseModalOpen, isNewClientModalOpen, newCaseParams, caseToView,
         chats, chatMessages, waitingChatsCount, isAssistantOpen, isStatusBlinking, isLowPerformance, togglePerformanceMode
     ]);
 

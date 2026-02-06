@@ -24,6 +24,7 @@ const applyCaseFilters = (query: any, search?: string, filters?: any) => {
         }
         if (filters.dateStart) query = query.gte('data_abertura', filters.dateStart);
         if (filters.dateEnd) query = query.lte('data_abertura', filters.dateEnd);
+        if (filters.filial && filters.filial !== 'all') query = query.eq('filial', filters.filial);
 
         if (filters.category) {
             if (filters.category === 'Seguro Defeso') {
@@ -38,8 +39,10 @@ const applyCaseFilters = (query: any, search?: string, filters?: any) => {
                 query = query.not('tribunal', 'ilike', '%Administrativo%');
             }
             else if (filters.category === 'Administrativo') {
-                // Administrativo: Qualquer processo que seja INSS ou sem tribunal (e não seja Seguro Defeso)
-                query = query.neq('tipo', 'Seguro Defeso');
+                // Administrativo: Qualquer processo que seja INSS ou sem tribunal (e não seja Seguro Defeso, a menos que filtrado especificamente)
+                if (filters.tipo !== 'Seguro Defeso') {
+                    query = query.neq('tipo', 'Seguro Defeso');
+                }
                 query = query.or('tribunal.is.null,tribunal.eq.,tribunal.ilike.%INSS%,tribunal.ilike.%Administrativo%');
             }
         }
@@ -97,7 +100,7 @@ export const fetchKanbanCases = async (search?: string, filters?: any) => {
     try {
         let query = supabase
             .from('view_cases_dashboard')
-            .select('id, titulo, numero_processo, status, valor_causa, client_id, data_abertura, client_name, client_cpf');
+            .select('id, titulo, numero_processo, status, valor_causa, client_id, data_abertura, client_name, client_cpf, filial');
 
         query = applyCaseFilters(query, search, filters);
 
@@ -172,6 +175,26 @@ export const fetchCaseInstallments = async (caseId: string) => {
         return data as any[];
     } catch (error) {
         console.error(`Erro fetchCaseInstallments (${caseId}):`, error);
+        throw error;
+    }
+};
+
+export const fetchAllFilteredCasesData = async (search?: string, filters?: any) => {
+    try {
+        let query = supabase.from('view_cases_dashboard').select('*');
+        query = applyCaseFilters(query, search, filters);
+
+        const sortKey = filters?.sortKey || 'data_abertura';
+        const sortAsc = filters?.sortDirection !== 'desc';
+
+        const { data, error } = await query
+            .order(sortKey, { ascending: sortAsc });
+
+        if (error) throw error;
+
+        return (data || []) as unknown as Case[];
+    } catch (error) {
+        console.error("Erro fetchAllFilteredCasesData:", error);
         throw error;
     }
 };

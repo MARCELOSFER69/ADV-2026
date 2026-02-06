@@ -20,6 +20,7 @@ import ClientFilters from '../components/clients/ClientFilters';
 import ClientGridView from '../components/clients/ClientGridView';
 import ClientTableView from '../components/clients/ClientTableView';
 import { motion, AnimatePresence } from 'framer-motion';
+import BranchSelector from '../components/Layout/BranchSelector';
 
 const DEFAULT_CLIENT_COLUMNS: ColumnConfig[] = [
     { id: 'nome_completo', label: 'Nome', visible: true, order: 0 },
@@ -67,7 +68,8 @@ const Clients: React.FC = () => {
         clientToView, setClientToView, user, saveUserPreferences,
         captadores, addCaptador, mergedPreferences,
         isNewClientModalOpen, setIsNewClientModalOpen,
-        clientDetailTab, setClientDetailTab
+        clientDetailTab, setClientDetailTab,
+        globalBranchFilter
     } = useAppContext();
 
     // State
@@ -302,6 +304,12 @@ const Clients: React.FC = () => {
         }, 500);
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    // Sincroniza filtro global de filial
+    useEffect(() => {
+        setActiveFilters(prev => ({ ...prev, filial: globalBranchFilter }));
+        setCurrentPage(1);
+    }, [globalBranchFilter]);
 
     // Check for duplicate CPF/CNPJ
     useEffect(() => {
@@ -618,6 +626,7 @@ const Clients: React.FC = () => {
                             </motion.button>
                         </>
                     )}
+                    <BranchSelector />
                 </div>
             </div>
 

@@ -4,17 +4,18 @@ import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import { useAllCases } from '../hooks/useCases';
 import { useAllClients } from '../hooks/useClients';
-import { CaseType, CaseStatus, Client, Case } from '../types';
+import { CaseType, CaseStatus, Client, Case, Branch } from '../types';
 import { Hourglass, ChevronRight, Briefcase, MapPin, AlertCircle, X, Search, Filter, Clock } from 'lucide-react';
 import CaseDetailsModal from '../components/modals/CaseDetailsModal';
 import PendencyIndicator from '../components/ui/PendencyIndicator';
 import { RetirementCard, RetirementCandidate, DetailedCalculation } from '../components/retirement/RetirementCard';
 import { RetirementCandidateModal } from '../components/retirement/RetirementCandidateModal';
 import { RetirementCalculationDetails } from '../components/retirement/RetirementCalculationDetails';
+import BranchSelector from '../components/Layout/BranchSelector';
 
 
 const Retirements: React.FC = () => {
-    const { showToast, setCurrentView, setClientToView, updateClient } = useApp();
+    const { showToast, setCurrentView, setClientToView, updateClient, globalBranchFilter } = useApp();
     const { data: cases = [] } = useAllCases();
     const { data: clients = [] } = useAllClients();
     const [selectedCase, setSelectedCase] = useState<Case | null>(null);
@@ -27,8 +28,18 @@ const Retirements: React.FC = () => {
     const [filterModality, setFilterModality] = useState<'Todas' | 'Rural' | 'Urbana'>('Todas');
     const [filterStatus, setFilterStatus] = useState<'Todos' | 'Elegíveis' | 'Pendentes'>('Todos');
     const [filterPeriod, setFilterPeriod] = useState<number>(60); // Default 5 anos (60 meses)
+    const [filterBranch, setFilterBranch] = useState<Branch | 'Todas'>('Todas');
     const [globalTrigger, setGlobalTrigger] = useState(0);
     const [activeHoverId, setActiveHoverId] = useState<string | null>(null);
+
+    // Sincroniza filtro global de filial
+    React.useEffect(() => {
+        if (globalBranchFilter !== 'all') {
+            setFilterBranch(globalBranchFilter as Branch);
+        } else {
+            setFilterBranch('Todas');
+        }
+    }, [globalBranchFilter]);
 
     React.useEffect(() => {
         const interval = setInterval(() => {
@@ -53,10 +64,14 @@ const Retirements: React.FC = () => {
     ];
 
     // 1. Filtrar Processos de Aposentadoria em Andamento
-    const activeRetirements = cases.filter(c =>
-        c.tipo === CaseType.APOSENTADORIA &&
-        c.status !== CaseStatus.ARQUIVADO
-    );
+    const activeRetirements = cases.filter(c => {
+        const client = clients.find(cl => cl.id === c.client_id);
+        const matchesBranch = filterBranch === 'Todas' || client?.filial === filterBranch;
+
+        return c.tipo === CaseType.APOSENTADORIA &&
+            c.status !== CaseStatus.ARQUIVADO &&
+            matchesBranch;
+    });
 
     // 2. Calcular Candidatos (Futuras Aposentadorias)
     const candidates: RetirementCandidate[] = useMemo(() => {
@@ -141,10 +156,13 @@ const Retirements: React.FC = () => {
                 // Filtro de Período
                 const matchesPeriod = c.yearsRemaining <= filterPeriod / 12;
 
-                return matchesSearch && matchesGender && matchesModality && matchesStatus && matchesPeriod;
+                // Filtro de Filial
+                const matchesBranch = filterBranch === 'Todas' || c.client.filial === filterBranch;
+
+                return matchesSearch && matchesGender && matchesModality && matchesStatus && matchesPeriod && matchesBranch;
             })
             .sort((a, b) => a.yearsRemaining - b.yearsRemaining);
-    }, [clients, cases, searchTerm, filterGender, filterModality, filterStatus, filterPeriod]);
+    }, [clients, cases, searchTerm, filterGender, filterModality, filterStatus, filterPeriod, filterBranch]);
 
     const handleWhatsAppClick = (phone: string | undefined) => {
         if (!phone) return;
@@ -157,8 +175,6 @@ const Retirements: React.FC = () => {
         setClientToView(clientId, tab as any);
         setCurrentView('clients');
     };
-
-    // Removed local formatTimeRemaining
 
     return (
         <div className="h-full overflow-y-auto custom-scrollbar space-y-8 pb-10 pr-2">
@@ -175,6 +191,9 @@ const Retirements: React.FC = () => {
                             Acompanhamento de processos e prospecção de futuros aposentados.
                         </p>
                     </div>
+                </div>
+                <div className="flex items-center gap-3">
+                    <BranchSelector />
                 </div>
             </div>
 
@@ -236,6 +255,18 @@ const Retirements: React.FC = () => {
                                 <option value="Pendentes" className="bg-[#18181b]">Com Pendências</option>
                             </select>
 
+                            {/* Filial */}
+                            <select
+                                value={filterBranch}
+                                onChange={(e) => setFilterBranch(e.target.value as any)}
+                                className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-medium focus:outline-none focus:border-gold-500/50 cursor-pointer"
+                            >
+                                <option value="Todas" className="bg-[#18181b]">Todas as Filiais</option>
+                                {Object.values(Branch).map(branch => (
+                                    <option key={branch} value={branch} className="bg-[#18181b]">{branch}</option>
+                                ))}
+                            </select>
+
                             {/* Período */}
                             <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-lg px-3 py-2">
                                 <Clock size={14} className="text-zinc-500" />
@@ -252,7 +283,7 @@ const Retirements: React.FC = () => {
                             </div>
 
                             {/* Limpar Filtros */}
-                            {(searchTerm !== '' || filterGender !== 'Todos' || filterModality !== 'Todas' || filterStatus !== 'Todos' || filterPeriod !== 60) && (
+                            {(searchTerm !== '' || filterGender !== 'Todos' || filterModality !== 'Todas' || filterStatus !== 'Todos' || filterPeriod !== 60 || filterBranch !== 'Todas') && (
                                 <button
                                     onClick={() => {
                                         setSearchTerm('');
@@ -260,6 +291,7 @@ const Retirements: React.FC = () => {
                                         setFilterModality('Todas');
                                         setFilterStatus('Todos');
                                         setFilterPeriod(60);
+                                        setFilterBranch('Todas');
                                     }}
                                     className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-400 hover:text-red-300 bg-red-400/10 rounded-lg border border-red-400/20 transition-colors"
                                 >
