@@ -105,8 +105,8 @@ const SidebarView = memo(({
     ], [canViewClients, mergedPreferences?.assistantTriggerPosition, canViewWhatsApp, setIsAssistantOpen]);
 
     const mainItemsAfterCases = useMemo(() => [
-        ...(canViewCases ? [{ id: 'retirements', label: 'Aposentadorias', icon: Hourglass }] : []),
-    ], [canViewCases]);
+        // ...(canViewCases ? [{ id: 'retirements', label: 'Aposentadorias', icon: Hourglass }] : []),
+    ], []);
 
     const judicialSubItems = [
         { id: 'Aposentadoria', label: 'Aposentadoria' },
@@ -129,6 +129,7 @@ const SidebarView = memo(({
         ...((isAdmin || user?.permissions?.access_cases_judicial) ? [{ id: 'cases-judicial', label: 'Judicial', icon: Gavel, subItems: judicialSubItems }] : []),
         ...((isAdmin || user?.permissions?.access_cases_administrative) ? [{ id: 'cases-administrative', label: 'Administrativo', icon: FileText, subItems: administrativeSubItems }] : []),
         { id: 'expertise', label: 'Perícias', icon: Stethoscope },
+        { id: 'events', label: 'Eventos', icon: CalendarCheck },
     ], [isAdmin, user?.permissions]);
 
     const toolItems = useMemo(() => [

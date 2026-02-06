@@ -38,7 +38,7 @@ export interface DashboardStats {
     lightweightCases: any[];
 }
 
-export const useDashboardStats = (): DashboardStats => {
+export const useDashboardStats = (filial?: string): DashboardStats => {
     const currentMonth = new Date().getMonth() + 1;
     const monthString = currentMonth < 10 ? `0${currentMonth}` : `${currentMonth}`;
 
@@ -46,20 +46,20 @@ export const useDashboardStats = (): DashboardStats => {
         queries: [
             {
                 // KPI: TOTAL CLIENTS (Count)
-                queryKey: ['dashboard-clients-count'],
-                queryFn: dashboardService.fetchTotalClientsCount,
+                queryKey: ['dashboard-clients-count', filial],
+                queryFn: () => dashboardService.fetchTotalClientsCount(filial),
                 staleTime: 1000 * 60 * 10,
             },
             {
                 // KPI: ACTIVE CASES (Count)
-                queryKey: ['dashboard-active-cases-count'],
-                queryFn: dashboardService.fetchActiveCasesCount,
+                queryKey: ['dashboard-active-cases-count', filial],
+                queryFn: () => dashboardService.fetchActiveCasesCount(filial),
                 staleTime: 1000 * 60 * 10,
             },
             {
                 // KPI: PENDING CASES (Whatsapp Queue)
-                queryKey: ['dashboard-pending-queue'],
-                queryFn: dashboardService.fetchTotalPendingCases,
+                queryKey: ['dashboard-pending-queue', filial],
+                queryFn: () => dashboardService.fetchTotalPendingCases(filial),
                 staleTime: 1000 * 30,
             },
             {
@@ -94,32 +94,32 @@ export const useDashboardStats = (): DashboardStats => {
             },
             {
                 // STAGNANT CASES (Count)
-                queryKey: ['dashboard-stagnant'],
-                queryFn: dashboardService.fetchStagnantCasesCount,
+                queryKey: ['dashboard-stagnant', filial],
+                queryFn: () => dashboardService.fetchStagnantCasesCount(filial),
                 staleTime: 1000 * 60 * 10,
             },
             {
                 // CASH FLOW (Projection)
-                queryKey: ['dashboard-cash-flow'],
-                queryFn: dashboardService.fetchCashFlowProjection,
+                queryKey: ['dashboard-cash-flow', filial],
+                queryFn: () => dashboardService.fetchCashFlowProjection(filial),
                 staleTime: 1000 * 60 * 10,
             },
             {
                 // INSURANCE DUE (List - Limited)
-                queryKey: ['dashboard-insurance'],
-                queryFn: dashboardService.fetchInsuranceDue,
+                queryKey: ['dashboard-insurance', filial],
+                queryFn: () => dashboardService.fetchInsuranceDue(filial),
                 staleTime: 1000 * 60 * 10,
             },
             {
                 // RECEIVABLES (List - Limited)
-                queryKey: ['dashboard-receivables'],
-                queryFn: dashboardService.fetchReceivables,
+                queryKey: ['dashboard-receivables', filial],
+                queryFn: () => dashboardService.fetchReceivables(filial),
                 staleTime: 1000 * 60 * 5,
             },
             {
                 // FINANCIAL STATS (Montly Revenue/Expense)
-                queryKey: ['dashboard-financial-stats'],
-                queryFn: dashboardService.fetchFinancialStats,
+                queryKey: ['dashboard-financial-stats', filial],
+                queryFn: () => dashboardService.fetchFinancialStats(filial),
                 staleTime: 1000 * 60 * 5,
             },
         ],

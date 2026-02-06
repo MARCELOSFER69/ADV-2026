@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAppContext as useApp } from '../context/AppContext';
-import { CaseStatus, Case, CaseType, ColumnConfig } from '../types';
+import { CaseStatus, Case, CaseType, ColumnConfig, ProjectFilters, Branch } from '../types';
 import {
     Plus, Gavel, FileText, Shield, Inbox, Archive, Trash2, X, Loader2, RefreshCw, AlertTriangle, LayoutGrid, LayoutList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BranchSelector from '../components/Layout/BranchSelector';
-import { useCases, useKanbanCases } from '../hooks/useCases';
-// import { useAllClients } from '../hooks/useClients'; // REMOVED FOR PERFORMANCE
+import { useCases, useKanbanCases, useCase } from '../hooks/useCases';
 import CaseDetailsModal from '../components/modals/CaseDetailsModal';
 import NewCaseModal from '../components/modals/NewCaseModal';
 import CaseFilters from '../components/cases/CaseFilters';
 import CaseKanbanBoard from '../components/cases/CaseKanbanBoard';
 import CaseList from '../components/cases/CaseList';
 import ExportCasesModal from '../components/modals/ExportCasesModal';
+import { RetirementProjectionsView } from '../components/retirement/RetirementProjectionsView';
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
     { id: 'titulo', label: 'Prazos/Alertas', visible: true, order: 0 },
@@ -46,7 +46,7 @@ const Cases: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
 
-    const [quickFilter, setQuickFilter] = useState<'all' | 'mine' | 'deadlines' | 'stale'>('all');
+    const [quickFilter, setQuickFilter] = useState<'all' | 'mine' | 'deadlines' | 'stale' | 'projections'>('all');
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const [filters, setFilters] = useState({
         tipo: 'all',
@@ -59,6 +59,16 @@ const Cases: React.FC = () => {
     });
 
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'data_abertura', direction: 'desc' });
+
+    // Retirement Projection Filters
+    const [projectionFilters, setProjectionFilters] = useState<ProjectFilters>({
+        searchTerm: '',
+        gender: 'Todos',
+        modality: 'Todas',
+        status: 'Todos',
+        period: 60,
+        branch: globalBranchFilter !== 'all' ? globalBranchFilter as Branch : 'Todas'
+    });
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -103,9 +113,11 @@ const Cases: React.FC = () => {
 
     // Sincroniza filtro global de filial
     useEffect(() => {
-        if (globalBranchFilter !== 'all') {
-            setFilters(prev => ({ ...prev, filial: globalBranchFilter }));
-        }
+        setFilters(prev => ({ ...prev, filial: globalBranchFilter }));
+        setProjectionFilters(prev => ({
+            ...prev,
+            branch: globalBranchFilter !== 'all' ? globalBranchFilter as Branch : 'Todas'
+        }));
     }, [globalBranchFilter]);
 
     // Opcional: Sincroniza de volta se o usuário mudar no Filtros modal
@@ -123,11 +135,37 @@ const Cases: React.FC = () => {
         queryFilters
     );
 
-    // Full (but lightweight) list for Kanban view
     const { data: kanbanData, isLoading: isFetchingKanban, refetch: refetchKanban } = useKanbanCases(
         debouncedSearch,
         queryFilters
     );
+
+    // Sync sidebar filter to local filters and handle projections cleanup
+    useEffect(() => {
+        if (caseTypeFilter !== 'all') {
+            setFilters(prev => ({ ...prev, tipo: caseTypeFilter }));
+
+            // If switching TO a non-retirement type, disable projections mode
+            if (caseTypeFilter !== 'Aposentadoria' && quickFilter === 'projections') {
+                setQuickFilter('all');
+            }
+        }
+    }, [caseTypeFilter, quickFilter]);
+
+    // Cleanup projections if user changes type filter manually
+    useEffect(() => {
+        if (filters.tipo !== 'Aposentadoria' && quickFilter === 'projections') {
+            setQuickFilter('all');
+        }
+    }, [filters.tipo, quickFilter]);
+
+    const { data: caseToViewItem } = useCase(caseToView || undefined);
+
+    useEffect(() => {
+        if (caseToViewItem) {
+            setSelectedCase(caseToViewItem);
+        }
+    }, [caseToViewItem]);
 
     const isFetching = layoutMode === 'list' ? isFetchingList : isFetchingKanban;
     const refetch = layoutMode === 'list' ? refetchList : refetchKanban;
@@ -375,18 +413,20 @@ const Cases: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => { setViewMode(viewMode === 'active' ? 'archived' : 'active'); setCurrentPage(1); }}
-                        className={`group h-10 rounded-xl border flex items-center justify-center hover:justify-start w-10 hover:w-auto overflow-hidden px-0 hover:px-4 gap-0 hover:gap-2 transition-all duration-300 font-bold text-[10px] uppercase tracking-widest ${viewMode === 'archived' ? 'bg-gold-500/10 border-gold-500 text-gold-500' : 'bg-[#181818] border-white/10 text-slate-400 hover:text-white'}`}
-                        title={viewMode === 'archived' ? 'Ver Ativos' : 'Arquivo Morto'}
-                    >
-                        <Archive size={16} className="shrink-0" />
-                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-all duration-300 w-0 group-hover:w-auto">
-                            {viewMode === 'archived' ? 'Ver Ativos' : 'Arquivo Morto'}
-                        </span>
-                    </motion.button>
+                    {quickFilter !== 'projections' && (
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => { setViewMode(viewMode === 'active' ? 'archived' : 'active'); setCurrentPage(1); }}
+                            className={`group h-10 rounded-xl border flex items-center justify-center hover:justify-start w-10 hover:w-auto overflow-hidden px-0 hover:px-4 gap-0 hover:gap-2 transition-all duration-300 font-bold text-[10px] uppercase tracking-widest ${viewMode === 'archived' ? 'bg-gold-500/10 border-gold-500 text-gold-500' : 'bg-[#181818] border-white/10 text-slate-400 hover:text-white'}`}
+                            title={viewMode === 'archived' ? 'Ver Ativos' : 'Arquivo Morto'}
+                        >
+                            <Archive size={16} className="shrink-0" />
+                            <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-all duration-300 w-0 group-hover:w-auto">
+                                {viewMode === 'archived' ? 'Ver Ativos' : 'Arquivo Morto'}
+                            </span>
+                        </motion.button>
+                    )}
 
                     <motion.button
                         whileHover={{ scale: 1.02 }}
@@ -423,15 +463,17 @@ const Cases: React.FC = () => {
                         </button>
                     </div>
 
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setIsNewCaseModalOpen(true)}
-                        className="group h-10 bg-gold-600 hover:bg-gold-700 text-black rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-gold-600/20 flex items-center justify-center hover:justify-start w-10 hover:w-auto overflow-hidden px-0 hover:px-4 gap-0 hover:gap-2 transition-all duration-300"
-                    >
-                        <Plus size={18} className="shrink-0" />
-                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-all duration-300 w-0 group-hover:w-auto">Novo Processo</span>
-                    </motion.button>
+                    {quickFilter !== 'projections' && (
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => setIsNewCaseModalOpen(true)}
+                            className="group h-10 bg-gold-600 hover:bg-gold-700 text-black rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-gold-600/20 flex items-center justify-center hover:justify-start w-10 hover:w-auto overflow-hidden px-0 hover:px-4 gap-0 hover:gap-2 transition-all duration-300"
+                        >
+                            <Plus size={18} className="shrink-0" />
+                            <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-all duration-300 w-0 group-hover:w-auto">Novo Processo</span>
+                        </motion.button>
+                    )}
 
                     <BranchSelector />
                 </div>
@@ -461,10 +503,14 @@ const Cases: React.FC = () => {
                     clearFilters={clearFilters}
                     quickFilter={quickFilter}
                     setQuickFilter={setQuickFilter}
+                    projectionFilters={projectionFilters}
+                    setProjectionFilters={setProjectionFilters}
                 />
             </div>
 
-            {viewMode === 'active' && layoutMode === 'kanban' ? (
+            {quickFilter === 'projections' ? (
+                <RetirementProjectionsView filters={projectionFilters} layoutMode={layoutMode} />
+            ) : viewMode === 'active' && layoutMode === 'kanban' ? (
                 <CaseKanbanBoard
                     cases={displayedCases}
                     columns={activeKanbanColumns}
@@ -500,12 +546,16 @@ const Cases: React.FC = () => {
                 {selectedCase && (
                     <CaseDetailsModal
                         caseItem={selectedCase}
-                        onClose={() => setSelectedCase(null)}
+                        onClose={() => {
+                            setSelectedCase(null);
+                            setCaseToView(null);
+                        }}
                         onSelectCase={setSelectedCase}
                         onViewClient={(clientId) => {
                             setClientToView(clientId, 'info');
                             setCurrentView('clients');
                             setSelectedCase(null);
+                            setCaseToView(null);
                         }}
                     />
                 )}
@@ -514,6 +564,8 @@ const Cases: React.FC = () => {
                     <NewCaseModal
                         isOpen={isNewCaseModalOpen}
                         onClose={() => setIsNewCaseModalOpen(false)}
+                        forcedType={filters.tipo !== 'all' ? filters.tipo : (caseTypeFilter !== 'all' ? caseTypeFilter : undefined)}
+                        forcedCategory={activeCategory}
                     />
                 )}
 
@@ -598,8 +650,6 @@ const Cases: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            {/* New Case Modal - Assuming it's controlled via Context or Local state */}
-            {isNewCaseModalOpen && <NewCaseModal isOpen={isNewCaseModalOpen} onClose={() => setIsNewCaseModalOpen(false)} />}
         </div>
     );
 };

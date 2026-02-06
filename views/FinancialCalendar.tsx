@@ -40,7 +40,7 @@ interface CalendarInstallment extends CaseInstallment {
 }
 
 const FinancialCalendar: React.FC = () => {
-    const { toggleInstallmentPaid, showToast, captadores } = useApp();
+    const { toggleInstallmentPaid, showToast, captadores, globalBranchFilter } = useApp();
 
     // Date State
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -92,6 +92,10 @@ const FinancialCalendar: React.FC = () => {
     useEffect(() => {
         fetchMonthData();
     }, [currentDate.getMonth(), currentDate.getFullYear()]);
+
+    useEffect(() => {
+        setFilters(prev => ({ ...prev, branch: globalBranchFilter }));
+    }, [globalBranchFilter]);
 
     // --- DERIVED DATA ---
 

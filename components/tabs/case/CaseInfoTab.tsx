@@ -131,8 +131,8 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
                                     {client.cidade && <span>{client.cidade} - {client.uf}</span>}
                                 </div>
                                 {client.captador && (
-                                    <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-1 bg-purple-500/10 text-purple-400 rounded text-xs font-bold uppercase">
-                                        <User size={10} />
+                                    <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-zinc-800 text-zinc-100 rounded text-[10px] font-black uppercase tracking-tight shadow-sm border border-white/5">
+                                        <User size={10} className="text-zinc-500" />
                                         Captador: {client.captador}
                                     </div>
                                 )}

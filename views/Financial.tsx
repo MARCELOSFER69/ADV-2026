@@ -29,7 +29,8 @@ const Financial: React.FC = () => {
         deleteCommissionReceipt,
         uploadReceiptFile,
         addFinancialRecord,
-        setClientToView
+        setClientToView,
+        globalBranchFilter
     } = useApp();
 
     const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -58,7 +59,8 @@ const Financial: React.FC = () => {
             method: filterMethod !== 'all' ? filterMethod : undefined,
             account: filterAccount !== 'all' ? filterAccount : undefined,
             receiver: filterReceiver !== 'all' ? filterReceiver : undefined,
-            search: searchTerm || undefined
+            search: searchTerm || undefined,
+            filial: globalBranchFilter !== 'all' ? globalBranchFilter : undefined
         }
     });
 

@@ -23,6 +23,13 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
     const [collapsedSections, setCollapsedSections] = useState<string[]>(['tomorrow', 'upcoming']);
     const [selectedNotification, setSelectedNotification] = useState<AppNotification | null>(null);
 
+    const typeLabels: Record<string, string> = {
+        reminder: 'Lembrete',
+        interview: 'Perícia/Reunião',
+        benefit: 'Status Processo',
+        expense: 'Pagamento',
+        income: 'Recebimento'
+    };
     // Grouping by Type inside Days
     const getGroups = (notifs: AppNotification[]) => {
         const groups: Record<string, AppNotification[]> = {
@@ -276,7 +283,12 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
                                     className="relative w-full max-w-[340px] bg-[#0c0d12] rounded-2xl flex flex-col border border-zinc-800 shadow-[0_30px_90px_rgba(0,0,0,0.9)] overflow-hidden max-h-[85vh]"
                                 >
                                     <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-[#0f111a]">
-                                        <h4 className="text-[10px] font-bold text-gold-500 uppercase tracking-wider">Detalhes</h4>
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="text-xs font-black text-gold-500 uppercase tracking-wider">Detalhes</h4>
+                                            <span className="text-xs font-bold text-zinc-400 font-mono tracking-tight">
+                                                • {formatDate(selectedNotification.date)}
+                                            </span>
+                                        </div>
                                         <button onClick={() => setSelectedNotification(null)} className="p-1.5 hover:bg-white/5 rounded-full text-zinc-500 hover:text-white transition-colors">
                                             <X size={18} />
                                         </button>
@@ -320,9 +332,10 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
                                                 </button>
                                             </div>
 
-                                            <div className="flex justify-between items-center text-[9px] text-zinc-600 font-mono px-1">
-                                                <span>{formatDate(selectedNotification.date)}</span>
-                                                <span className="bg-zinc-800/50 px-2 py-0.5 rounded">{selectedNotification.type.toUpperCase()}</span>
+                                            <div className="flex justify-end px-1">
+                                                <span className="bg-zinc-800/50 px-2 py-0.5 rounded text-gold-500 text-[9px] font-bold uppercase tracking-widest border border-gold-500/10">
+                                                    {typeLabels[selectedNotification.type] || selectedNotification.type.toUpperCase()}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>

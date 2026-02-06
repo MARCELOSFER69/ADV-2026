@@ -327,9 +327,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const [caseToView, setCaseToView] = useState<string | null>(null);
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
+    const [isNewCaseModalOpen, setIsNewCaseModalOpenInternal] = useState(false);
     const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
     const [newCaseParams, setNewCaseParams] = useState<{ clientId?: string; type?: CaseType; clientName?: string } | null>(null);
+
+    const setIsNewCaseModalOpen = useCallback((isOpen: boolean) => {
+        setIsNewCaseModalOpenInternal(isOpen);
+        if (!isOpen) {
+            setNewCaseParams(null);
+        }
+    }, []);
 
     const openNewCaseWithParams = useCallback((clientId: string, type: CaseType, clientName?: string) => {
         setNewCaseParams({ clientId, type, clientName });
@@ -459,7 +466,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
                 const eventNotifs: AppNotification[] = (nearDueEvents || []).map(e => ({
                     id: `evt-${e.id}`,
-                    type: e.tipo === 'Perícia' ? 'interview' : 'reminder',
+                    type: (e.tipo === 'Perícia' || e.tipo === 'Perícia Médica') ? 'interview' : 'reminder',
                     title: e.tipo || 'Evento Agendado',
                     message: e.titulo,
                     date: e.data_hora,

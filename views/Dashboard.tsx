@@ -119,12 +119,12 @@ const PERIOD_LABELS: Record<WidgetPeriod, string> = {
 };
 
 const Dashboard: React.FC = () => {
-    const { financial, events, tasks, toggleTask, user, setCurrentView, setCaseToView, setClientToView, setIsNewCaseModalOpen, setIsNewClientModalOpen, saveUserPreferences, showToast, reminders, addReminder, toggleReminder, deleteReminder, isLowPerformance } = useApp();
+    const { financial, events, tasks, toggleTask, user, setCurrentView, setCaseToView, setClientToView, setIsNewCaseModalOpen, setIsNewClientModalOpen, saveUserPreferences, showToast, reminders, addReminder, toggleReminder, deleteReminder, isLowPerformance, globalBranchFilter } = useApp();
 
     // Novos Hooks (React Query)
     const { data: cases = [], isLoading: isLoadingCases } = useAllCases();
     const { data: clients = [], isLoading: isLoadingClients } = useAllClients();
-    const stats = useDashboardStats();
+    const stats = useDashboardStats(globalBranchFilter !== 'all' ? globalBranchFilter : undefined);
 
     // State
     const [widgets, setWidgets] = useState<DashboardWidget[]>(DEFAULT_LAYOUT);
@@ -193,8 +193,12 @@ const Dashboard: React.FC = () => {
 
     const stagnantCasesCount = useMemo(() => {
         const limitDate = new Date(); limitDate.setDate(limitDate.getDate() - 60);
-        return cases.filter(c => c.status !== CaseStatus.ARQUIVADO && !c.status.includes('Concluído') && new Date(c.data_abertura) < limitDate).length;
-    }, [cases]);
+        let filtered = cases;
+        if (globalBranchFilter !== 'all') {
+            filtered = filtered.filter(c => c.filial === globalBranchFilter);
+        }
+        return filtered.filter(c => c.status !== CaseStatus.ARQUIVADO && !c.status.includes('Concluído') && new Date(c.data_abertura) < limitDate).length;
+    }, [cases, globalBranchFilter]);
 
     const cashFlowData = useMemo(() => {
         const today = new Date(); const next30 = new Date(); next30.setDate(today.getDate() + 30);

@@ -8,6 +8,7 @@ export interface FinancialFilters {
     account?: string;
     receiver?: string;
     search?: string;
+    filial?: string;
 }
 
 /**
@@ -25,11 +26,16 @@ export const fetchFinancialRecords = async (
         .from('financial_records')
         .select(`
             *,
-            clients (nome_completo, cpf_cnpj),
+            clients!inner (nome_completo, cpf_cnpj, filial),
             cases (titulo, numero_processo, client_id)
         `)
         .gte('data_vencimento', startDate) // Greater than or equal to startDate
         .lte('data_vencimento', endDate);  // Less than or equal to endDate
+
+    // Apply Branch Filter
+    if (filters.filial && filters.filial !== 'all') {
+        query = query.eq('clients.filial', filters.filial);
+    }
 
     // Apply Filters
     if (filters.type && filters.type !== 'all') {

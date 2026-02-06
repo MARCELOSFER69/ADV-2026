@@ -12,6 +12,7 @@ interface NewCaseModalProps {
     isOpen: boolean;
     onClose: () => void;
     forcedType?: string;
+    forcedCategory?: string;
 }
 
 type PaymentStatus = 'Pendente' | 'Parcial' | 'Pago' | 'Não Aplicável';
@@ -51,7 +52,7 @@ const BENEFIT_FIELDS: Record<string, { label: string, key: string, placeholder: 
     ]
 };
 
-const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType }) => {
+const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType, forcedCategory }) => {
     useLockBodyScroll(isOpen);
     const { addCase, showToast, newCaseParams, user, saveUserPreferences } = useApp();
 
@@ -190,18 +191,29 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
             let initialClientName = '';
             let initialValor = 0;
 
-            // 1. Dashboard forced params
-            if (forcedType === SEGURO) {
-                initialType = SEGURO;
-                initialTribunal = 'INSS';
+            const adminEnumTypes = [
+                CaseType.APOSENTADORIA, CaseType.BPC_LOAS, CaseType.SALARIO_MATERNIDADE, CaseType.AUXILIO_DOENCA,
+                CaseType.PENSAO_POR_MORTE, CaseType.AUXILIO_RECLUSAO, CaseType.AUXILIO_ACIDENTE,
+                CaseType.PENSAO_VITALICIA, CaseType.SALARIO_FAMILIA, CaseType.AUXILIO_INCLUSAO,
+                CaseType.REVISAO, CaseType.CTC, CaseType.RECURSO
+            ];
+
+            // 1. Dashboard / Forced params
+            if (forcedType === SEGURO || forcedCategory === SEGURO || forcedType === CaseType.SEGURO_DEFESO) {
+                initialType = CaseType.SEGURO_DEFESO;
+                initialTribunal = 'MTE';
                 initialValor = 6508;
             }
-            else if (forcedType === 'Administrativo') {
-                initialType = APOSENTADORIA;
+            else if (adminEnumTypes.includes(forcedType as any) || Object.values(CaseType).includes(forcedType as any)) {
+                initialType = forcedType as CaseType;
+                initialTribunal = (forcedCategory === 'Judicial' || forcedType === CaseType.CIVIL) ? 'TJ/TRF' : 'INSS';
+            }
+            else if (forcedType === 'Administrativo' || forcedCategory === 'Administrativo') {
+                initialType = CaseType.APOSENTADORIA;
                 initialTribunal = 'INSS';
             }
-            else if (forcedType === 'Judicial') {
-                initialType = CIVIL;
+            else if (forcedType === 'Judicial' || forcedType === CaseType.CIVIL || forcedCategory === 'Judicial') {
+                initialType = CaseType.CIVIL;
                 initialTribunal = 'TJ/TRF';
             }
 
@@ -213,23 +225,15 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
 
                 if (newCaseParams.clientId) {
                     initialClientId = newCaseParams.clientId;
-                    // For prepopulation, we can't look up name easily without 'clients'. 
                     initialClientName = newCaseParams.clientName || '';
                 }
 
-                // Adjust tribunal
-                const adminTypes = [
-                    'Aposentadoria', 'BPC/LOAS', 'Salário Maternidade', 'Auxílio Doença',
-                    'Pensão por Morte', 'Auxílio Reclusão', 'Auxílio Acidente',
-                    'Pensão Vitalícia', 'Salário Família', 'Auxílio-Inclusão',
-                    'Revisão de Benefício', 'CTC', 'Recurso INSS'
-                ];
-
+                // Adjust tribunal based on newCaseParams.type
                 if (initialType === SEGURO) {
-                    initialTribunal = 'INSS';
+                    initialTribunal = 'MTE';
                     initialValor = 6508;
                 }
-                else if (adminTypes.includes(String(initialType))) initialTribunal = 'INSS';
+                else if (adminEnumTypes.includes(initialType as any)) initialTribunal = 'INSS';
                 else initialTribunal = 'TJ/TRF';
             }
 
@@ -254,7 +258,7 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
             setClientSearchTerm(initialClientName);
             setIsClientListOpen(false);
         }
-    }, [isOpen, forcedType, newCaseParams]);
+    }, [isOpen, forcedType, forcedCategory, newCaseParams]);
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -595,7 +599,7 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
                             <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Tribunal / Vara</label>
                             <div className="relative">
                                 <Gavel className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
-                                <input className="w-full bg-[#09090b] border border-zinc-700 rounded-lg pl-10 pr-4 py-3 text-sm text-white outline-none focus:border-yellow-600 placeholder:text-zinc-600" value={newCase.tribunal} onChange={(e) => setNewCase({ ...newCase, tribunal: e.target.value })} placeholder="Ex: INSS / TRF-1" />
+                                <input className="w-full bg-[#09090b] border border-zinc-700 rounded-lg pl-10 pr-4 py-3 text-sm text-white outline-none focus:border-yellow-600 placeholder:text-zinc-600" value={newCase.tribunal} onChange={(e) => setNewCase({ ...newCase, tribunal: e.target.value })} placeholder={`Ex: ${newCase.tipo === SAFE_SEGURO ? 'MTE' : 'INSS'} / TRF-1`} />
                             </div>
                         </div>
                         <div>

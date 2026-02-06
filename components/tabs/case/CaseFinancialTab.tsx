@@ -32,14 +32,24 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
     const { generateInstallments, updateInstallment, toggleInstallmentPaid, showToast } = useApp();
     // STATE: ADD FINANCIAL
     const [isAddingFinancial, setIsAddingFinancial] = useState(false);
-    const [newFinancial, setNewFinancial] = useState<{ desc: string, type: FinancialType, val: string, date: string, isHonorary: boolean }>({
+    const [newFinancial, setNewFinancial] = useState<{ desc: string, type: FinancialType, val: string, date: string, isHonorary: boolean, isPaidNow: boolean }>({
         desc: '',
         type: FinancialType.DESPESA,
         val: '',
         date: new Date().toISOString().substring(0, 10),
-        isHonorary: false
+        isHonorary: false,
+        isPaidNow: true
     });
     const [captadorCommission, setCaptadorCommission] = useState<string | null>(null);
+
+    // STATE: RECORD CONFIRMATION (for pending records in list)
+    const [isConfirmingRecord, setIsConfirmingRecord] = useState<FinancialRecord | null>(null);
+    const [recordConfirmationData, setRecordConfirmationData] = useState({
+        method: 'Conta' as 'Especie' | 'Conta',
+        receiver: existingReceivers[0] || '',
+        accType: 'PJ' as 'PJ' | 'PF', // Fixed: actually use existing receivers/accounts logic or defaults
+        account: existingAccounts[0] || '',
+    });
 
     // STATE: HONORARIOS CONFIRMATION
     const [isConfirmingHonorarios, setIsConfirmingHonorarios] = useState(false);
@@ -84,14 +94,35 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
             tipo_movimentacao: isCommission ? 'Comissao' : (newFinancial.isHonorary ? 'Honorários' : 'Outros'),
             valor: parseCurrencyToNumber(newFinancial.val),
             data_vencimento: newFinancial.date ? new Date(newFinancial.date).toISOString() : new Date().toISOString(),
-            status_pagamento: true,
+            status_pagamento: newFinancial.isPaidNow,
             captador_nome: captadorNome || undefined,
             is_honorary: newFinancial.isHonorary
         };
 
         await onAddFinancial(newRecord);
         setIsAddingFinancial(false);
-        setNewFinancial({ desc: '', type: FinancialType.DESPESA, val: '', date: new Date().toISOString().substring(0, 10), isHonorary: false });
+        setNewFinancial({ desc: '', type: FinancialType.DESPESA, val: '', date: new Date().toISOString().substring(0, 10), isHonorary: false, isPaidNow: true });
+    };
+
+    const handleConfirmRecordPayment = async () => {
+        if (!isConfirmingRecord) return;
+
+        const updatedRecord: Partial<FinancialRecord> = {
+            ...isConfirmingRecord,
+            status_pagamento: true,
+            forma_pagamento: recordConfirmationData.method,
+            recebedor: recordConfirmationData.method === 'Conta' ? recordConfirmationData.receiver : undefined,
+            conta: recordConfirmationData.method === 'Conta' ? recordConfirmationData.account : undefined,
+            tipo_conta: recordConfirmationData.method === 'Conta' ? recordConfirmationData.accType : undefined,
+            data_vencimento: new Date().toISOString() // Set current date as payment date
+        };
+
+        // We use onAddFinancial to update because it usually handles the merge/overwrite in this app's pattern
+        // Or if there is a specific update method in context, we should use it.
+        // Checking CaseFinancialTabProps, we only have onAddFinancial. 
+        // In this codebase, "adding" often means "upserting" if id is provided.
+        await onAddFinancial(updatedRecord);
+        setIsConfirmingRecord(null);
     };
 
     const handleSaveHonorariosStatus = async () => {
@@ -258,6 +289,25 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                         <option value="Parcial">Parcial</option>
                                         <option value="Pago">Pago</option>
                                     </select>
+
+                                    {caseItem.status_pagamento === 'Pendente' && (
+                                        <button
+                                            onClick={() => {
+                                                setIsAddingFinancial(true);
+                                                setNewFinancial({
+                                                    ...newFinancial,
+                                                    type: FinancialType.RECEITA,
+                                                    isHonorary: true,
+                                                    isPaidNow: false,
+                                                    desc: `Honorários - ${caseItem.titulo}`
+                                                });
+                                            }}
+                                            className="px-4 py-2 bg-gold-500/10 hover:bg-gold-500/20 text-gold-500 font-bold rounded-lg text-xs flex items-center gap-2 transition-all border border-gold-500/20"
+                                        >
+                                            <Calendar size={14} />
+                                            Agendar Pagamento
+                                        </button>
+                                    )}
 
                                     {caseItem.status_pagamento !== 'Pendente' && (
                                         <button
@@ -603,6 +653,12 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                         <span className={`text-sm ${newFinancial.isHonorary ? 'text-gold-500 font-bold' : 'text-zinc-400'}`}>É Honorário?</span>
                                     </label>
                                 )}
+                                <label className="flex items-center gap-2 cursor-pointer group ml-4 border-l border-white/10 pl-4">
+                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${newFinancial.isPaidNow ? 'bg-green-500 border-green-500 text-black' : 'border-zinc-600 group-hover:border-green-500'}`}>
+                                        {newFinancial.isPaidNow && <Check size={10} strokeWidth={4} />}
+                                    </div>
+                                    <span className={`text-sm ${newFinancial.isPaidNow ? 'text-green-500 font-bold' : 'text-zinc-400'}`}>Pago agora?</span>
+                                </label>
                             </div>
                         </div>
                         <div className="flex justify-end gap-2">
@@ -660,6 +716,14 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                     }`}>
                                     {record.tipo === FinancialType.DESPESA ? '-' : '+'} {record.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                 </span>
+                                {record.tipo === FinancialType.RECEITA && !record.status_pagamento && (
+                                    <button
+                                        onClick={() => setIsConfirmingRecord(record)}
+                                        className="px-3 py-1.5 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 text-emerald-500 hover:text-black rounded-lg text-xs font-black uppercase tracking-widest transition-all border border-emerald-500/20"
+                                    >
+                                        Confirmar Recebimento
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => onDeleteFinancial(record.id, caseItem.id)}
                                     className="p-1.5 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100"
@@ -670,6 +734,82 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                         </div>
                     ))}
                 </div>
+
+                {/* MODAL DE CONFIRMAÇÃO DE REGISTRO PENDENTE (SCHEDULED) */}
+                {isConfirmingRecord && (
+                    <div className="mt-4 p-4 bg-[#131418] rounded-xl border border-emerald-500/30 animate-in fade-in slide-in-from-top-2">
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-sm font-bold text-emerald-500 flex items-center gap-2 uppercase tracking-tight">
+                                <DollarSign size={16} />
+                                Detalhes do Recebimento (Agendamento)
+                            </h4>
+                            <span className="text-xs text-zinc-500 font-mono">
+                                {isConfirmingRecord.titulo}: {isConfirmingRecord.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2 tracking-widest">Forma</label>
+                                <div className="flex gap-2">
+                                    {['Especie', 'Conta'].map(m => (
+                                        <button
+                                            key={m}
+                                            onClick={() => setRecordConfirmationData(prev => ({ ...prev, method: m as any }))}
+                                            className={`flex-1 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-tighter border transition-all ${recordConfirmationData.method === m
+                                                ? 'bg-emerald-500 text-black border-emerald-500 shadow-lg shadow-emerald-500/10'
+                                                : 'bg-transparent text-zinc-500 border-white/5 hover:border-white/20'
+                                                }`}
+                                        >
+                                            {m}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {recordConfirmationData.method === 'Conta' && (
+                                <>
+                                    <div>
+                                        <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2 tracking-widest">Recebedor</label>
+                                        <CustomSelect
+                                            label="Recebedor"
+                                            options={existingReceivers.map(r => ({ label: r, value: r }))}
+                                            value={recordConfirmationData.receiver}
+                                            onChange={val => setRecordConfirmationData(prev => ({ ...prev, receiver: val }))}
+                                            placeholder="Selecione..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2 tracking-widest">Conta (Destino)</label>
+                                        <CustomSelect
+                                            label="Conta Destino"
+                                            options={existingAccounts.map(a => ({ label: a, value: a }))}
+                                            value={recordConfirmationData.account}
+                                            onChange={val => setRecordConfirmationData(prev => ({ ...prev, account: val }))}
+                                            placeholder="Selecione..."
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button
+                                onClick={() => setIsConfirmingRecord(null)}
+                                className="px-4 py-2 text-xs font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleConfirmRecordPayment}
+                                className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-black font-black rounded-lg text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all uppercase tracking-widest"
+                            >
+                                <Check size={16} strokeWidth={3} />
+                                Confirmar Recebimento
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* TOTAIS */}
                 <div className="mt-4 pt-4 border-t border-white/10 flex justify-end gap-6 text-sm">

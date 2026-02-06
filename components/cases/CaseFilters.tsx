@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, SortAsc, ChevronDown, Filter, Settings, LayoutGrid, LayoutList, ArrowDown, ArrowUp, User, AlertTriangle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Branch, ColumnConfig, Case, CaseType, CaseStatus } from '../../types';
+import { Search, X, SortAsc, ChevronDown, Filter, Settings, LayoutGrid, LayoutList, ArrowDown, ArrowUp, User, AlertTriangle, Clock, ChevronLeft, ChevronRight, Hourglass } from 'lucide-react';
+import { Branch, ColumnConfig, Case, CaseType, CaseStatus, ProjectFilters } from '../../types';
 import SizeScaler from '../ui/SizeScaler';
 
 interface CaseFiltersProps {
@@ -26,8 +26,10 @@ interface CaseFiltersProps {
     filters: any;
     setFilters: (filters: any) => void;
     clearFilters: () => void;
-    quickFilter: 'all' | 'mine' | 'deadlines' | 'stale';
-    setQuickFilter: (filter: 'all' | 'mine' | 'deadlines' | 'stale') => void;
+    quickFilter: 'all' | 'mine' | 'deadlines' | 'stale' | 'projections';
+    setQuickFilter: (filter: 'all' | 'mine' | 'deadlines' | 'stale' | 'projections') => void;
+    projectionFilters?: ProjectFilters;
+    setProjectionFilters?: (filters: ProjectFilters) => void;
 }
 
 const CaseFilters: React.FC<CaseFiltersProps> = ({
@@ -52,7 +54,9 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
     setFilters,
     clearFilters,
     quickFilter,
-    setQuickFilter
+    setQuickFilter,
+    projectionFilters,
+    setProjectionFilters
 }) => {
     const [showSort, setShowSort] = useState(false);
 
@@ -65,14 +69,27 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
                         <input
                             ref={searchInputRef}
                             type="text"
-                            placeholder="Buscar por número, cliente ou tribunal..."
+                            placeholder={quickFilter === 'projections' ? "Buscar por nome ou CPF..." : "Buscar por número, cliente ou tribunal..."}
                             className="w-full bg-navy-950/50 text-white pl-10 pr-10 py-2.5 border border-white/10 rounded-lg focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 outline-none transition-all placeholder:text-slate-600"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            value={quickFilter === 'projections' ? (projectionFilters?.searchTerm || '') : searchTerm}
+                            onChange={(e) => {
+                                if (quickFilter === 'projections' && setProjectionFilters && projectionFilters) {
+                                    setProjectionFilters({ ...projectionFilters, searchTerm: e.target.value });
+                                } else {
+                                    setSearchTerm(e.target.value);
+                                }
+                            }}
                         />
-                        {searchTerm && (
+                        {((quickFilter === 'projections' ? projectionFilters?.searchTerm : searchTerm)) && (
                             <button
-                                onClick={() => { setSearchTerm(''); searchInputRef.current?.focus(); }}
+                                onClick={() => {
+                                    if (quickFilter === 'projections' && setProjectionFilters && projectionFilters) {
+                                        setProjectionFilters({ ...projectionFilters, searchTerm: '' });
+                                    } else {
+                                        setSearchTerm('');
+                                    }
+                                    searchInputRef.current?.focus();
+                                }}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
                                 title="Limpar busca"
                             >
@@ -82,50 +99,103 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 no-scrollbar">
-                        {/* Ordenação */}
-                        <div className="relative">
-                            <button
-                                onClick={() => {
-                                    setShowSort(!showSort);
-                                    setShowFilters(false);
-                                    setShowColumnConfig(false);
-                                }}
-                                className={`px-3 py-2.5 rounded-lg border flex items-center gap-2 transition-all text-sm font-medium whitespace-nowrap ${showSort ? 'bg-navy-950 border-gold-500 text-gold-500' : 'bg-navy-950/50 border-white/10 text-slate-400 hover:text-white'}`}
-                            >
-                                <SortAsc size={18} />
-                                <span className="hidden sm:inline">
-                                    {sortConfig.key === 'data_abertura' ? 'Data' : sortConfig.key === 'numero_processo' ? 'Número' : sortConfig.key === 'valor_causa' ? 'Valor' : 'Ordenar'}
-                                </span>
-                                <ChevronDown size={14} className={`transition-transform duration-200 ${showSort ? 'rotate-180' : ''}`} />
-                            </button>
-                        </div>
+                        {quickFilter === 'projections' && projectionFilters && setProjectionFilters ? (
+                            <div className="flex items-center gap-2 shrink-0">
+                                <select
+                                    value={projectionFilters.gender}
+                                    onChange={(e) => setProjectionFilters({ ...projectionFilters, gender: e.target.value as any })}
+                                    className="bg-navy-900 border border-white/20 rounded-lg px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-gold-500 cursor-pointer hover:bg-navy-800 transition-colors [color-scheme:dark]"
+                                >
+                                    <option value="Todos" className="bg-navy-900">Todos Gêneros</option>
+                                    <option value="Masculino" className="bg-navy-900">Masculino</option>
+                                    <option value="Feminino" className="bg-navy-900">Feminino</option>
+                                </select>
 
-                        {/* Filtros Avançados */}
-                        <button
-                            onClick={() => {
-                                setShowFilters(!showFilters);
-                                setShowSort(false);
-                                setShowColumnConfig(false);
-                            }}
-                            className={`px-3 py-2.5 rounded-lg border flex items-center gap-2 transition-all text-sm font-medium whitespace-nowrap ${showFilters ? 'bg-navy-950 border-gold-500 text-gold-500' : 'bg-navy-950/50 border-white/10 text-slate-400 hover:text-white'}`}
-                        >
-                            <Filter size={18} /> Filtros
-                        </button>
+                                <select
+                                    value={projectionFilters.modality}
+                                    onChange={(e) => setProjectionFilters({ ...projectionFilters, modality: e.target.value as any })}
+                                    className="bg-navy-900 border border-white/20 rounded-lg px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-gold-500 cursor-pointer hover:bg-navy-800 transition-colors [color-scheme:dark]"
+                                >
+                                    <option value="Todas" className="bg-navy-900">Todas Modalidades</option>
+                                    <option value="Urbana" className="bg-navy-900">Urbana</option>
+                                    <option value="Rural" className="bg-navy-900">Rural</option>
+                                </select>
 
-                        {/* Configurar Colunas (Só em Lista) */}
-                        {layoutMode === 'list' && (
-                            <div className="relative">
+                                <select
+                                    value={projectionFilters.status}
+                                    onChange={(e) => setProjectionFilters({ ...projectionFilters, status: e.target.value as any })}
+                                    className="bg-navy-900 border border-white/20 rounded-lg px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-gold-500 cursor-pointer hover:bg-navy-800 transition-colors [color-scheme:dark]"
+                                >
+                                    <option value="Todos" className="bg-navy-900">Todos Status</option>
+                                    <option value="Elegíveis" className="bg-navy-900">Elegíveis</option>
+                                    <option value="Pendentes" className="bg-navy-900">Com Pendências</option>
+                                </select>
+
+                                <div className="flex items-center gap-2 bg-navy-900 border border-white/20 rounded-lg px-3 py-2 hover:bg-navy-800 transition-colors">
+                                    <Clock size={14} className="text-gold-500" />
+                                    <select
+                                        value={projectionFilters.period}
+                                        onChange={(e) => setProjectionFilters({ ...projectionFilters, period: Number(e.target.value) })}
+                                        className="bg-transparent text-xs text-white font-bold focus:outline-none cursor-pointer [color-scheme:dark]"
+                                    >
+                                        <option value={1} className="bg-navy-900">1 mês</option>
+                                        <option value={3} className="bg-navy-900">3 meses</option>
+                                        <option value={6} className="bg-navy-900">6 meses</option>
+                                        <option value={12} className="bg-navy-900">1 ano</option>
+                                        <option value={24} className="bg-navy-900">2 anos</option>
+                                        <option value={60} className="bg-navy-900">5 anos</option>
+                                        <option value={120} className="bg-navy-900">10 anos</option>
+                                    </select>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Ordenação */}
+                                <div className="relative">
+                                    <button
+                                        onClick={() => {
+                                            setShowSort(!showSort);
+                                            setShowFilters(false);
+                                            setShowColumnConfig(false);
+                                        }}
+                                        className={`px-3 py-2.5 rounded-lg border flex items-center gap-2 transition-all text-sm font-medium whitespace-nowrap ${showSort ? 'bg-navy-950 border-gold-500 text-gold-500' : 'bg-navy-950/50 border-white/10 text-slate-400 hover:text-white'}`}
+                                    >
+                                        <SortAsc size={18} />
+                                        <span className="hidden sm:inline">
+                                            {sortConfig.key === 'data_abertura' ? 'Data' : sortConfig.key === 'numero_processo' ? 'Número' : sortConfig.key === 'valor_causa' ? 'Valor' : 'Ordenar'}
+                                        </span>
+                                        <ChevronDown size={14} className={`transition-transform duration-200 ${showSort ? 'rotate-180' : ''}`} />
+                                    </button>
+                                </div>
+
+                                {/* Filtros Avançados */}
                                 <button
                                     onClick={() => {
-                                        setShowColumnConfig(!showColumnConfig);
+                                        setShowFilters(!showFilters);
                                         setShowSort(false);
-                                        setShowFilters(false);
+                                        setShowColumnConfig(false);
                                     }}
-                                    className={`px-3 py-2.5 rounded-lg border text-sm font-medium flex items-center gap-2 transition-all whitespace-nowrap ${showColumnConfig ? 'bg-navy-950 border-gold-500 text-gold-500' : 'bg-navy-950/50 border-white/10 text-slate-400 hover:text-white'}`}
+                                    className={`px-3 py-2.5 rounded-lg border flex items-center gap-2 transition-all text-sm font-medium whitespace-nowrap ${showFilters ? 'bg-navy-950 border-gold-500 text-gold-500' : 'bg-navy-950/50 border-white/10 text-slate-400 hover:text-white'}`}
                                 >
-                                    <Settings size={18} /> <span className="hidden sm:inline">Colunas</span>
+                                    <Filter size={18} /> Filtros
                                 </button>
-                            </div>
+
+                                {/* Configurar Colunas (Só em Lista) */}
+                                {layoutMode === 'list' && (
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => {
+                                                setShowColumnConfig(!showColumnConfig);
+                                                setShowSort(false);
+                                                setShowFilters(false);
+                                            }}
+                                            className={`px-3 py-2.5 rounded-lg border text-sm font-medium flex items-center gap-2 transition-all whitespace-nowrap ${showColumnConfig ? 'bg-navy-950 border-gold-500 text-gold-500' : 'bg-navy-950/50 border-white/10 text-slate-400 hover:text-white'}`}
+                                        >
+                                            <Settings size={18} /> <span className="hidden sm:inline">Colunas</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </>
                         )}
 
                         {/* Seletor de visualização e escala */}
@@ -343,6 +413,14 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
                     >
                         <Clock size={12} /> Parados +30d
                     </button>
+                    {filters.tipo === 'Aposentadoria' && (
+                        <button
+                            onClick={() => setQuickFilter('projections')}
+                            className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 ${quickFilter === 'projections' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-navy-950/50 text-slate-400 border border-white/10 hover:text-white hover:bg-slate-800'}`}
+                        >
+                            <Hourglass size={12} /> Próximas Aposentadorias (projeções)
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

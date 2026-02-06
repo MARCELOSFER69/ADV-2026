@@ -183,6 +183,24 @@ export interface RetirementCalculation {
   updated_at: string;
 }
 
+export interface ProjectFilters {
+  searchTerm: string;
+  gender: 'Todos' | 'Masculino' | 'Feminino';
+  modality: 'Todas' | 'Rural' | 'Urbana';
+  status: 'Todos' | 'Elegíveis' | 'Pendentes';
+  period: number;
+  branch: Branch | 'Todas';
+}
+
+export interface RetirementCandidate {
+  client: Client;
+  age: { years: number; months: number };
+  ruralRemaining: number;
+  urbanRemaining: number;
+  bestChance: string;
+  yearsRemaining: number;
+}
+
 export interface GPS {
   id: string;
   competencia: string;
@@ -450,7 +468,8 @@ export type ViewState =
   | 'permissions'
   | 'whatsapp'
   | 'personal'
-  | 'download';
+  | 'download'
+  | 'events';
 
 export interface BrasilApiCompany {
   cnpj: string;

@@ -19,7 +19,7 @@ export interface RetirementCandidate {
     age: { years: number; months: number };
     ruralRemaining: number;
     urbanRemaining: number;
-    bestChance: 'Rural' | 'Urbana';
+    bestChance: string;
     yearsRemaining: number;
 }
 
@@ -54,7 +54,7 @@ export const RetirementCard: React.FC<RetirementCardProps> = ({
     }, [globalTrigger]);
 
     // Inicializa com o valor do banco SE existir, senão usa o bestChance
-    const initialMode = candidate.client.aposentadoria_modalidade || candidate.bestChance;
+    const initialMode = (candidate.client.aposentadoria_modalidade || candidate.bestChance) as 'Rural' | 'Urbana';
     const [mode, setMode] = useState<'Rural' | 'Urbana'>(initialMode);
 
     const handleModeChange = (newMode: 'Rural' | 'Urbana') => {
