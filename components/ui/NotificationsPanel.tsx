@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+// Optimized notification detail view to prevent clipping within the sidebar panel
 import { AppNotification } from '../../types';
 import {
     X, Calendar, AlertCircle, CheckCircle2, TrendingDown,
