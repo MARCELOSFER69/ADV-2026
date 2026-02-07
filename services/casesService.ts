@@ -38,13 +38,9 @@ const applyCaseFilters = (query: any, search?: string, filters?: any) => {
                 query = query.not('tribunal', 'ilike', '%INSS%');
                 query = query.not('tribunal', 'ilike', '%Administrativo%');
             }
-            else if (filters.category === 'Administrativo') {
-                // Administrativo: Qualquer processo que seja INSS ou sem tribunal (e não seja Seguro Defeso, a menos que filtrado especificamente)
-                if (filters.tipo !== 'Seguro Defeso') {
-                    query = query.neq('tipo', 'Seguro Defeso');
-                }
-                query = query.or('tribunal.is.null,tribunal.eq.,tribunal.ilike.%INSS%,tribunal.ilike.%Administrativo%');
-            }
+            // Administrativo: Qualquer processo que seja INSS, MTE ou sem tribunal
+            // removido query.neq('tipo', 'Seguro Defeso') para permitir visibilidade global
+            query = query.or('tribunal.is.null,tribunal.eq.,tribunal.ilike.%INSS%,tribunal.ilike.%MTE%,tribunal.ilike.%Administrativo%');
         }
     }
     return query;

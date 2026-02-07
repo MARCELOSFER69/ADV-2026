@@ -49,6 +49,10 @@ const BENEFIT_FIELDS: Record<string, { label: string, key: string, placeholder: 
         { label: 'NIT', key: 'nit', placeholder: '000.00000.00-0' },
         { label: 'CID (Opcional)', key: 'cid', placeholder: 'Ex: M54.5' },
         { label: 'Data Início Incapacidade', key: 'data_incapacidade', placeholder: '', type: 'date' }
+    ],
+    [SAFE_SEGURO]: [
+        { label: 'NIT', key: 'nit', placeholder: '000.00000.00-0' },
+        { label: 'Data do Requerimento', key: 'data_requerimento', placeholder: '', type: 'date' }
     ]
 };
 
@@ -64,8 +68,17 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
 
     // Ensure CaseType is defined before using it
     const safeAllTypes = useMemo(() => {
-        // Fallback robusto se o Enum falhar
-        const defaults = [SAFE_SEGURO, 'Aposentadoria', 'BPC/LOAS', 'Auxílio Doença', 'Salário Maternidade', 'Trabalhista', SAFE_CIVIL];
+        // Fallback robusto se o Enum falhar - IMPORTANTE: Incluir Seguro Defeso aqui
+        const defaults = [
+            'Aposentadoria',
+            'Salário Maternidade',
+            'BPC/LOAS',
+            'Auxílio Doença',
+            'Pensão por Morte',
+            'Seguro Defeso', // <--- ADICIONADO
+            'Trabalhista',
+            SAFE_CIVIL
+        ];
 
         try {
             if (typeof CaseType !== 'undefined' && Object.keys(CaseType).length > 0) {
@@ -105,8 +118,8 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
         const types = [...safeAllTypes] as CaseType[];
         const customTypes = user?.preferences?.customCaseTypes || [];
 
-        // Merge custom types
-        const mergedTypes = Array.from(new Set([...types, ...customTypes]));
+        // Merge custom types - Garantir Seguro Defeso no topo para visibilidade imediata
+        const mergedTypes = Array.from(new Set([SAFE_SEGURO, ...types, ...customTypes]));
 
         const seguroDefeso = SAFE_SEGURO;
 
@@ -115,8 +128,14 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
 
         if (forcedType === seguroDefeso) return [seguroDefeso as any];
 
-        if (forcedType === 'Judicial' || forcedType === 'Administrativo') return mergedTypes.filter(t => t !== seguroDefeso);
-        return mergedTypes.filter(t => t !== (seguroDefeso as any));
+        // Se for forçado Judicial ou Administrativo, permitimos todos mas filtramos se necessário
+        if (forcedType === 'Judicial' || forcedType === 'Administrativo') {
+            // Opcional: Se quiser remover Seguro Defeso apenas nestas categorias, mantenha o filter.
+            // Mas para garantir visibilidade, vamos retornar tudo por enquanto.
+            return mergedTypes;
+        }
+
+        return mergedTypes;
     }, [forcedType, safeAllTypes, newCaseParams, user?.preferences?.customCaseTypes]);
 
     // Filter statuses logic - Defensive
@@ -195,14 +214,15 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
                 CaseType.APOSENTADORIA, CaseType.BPC_LOAS, CaseType.SALARIO_MATERNIDADE, CaseType.AUXILIO_DOENCA,
                 CaseType.PENSAO_POR_MORTE, CaseType.AUXILIO_RECLUSAO, CaseType.AUXILIO_ACIDENTE,
                 CaseType.PENSAO_VITALICIA, CaseType.SALARIO_FAMILIA, CaseType.AUXILIO_INCLUSAO,
-                CaseType.REVISAO, CaseType.CTC, CaseType.RECURSO
+                CaseType.REVISAO, CaseType.CTC, CaseType.RECURSO,
+                CaseType.SEGURO_DEFESO // <--- ADICIONADO
             ];
 
             // 1. Dashboard / Forced params
             if (forcedType === SEGURO || forcedCategory === SEGURO || forcedType === CaseType.SEGURO_DEFESO) {
                 initialType = CaseType.SEGURO_DEFESO;
                 initialTribunal = 'MTE';
-                initialValor = 6508;
+                initialStatus = CaseStatus.PROTOCOLAR;
             }
             else if (adminEnumTypes.includes(forcedType as any) || Object.values(CaseType).includes(forcedType as any)) {
                 initialType = forcedType as CaseType;
@@ -273,6 +293,11 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
     // Safe effect for Seguro Defeso values
     useEffect(() => {
         if (newCase.tipo === SAFE_SEGURO) {
+            // Auto-set tribunal to MTE if it's INSS or empty
+            if (!newCase.tribunal || newCase.tribunal === 'INSS') {
+                setNewCase(prev => ({ ...prev, tribunal: 'MTE' }));
+            }
+
             // Only auto-set if it's currently 0 or empty to allow edits
             if (!newCase.valor_causa) {
                 setNewCase(prev => ({ ...prev, valor_causa: 6508 }));
