@@ -408,10 +408,15 @@ const Clients: React.FC = () => {
 
     const handleAddCaptadorNew = async () => {
         if (!newCaptadorName.trim()) return;
-        await addCaptador(newCaptadorName, newClient.filial as string);
-        setNewClient({ ...newClient, captador: newCaptadorName });
-        setIsAddingCaptador(false);
-        setNewCaptadorName('');
+        try {
+            await addCaptador(newCaptadorName, newClient.filial as string);
+            setNewClient({ ...newClient, captador: newCaptadorName });
+            setIsAddingCaptador(false);
+            setNewCaptadorName('');
+        } catch (error) {
+            // Erro já tratado pelo toast no context, apenas mantemos o estado para tentativa de correção
+            console.error('Falha ao adicionar captador na view:', error);
+        }
     };
 
     const toggleColumn = useCallback((id: string) => {

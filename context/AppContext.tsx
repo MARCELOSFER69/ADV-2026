@@ -1143,12 +1143,18 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }, []);
 
     const addCaptador = useCallback(async (nome: string, filial: string) => {
-        const newC = { id: crypto.randomUUID(), nome, filial, total_clientes: 0, status: 'ativo' };
-        const { error } = await supabase.from('captadores').insert([newC]);
-        if (error) throw error;
-        setCaptadores(prev => [...prev, newC as any]);
-        return newC as any;
-    }, []);
+        try {
+            const newC = { id: crypto.randomUUID(), nome, filial };
+            const { error } = await supabase.from('captadores').insert([newC]);
+            if (error) throw error;
+            setCaptadores(prev => [...prev, newC as any]);
+            return newC as any;
+        } catch (error: any) {
+            console.error('Erro ao adicionar captador:', error);
+            showToast('error', `Erro ao adicionar captador: ${error.message || 'Verifique sua conexão'}`);
+            throw error;
+        }
+    }, [showToast]);
 
     const deleteCaptador = useCallback(async (id: string) => {
         const { error } = await supabase.from('captadores').delete().eq('id', id);
