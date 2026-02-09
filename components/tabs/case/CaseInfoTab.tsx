@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { Case, Client, GPS, CaseStatus, CaseType } from '../../../types';
-import { User, ClipboardList, MapPin, Edit2, Check, AlertTriangle, Trash2, Plus, Info, Globe, DollarSign, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Case, Client, GPS, CaseStatus, CaseType, CaseNote } from '../../../types';
+import { User, ClipboardList, MapPin, Edit2, Check, AlertTriangle, Trash2, Plus, Info, Globe, DollarSign, Loader2, Send, Clock } from 'lucide-react';
 import { formatCPFOrCNPJ, formatCurrencyInput, parseCurrencyToNumber } from '../../../services/formatters';
+import { fetchCaseNotes, addCaseNote, deleteCaseNote } from '../../../services/casesService';
 import CustomSelect from '../../ui/CustomSelect';
+import ConfirmModal from '../../ui/ConfirmModal';
 
 interface CaseInfoTabProps {
     caseItem: Case;
@@ -21,6 +23,9 @@ interface CaseInfoTabProps {
     caseTypes: string[];
     onAddCaseType: (val: string) => Promise<void>;
     isLoadingClient?: boolean;
+    // User info for notes
+    userName?: string;
+    userId?: string;
 }
 
 const COMMON_SYSTEMS = [
@@ -45,7 +50,9 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
     onAddModality,
     caseTypes,
     onAddCaseType,
-    isLoadingClient = false
+    isLoadingClient = false,
+    userName = 'Usuário',
+    userId
 }) => {
     // Local state for GPS inputs
     const [newGpsMonth, setNewGpsMonth] = useState('');
@@ -53,6 +60,13 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
     const [isAddingGps, setIsAddingGps] = useState(false);
     const [editingGpsId, setEditingGpsId] = useState<string | null>(null);
     const [editingGpsValue, setEditingGpsValue] = useState('');
+
+    // Notes state
+    const [notes, setNotes] = useState<CaseNote[]>([]);
+    const [newNoteContent, setNewNoteContent] = useState('');
+    const [isLoadingNotes, setIsLoadingNotes] = useState(true);
+    const [isAddingNote, setIsAddingNote] = useState(false);
+    const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
 
     const MONTH_OPTIONS = [
         { label: 'JAN', value: '01' }, { label: 'FEV', value: '02' }, { label: 'MAR', value: '03' },
@@ -72,6 +86,22 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
     const [newModalityValue, setNewModalityValue] = useState('');
     const [showNewTypeInput, setShowNewTypeInput] = useState(false);
     const [newTypeValue, setNewTypeValue] = useState('');
+
+    // Load notes on mount
+    useEffect(() => {
+        const loadNotes = async () => {
+            try {
+                setIsLoadingNotes(true);
+                const data = await fetchCaseNotes(caseItem.id);
+                setNotes(data);
+            } catch (error) {
+                console.error('Erro ao carregar anotações:', error);
+            } finally {
+                setIsLoadingNotes(false);
+            }
+        };
+        loadNotes();
+    }, [caseItem.id]);
 
     // Handlers
     const handleAddGpsClick = () => {
@@ -101,7 +131,42 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
         onAddCaseType(newTypeValue);
         setShowNewTypeInput(false);
         setNewTypeValue('');
-    }
+    };
+
+    const handleAddNote = async () => {
+        if (!newNoteContent.trim()) return;
+        setIsAddingNote(true);
+        try {
+            const newNote = await addCaseNote(caseItem.id, newNoteContent.trim(), userName, userId);
+            setNotes(prev => [newNote, ...prev]);
+            setNewNoteContent('');
+        } catch (error) {
+            console.error('Erro ao adicionar anotação:', error);
+        } finally {
+            setIsAddingNote(false);
+        }
+    };
+
+    const handleDeleteNote = async (noteId: string) => {
+        try {
+            await deleteCaseNote(noteId);
+            setNotes(prev => prev.filter(n => n.id !== noteId));
+            setNoteToDelete(null);
+        } catch (error) {
+            console.error('Erro ao excluir anotação:', error);
+        }
+    };
+
+    const formatNoteDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -390,17 +455,77 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
                     </div>
                 </div>
 
-                {/* ULTIMAS NOTAS */}
-                <div className="bg-[#18181b] p-6 rounded-xl border border-white/5 h-full max-h-[300px] flex flex-col">
-                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-2">Anotações</h3>
-                    <textarea
-                        className="flex-1 bg-[#131418] border border-white/10 rounded-lg p-3 text-sm text-zinc-300 outline-none focus:border-gold-500 resize-none"
-                        value={caseItem.anotacoes || ''}
-                        onChange={e => onUpdateCase({ ...caseItem, anotacoes: e.target.value })}
-                        placeholder="Observações importantes do processo..."
-                    />
+                {/* ANOTAÇÕES */}
+                <div className="bg-[#18181b] p-6 rounded-xl border border-white/5 flex flex-col">
+                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4">Anotações</h3>
+
+                    {/* Formulário de nova anotação */}
+                    <div className="flex gap-2 mb-4">
+                        <input
+                            className="flex-1 bg-[#131418] border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none focus:border-gold-500 placeholder:text-zinc-600"
+                            placeholder="Adicionar anotação..."
+                            value={newNoteContent}
+                            onChange={e => setNewNoteContent(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleAddNote()}
+                            disabled={isAddingNote}
+                        />
+                        <button
+                            onClick={handleAddNote}
+                            disabled={!newNoteContent.trim() || isAddingNote}
+                            className="p-2 bg-gold-500 text-black rounded-lg hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            {isAddingNote ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                        </button>
+                    </div>
+
+                    {/* Lista de anotações */}
+                    <div className="flex-1 overflow-y-auto max-h-[300px] space-y-3 custom-scrollbar">
+                        {isLoadingNotes ? (
+                            <div className="flex items-center justify-center py-8">
+                                <Loader2 className="animate-spin text-gold-500" size={24} />
+                            </div>
+                        ) : notes.length === 0 ? (
+                            <div className="text-center py-8 text-zinc-600 text-sm italic">
+                                Nenhuma anotação registrada.
+                            </div>
+                        ) : (
+                            notes.map(note => (
+                                <div key={note.id} className="p-3 bg-[#131418] rounded-lg border border-white/5 group hover:border-white/10 transition-all">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <p className="text-sm text-zinc-300 flex-1 whitespace-pre-wrap">{note.conteudo}</p>
+                                        <button
+                                            onClick={() => setNoteToDelete(note.id)}
+                                            className="p-1 text-zinc-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                                            title="Excluir anotação"
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-2 text-[10px] text-zinc-500">
+                                        <User size={10} />
+                                        <span className="font-medium">{note.user_name}</span>
+                                        <span className="text-zinc-700">•</span>
+                                        <Clock size={10} />
+                                        <span>{formatNoteDate(note.created_at)}</span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
             </div>
+
+            {/* Modal de Confirmação para Excluir Anotação */}
+            <ConfirmModal
+                isOpen={!!noteToDelete}
+                onClose={() => setNoteToDelete(null)}
+                onConfirm={() => noteToDelete && handleDeleteNote(noteToDelete)}
+                title="Excluir Anotação"
+                message="Tem certeza que deseja excluir esta anotação? Esta ação não pode ser desfeita."
+                confirmLabel="Excluir"
+                cancelLabel="Cancelar"
+                variant="danger"
+            />
         </div>
     );
 };

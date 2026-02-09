@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { Case } from '../types';
+import { Case, CaseNote } from '../types';
 
 const applyCaseFilters = (query: any, search?: string, filters?: any) => {
     if (search) {
@@ -191,6 +191,64 @@ export const fetchAllFilteredCasesData = async (search?: string, filters?: any) 
         return (data || []) as unknown as Case[];
     } catch (error) {
         console.error("Erro fetchAllFilteredCasesData:", error);
+        throw error;
+    }
+};
+
+// --- CASE NOTES (ANOTAÇÕES) ---
+
+export const fetchCaseNotes = async (caseId: string): Promise<CaseNote[]> => {
+    try {
+        const { data, error } = await supabase
+            .from('case_notes')
+            .select('*')
+            .eq('case_id', caseId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return (data || []) as CaseNote[];
+    } catch (error) {
+        console.error(`Erro fetchCaseNotes (${caseId}):`, error);
+        throw error;
+    }
+};
+
+export const addCaseNote = async (
+    caseId: string,
+    conteudo: string,
+    userName: string,
+    userId?: string
+): Promise<CaseNote> => {
+    try {
+        const { data, error } = await supabase
+            .from('case_notes')
+            .insert({
+                case_id: caseId,
+                conteudo,
+                user_name: userName,
+                user_id: userId
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data as CaseNote;
+    } catch (error) {
+        console.error(`Erro addCaseNote (${caseId}):`, error);
+        throw error;
+    }
+};
+
+export const deleteCaseNote = async (noteId: string): Promise<void> => {
+    try {
+        const { error } = await supabase
+            .from('case_notes')
+            .delete()
+            .eq('id', noteId);
+
+        if (error) throw error;
+    } catch (error) {
+        console.error(`Erro deleteCaseNote (${noteId}):`, error);
         throw error;
     }
 };

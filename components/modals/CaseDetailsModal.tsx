@@ -309,6 +309,8 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                         const current = user?.preferences?.customCaseTypes || [];
                                         await saveUserPreferences({ customCaseTypes: [...current, val] });
                                     }}
+                                    userName={user?.name || 'Usuário'}
+                                    userId={user?.id}
                                 />
                             )}
 
