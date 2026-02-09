@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Case, Client, GPS, CaseStatus, CaseType, CaseNote } from '../../../types';
-import { User, ClipboardList, MapPin, Edit2, Check, AlertTriangle, Trash2, Plus, Info, Globe, DollarSign, Loader2, Send, Clock } from 'lucide-react';
+import { User, ClipboardList, MapPin, Edit2, Check, AlertTriangle, Trash2, Plus, Info, Globe, DollarSign, Loader2, Send, Clock, Eye, X } from 'lucide-react';
 import { formatCPFOrCNPJ, formatCurrencyInput, parseCurrencyToNumber } from '../../../services/formatters';
 import { fetchCaseNotes, addCaseNote, deleteCaseNote } from '../../../services/casesService';
 import CustomSelect from '../../ui/CustomSelect';
@@ -67,6 +67,8 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
     const [isLoadingNotes, setIsLoadingNotes] = useState(true);
     const [isAddingNote, setIsAddingNote] = useState(false);
     const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
+    const [noteToView, setNoteToView] = useState<CaseNote | null>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const MONTH_OPTIONS = [
         { label: 'JAN', value: '01' }, { label: 'FEV', value: '02' }, { label: 'MAR', value: '03' },
@@ -460,19 +462,33 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
                     <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4">Anotações</h3>
 
                     {/* Formulário de nova anotação */}
-                    <div className="flex gap-2 mb-4">
-                        <input
-                            className="flex-1 bg-[#131418] border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none focus:border-gold-500 placeholder:text-zinc-600"
+                    <div className="flex gap-2 mb-4 items-end">
+                        <textarea
+                            ref={textareaRef}
+                            className="flex-1 bg-[#131418] border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none focus:border-gold-500 placeholder:text-zinc-600 resize-none min-h-[38px] max-h-[120px] overflow-y-auto"
                             placeholder="Adicionar anotação..."
                             value={newNoteContent}
-                            onChange={e => setNewNoteContent(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleAddNote()}
+                            onChange={e => {
+                                setNewNoteContent(e.target.value);
+                                // Auto-grow textarea
+                                if (textareaRef.current) {
+                                    textareaRef.current.style.height = 'auto';
+                                    textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
+                                }
+                            }}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleAddNote();
+                                }
+                            }}
                             disabled={isAddingNote}
+                            rows={1}
                         />
                         <button
                             onClick={handleAddNote}
                             disabled={!newNoteContent.trim() || isAddingNote}
-                            className="p-2 bg-gold-500 text-black rounded-lg hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="p-2 bg-gold-500 text-black rounded-lg hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-[38px]"
                         >
                             {isAddingNote ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                         </button>
@@ -489,27 +505,42 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
                                 Nenhuma anotação registrada.
                             </div>
                         ) : (
-                            notes.map(note => (
-                                <div key={note.id} className="p-3 bg-[#131418] rounded-lg border border-white/5 group hover:border-white/10 transition-all">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <p className="text-sm text-zinc-300 flex-1 whitespace-pre-wrap">{note.conteudo}</p>
-                                        <button
-                                            onClick={() => setNoteToDelete(note.id)}
-                                            className="p-1 text-zinc-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shrink-0"
-                                            title="Excluir anotação"
-                                        >
-                                            <Trash2 size={12} />
-                                        </button>
+                            notes.map(note => {
+                                const isLong = note.conteudo.length > 50;
+                                const displayText = isLong ? note.conteudo.slice(0, 50) + '...' : note.conteudo;
+                                return (
+                                    <div key={note.id} className="p-3 bg-[#131418] rounded-lg border border-white/5 group hover:border-white/10 transition-all overflow-hidden">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <p className="text-sm text-zinc-300 flex-1 overflow-hidden" style={{ wordBreak: 'break-all' }}>{displayText}</p>
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                {isLong && (
+                                                    <button
+                                                        onClick={() => setNoteToView(note)}
+                                                        className="p-1 text-zinc-600 hover:text-gold-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                        title="Ver anotação completa"
+                                                    >
+                                                        <Eye size={12} />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => setNoteToDelete(note.id)}
+                                                    className="p-1 text-zinc-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                    title="Excluir anotação"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-2 text-[10px] text-zinc-500">
+                                            <User size={10} />
+                                            <span className="font-medium">{note.user_name}</span>
+                                            <span className="text-zinc-700">•</span>
+                                            <Clock size={10} />
+                                            <span>{formatNoteDate(note.created_at)}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-2 text-[10px] text-zinc-500">
-                                        <User size={10} />
-                                        <span className="font-medium">{note.user_name}</span>
-                                        <span className="text-zinc-700">•</span>
-                                        <Clock size={10} />
-                                        <span>{formatNoteDate(note.created_at)}</span>
-                                    </div>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                 </div>
@@ -526,6 +557,39 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
                 cancelLabel="Cancelar"
                 variant="danger"
             />
+
+            {/* Modal de Visualização de Anotação Completa */}
+            {noteToView && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={() => setNoteToView(null)}
+                    />
+                    <div className="bg-[#0f1014] w-full max-w-lg rounded-2xl border border-white/10 shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in-95">
+                        <div className="p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold text-white font-serif">Anotação</h3>
+                                <button
+                                    onClick={() => setNoteToView(null)}
+                                    className="p-1 text-zinc-500 hover:text-white"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+                            <div className="bg-[#131418] rounded-xl p-4 border border-white/5 max-h-[400px] overflow-y-auto custom-scrollbar">
+                                <p className="text-sm text-zinc-300 whitespace-pre-wrap break-words">{noteToView.conteudo}</p>
+                            </div>
+                            <div className="flex items-center gap-2 mt-4 text-xs text-zinc-500">
+                                <User size={12} />
+                                <span className="font-medium">{noteToView.user_name}</span>
+                                <span className="text-zinc-700">•</span>
+                                <Clock size={12} />
+                                <span>{formatNoteDate(noteToView.created_at)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
