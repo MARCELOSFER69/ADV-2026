@@ -252,3 +252,16 @@ export const deleteCaseNote = async (noteId: string): Promise<void> => {
         throw error;
     }
 };
+export const updateCaseNote = async (noteId: string, conteudo: string): Promise<void> => {
+    try {
+        const { error } = await supabase
+            .from('case_notes')
+            .update({ conteudo })
+            .eq('id', noteId);
+
+        if (error) throw error;
+    } catch (error) {
+        console.error(`Erro updateCaseNote (${noteId}):`, error);
+        throw error;
+    }
+};

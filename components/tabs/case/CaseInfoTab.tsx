@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Case, Client, GPS, CaseStatus, CaseType, CaseNote } from '../../../types';
+import { useApp } from '../../../context/AppContext';
 import { User, ClipboardList, MapPin, Edit2, Check, AlertTriangle, Trash2, Plus, Info, Globe, DollarSign, Loader2, Send, Clock, Eye, X } from 'lucide-react';
 import { formatCPFOrCNPJ, formatCurrencyInput, parseCurrencyToNumber } from '../../../services/formatters';
-import { fetchCaseNotes, addCaseNote, deleteCaseNote } from '../../../services/casesService';
+import { fetchCaseNotes, addCaseNote, deleteCaseNote, updateCaseNote } from '../../../services/casesService';
 import CustomSelect from '../../ui/CustomSelect';
 import ConfirmModal from '../../ui/ConfirmModal';
 
@@ -54,6 +55,7 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
     userName = 'Usuário',
     userId
 }) => {
+    const { showToast } = useApp();
     // Local state for GPS inputs
     const [newGpsMonth, setNewGpsMonth] = useState('');
     const [newGpsYear, setNewGpsYear] = useState('');
@@ -68,7 +70,11 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
     const [isAddingNote, setIsAddingNote] = useState(false);
     const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
     const [noteToView, setNoteToView] = useState<CaseNote | null>(null);
+    const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+    const [editingNoteContent, setEditingNoteContent] = useState('');
+    const [isUpdatingNote, setIsUpdatingNote] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const editTextareaRef = useRef<HTMLTextAreaElement>(null);
 
     const MONTH_OPTIONS = [
         { label: 'JAN', value: '01' }, { label: 'FEV', value: '02' }, { label: 'MAR', value: '03' },
@@ -156,6 +162,22 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
             setNoteToDelete(null);
         } catch (error) {
             console.error('Erro ao excluir anotação:', error);
+        }
+    };
+
+    const handleUpdateNote = async () => {
+        if (!editingNoteId || !editingNoteContent.trim() || isUpdatingNote) return;
+        setIsUpdatingNote(true);
+        try {
+            await updateCaseNote(editingNoteId, editingNoteContent.trim());
+            setNotes(prev => prev.map(n => n.id === editingNoteId ? { ...n, conteudo: editingNoteContent.trim() } : n));
+            setEditingNoteId(null);
+            setEditingNoteContent('');
+        } catch (error) {
+            console.error('Erro ao atualizar anotação:', error);
+            showToast('error', 'Erro ao atualizar anotação.');
+        } finally {
+            setIsUpdatingNote(false);
         }
     };
 
@@ -506,38 +528,88 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
                             </div>
                         ) : (
                             notes.map(note => {
+                                const isEditing = editingNoteId === note.id;
                                 const isLong = note.conteudo.length > 50;
                                 const displayText = isLong ? note.conteudo.slice(0, 50) + '...' : note.conteudo;
+
                                 return (
                                     <div key={note.id} className="p-3 bg-[#131418] rounded-lg border border-white/5 group hover:border-white/10 transition-all overflow-hidden">
-                                        <div className="flex items-start justify-between gap-2">
-                                            <p className="text-sm text-zinc-300 flex-1 overflow-hidden" style={{ wordBreak: 'break-all' }}>{displayText}</p>
-                                            <div className="flex items-center gap-1 shrink-0">
-                                                {isLong && (
+                                        {isEditing ? (
+                                            <div className="space-y-2">
+                                                <textarea
+                                                    ref={editTextareaRef}
+                                                    className="w-full bg-black/40 border border-gold-500/50 rounded-lg px-3 py-2 text-sm text-zinc-200 outline-none resize-none min-h-[60px]"
+                                                    value={editingNoteContent}
+                                                    onChange={e => {
+                                                        setEditingNoteContent(e.target.value);
+                                                        if (editTextareaRef.current) {
+                                                            editTextareaRef.current.style.height = 'auto';
+                                                            editTextareaRef.current.style.height = editTextareaRef.current.scrollHeight + 'px';
+                                                        }
+                                                    }}
+                                                    disabled={isUpdatingNote}
+                                                    autoFocus
+                                                />
+                                                <div className="flex justify-end gap-2">
                                                     <button
-                                                        onClick={() => setNoteToView(note)}
-                                                        className="p-1 text-zinc-600 hover:text-gold-500 opacity-0 group-hover:opacity-100 transition-all"
-                                                        title="Ver anotação completa"
+                                                        onClick={() => setEditingNoteId(null)}
+                                                        className="px-2 py-1 text-[10px] font-bold uppercase text-zinc-500 hover:text-white transition-colors"
+                                                        disabled={isUpdatingNote}
                                                     >
-                                                        <Eye size={12} />
+                                                        Cancelar
                                                     </button>
-                                                )}
-                                                <button
-                                                    onClick={() => setNoteToDelete(note.id)}
-                                                    className="p-1 text-zinc-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                                                    title="Excluir anotação"
-                                                >
-                                                    <Trash2 size={12} />
-                                                </button>
+                                                    <button
+                                                        onClick={handleUpdateNote}
+                                                        className="px-3 py-1 bg-gold-500 text-black rounded text-[10px] font-bold uppercase hover:bg-gold-400 disabled:opacity-50 transition-colors flex items-center gap-1"
+                                                        disabled={!editingNoteContent.trim() || isUpdatingNote}
+                                                    >
+                                                        {isUpdatingNote ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
+                                                        Salvar
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 mt-2 text-[10px] text-zinc-500">
-                                            <User size={10} />
-                                            <span className="font-medium">{note.user_name}</span>
-                                            <span className="text-zinc-700">•</span>
-                                            <Clock size={10} />
-                                            <span>{formatNoteDate(note.created_at)}</span>
-                                        </div>
+                                        ) : (
+                                            <>
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <p className="text-sm text-zinc-300 flex-1 overflow-hidden" style={{ wordBreak: 'break-all' }}>{displayText}</p>
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        {isLong && (
+                                                            <button
+                                                                onClick={() => setNoteToView(note)}
+                                                                className="p-1 text-zinc-600 hover:text-gold-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                                title="Ver anotação completa"
+                                                            >
+                                                                <Eye size={12} />
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={() => {
+                                                                setEditingNoteId(note.id);
+                                                                setEditingNoteContent(note.conteudo);
+                                                            }}
+                                                            className="p-1 text-zinc-600 hover:text-gold-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                            title="Editar anotação"
+                                                        >
+                                                            <Edit2 size={12} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setNoteToDelete(note.id)}
+                                                            className="p-1 text-zinc-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                            title="Excluir anotação"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-2 text-[10px] text-zinc-500">
+                                                    <User size={10} />
+                                                    <span className="font-medium">{note.user_name}</span>
+                                                    <span className="text-zinc-700">•</span>
+                                                    <Clock size={10} />
+                                                    <span>{formatNoteDate(note.created_at)}</span>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 );
                             })
