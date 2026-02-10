@@ -234,22 +234,33 @@ export const fetchClientById = async (id: string): Promise<Client | null> => {
 
 export const checkCpfExists = async (cpf: string, excludeId?: string): Promise<{ exists: boolean; client?: { id: string; nome_completo: string } }> => {
     try {
+        if (!cpf) return { exists: false };
+
+        // Normalize input to digits only
+        const digits = cpf.replace(/\D/g, '');
+        if (!digits) return { exists: false };
+
+        // Standard CPF format (000.000.000-00)
+        const formatted = digits.length === 11
+            ? digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+            : digits;
+
+        // Try to find by raw digits or standard formatted version
         let query = supabase
             .from('clients')
             .select('id, nome_completo')
-            .eq('cpf_cnpj', cpf);
+            .or(`cpf_cnpj.eq.${digits},cpf_cnpj.eq.${formatted}`);
 
         if (excludeId) {
             query = query.neq('id', excludeId);
         }
 
-        const { data, error } = await query.single();
+        const { data, error } = await query;
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows found" which is good here
-            throw error;
-        }
+        if (error) throw error;
 
-        return { exists: !!data, client: data || undefined };
+        const exists = data && data.length > 0;
+        return { exists, client: exists ? data[0] : undefined };
     } catch (error) {
         console.error("Error checking CPF:", error);
         return { exists: false };

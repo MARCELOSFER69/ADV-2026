@@ -133,6 +133,7 @@ export interface Client {
   reap_ano_base?: number;
   updated_at?: string;
   gps_status_calculado?: 'puxada' | 'pendente' | 'regular' | null;
+  import_source?: 'imported' | null;
 }
 
 export interface Task {

@@ -707,7 +707,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 'interviewStatus', 'interviewDate', 'filial', 'captador',
                 'representante_nome', 'representante_cpf', 'pendencias',
                 'observacao', 'foto', 'status', 'senha_gov', 'senha_inss',
-                'motivo_arquivamento', 'rgp_status', 'reap_status', 'documentos'
+                'motivo_arquivamento', 'rgp_status', 'reap_status', 'documentos',
+                'import_source', 'data_cadastro'
             ];
 
             const payload: any = {};
@@ -746,7 +747,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 'interviewStatus', 'interviewDate', 'filial', 'captador',
                 'representante_nome', 'representante_cpf', 'pendencias',
                 'observacao', 'foto', 'status', 'senha_gov', 'senha_inss',
-                'motivo_arquivamento', 'rgp_status', 'reap_status', 'documentos'
+                'motivo_arquivamento', 'rgp_status', 'reap_status', 'documentos',
+                'import_source'
             ];
 
             const payload: any = {

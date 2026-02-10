@@ -6,6 +6,7 @@ import { AlertTriangle, CheckCircle2, Users, Clock, Building2, Share2, Plus, Che
 import CustomSelect from '../ui/CustomSelect';
 import { useApp } from '../../context/AppContext';
 import { fetchAddressByCep } from '../../services/cepService';
+import { getIncompleteFields } from '../../services/importService';
 
 interface ClientInfoTabProps {
     client: Client;
@@ -198,6 +199,27 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
                     </div>
                 </div>
             )}
+
+            {!isEditMode && client.import_source === 'imported' && (() => {
+                const missingFields = getIncompleteFields(client);
+                if (missingFields.length === 0) return null;
+                return (
+                    <div className="mb-6 p-4 rounded-xl border bg-amber-500/10 border-amber-500/20 flex items-start gap-3">
+                        <div className="p-2 rounded-full bg-amber-500 bg-opacity-20 shrink-0 text-amber-500">
+                            <AlertTriangle size={20} />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-sm text-amber-400">Cliente Importado — Dados Incompletos</h4>
+                            <p className="text-xs text-zinc-400 mt-1">Preencha os campos abaixo para completar o cadastro.</p>
+                            <div className="flex flex-wrap gap-2 mt-3">
+                                {missingFields.map(f => (
+                                    <span key={f} className="text-[10px] font-bold bg-amber-500/20 text-amber-300 px-2 py-1 rounded border border-amber-500/30">{f}</span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {!isEditMode && (
                 <div className="mb-6 bg-[#18181b] border border-white/5 rounded-xl p-4 shadow-sm">

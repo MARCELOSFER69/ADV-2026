@@ -5,7 +5,7 @@ import {
     Save, Trash2, Loader2, FileScan, Briefcase, ChevronDown, Calculator,
     Shield, Gavel, FileText, Building, HandCoins, CalendarCheck, Bell,
     UserCog, User, Stethoscope, MessageSquare, Cpu, Download,
-    Sun, Moon, Monitor, Bot, Settings
+    Sun, Moon, Monitor, Bot, Settings, MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BRAND_CONFIG } from '../../logoData';
@@ -90,7 +90,7 @@ const SidebarView = memo(({
 
     // Auto-open accordions based on view (Effect stays local to View)
     useEffect(() => {
-        if (['cnis', 'gps-calculator', 'document-builder'].includes(currentView)) setIsToolsOpen(true);
+        if (['cnis', 'gps-calculator', 'document-builder', 'cep-facil'].includes(currentView)) setIsToolsOpen(true);
         if (['cases-judicial', 'cases-administrative', 'cases-insurance', 'cases'].includes(currentView)) setIsCasesOpen(true);
         if (['financial', 'office-expenses', 'commissions', 'financial-calendar'].includes(currentView)) setIsFinancialOpen(true);
     }, [currentView]);
@@ -136,6 +136,7 @@ const SidebarView = memo(({
         ...((isAdmin || user?.permissions?.access_tool_cnis) ? [{ id: 'cnis', label: 'Leitor CNIS', icon: FileScan }] : []),
         ...((isAdmin || user?.permissions?.access_tool_gps) ? [{ id: 'gps-calculator', label: 'Calculadora GPS', icon: Calculator }] : []),
         ...((isAdmin || user?.permissions?.access_tool_docs) ? [{ id: 'document-builder', label: 'Criador Modelos', icon: Briefcase }] : []),
+        { id: 'cep-facil', label: 'CEP Fácil', icon: MapPin },
         ...((isAdmin || user?.permissions?.access_robots) || canViewRobots ? [{ id: 'robots', label: 'Robôs', icon: Cpu }] : []),
     ], [isAdmin, user?.permissions, canViewRobots]);
 

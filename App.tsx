@@ -25,6 +25,7 @@ const CnisReader = React.lazy(() => import('./views/Tools/CnisReader'));
 const GpsCalculator = React.lazy(() => import('./views/Tools/GpsCalculator'));
 const DocumentBuilder = React.lazy(() => import('./views/Tools/DocumentBuilder'));
 const Robots = React.lazy(() => import('./views/Tools/Robots'));
+const CepFacil = React.lazy(() => import('./views/Tools/CepFacil'));
 const DownloadPage = React.lazy(() => import('./views/DownloadPage'));
 const Permissions = React.lazy(() => import('./views/Permissions'));
 
@@ -280,6 +281,10 @@ const AppContent: React.FC = () => {
 
           <View id="robots" activeView={currentView} isLowPerformance={isLowPerformance}>
             <Robots />
+          </View>
+
+          <View id="cep-facil" activeView={currentView} isLowPerformance={isLowPerformance}>
+            <CepFacil />
           </View>
 
           {/* --- NOVA TELA PESSOAL --- */}

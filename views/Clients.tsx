@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Search, Plus, Phone, Mail, FileText, X, MapPin, Eye, Calendar, User, ChevronRight, Filter, Edit2, Camera, Save, Building2, Loader2, MessageCircle, Clock, LayoutGrid, LayoutList, Settings, ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, CheckSquare, Copy, ArrowRight, CreditCard, Heart, Briefcase, Globe, Share2, AlertTriangle, CheckCircle2, Trash2, Archive, RefreshCw, Check, Lock, ChevronLeft, Users } from 'lucide-react';
+import { Search, Plus, Phone, Mail, FileText, X, MapPin, Eye, Calendar, User, ChevronRight, Filter, Edit2, Camera, Save, Building2, Loader2, MessageCircle, Clock, LayoutGrid, LayoutList, Settings, ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, CheckSquare, Copy, ArrowRight, CreditCard, Heart, Briefcase, Globe, Share2, AlertTriangle, CheckCircle2, Trash2, Archive, RefreshCw, Check, Lock, ChevronLeft, Users, Upload } from 'lucide-react';
 import { Client, Case, Branch, CaseStatus, ColumnConfig, Captador } from '../types';
 import CaseDetailsModal from '../components/modals/CaseDetailsModal';
 import WhatsAppModal from '../components/modals/WhatsAppModal';
@@ -16,6 +16,7 @@ import { supabase } from '../services/supabaseClient';
 import SizeScaler from '../components/ui/SizeScaler';
 import ClientActionModals from '../components/modals/ClientActionModals';
 import ClientFormModal from '../components/modals/ClientFormModal';
+import ImportClientsModal from '../components/modals/ImportClientsModal';
 import ClientFilters from '../components/clients/ClientFilters';
 import ClientGridView from '../components/clients/ClientGridView';
 import ClientTableView from '../components/clients/ClientTableView';
@@ -112,6 +113,7 @@ const Clients: React.FC = () => {
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [duplicateClient, setDuplicateClient] = useState<Client | null>(null);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
     // Hook useClients (React Query)
     const { data: paginatedClients, isLoading: isFetching, totalCount: totalClients, refetch } = useClients({
@@ -594,6 +596,17 @@ const Clients: React.FC = () => {
                         <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-all duration-300 w-0 group-hover:w-auto">Exportar Excel</span>
                     </motion.button>
 
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setIsImportModalOpen(true)}
+                        className="group h-10 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-amber-600/20 flex items-center justify-center hover:justify-start w-10 hover:w-auto overflow-hidden px-0 hover:px-4 gap-0 hover:gap-2 transition-all duration-300"
+                        title="Importar Clientes"
+                    >
+                        <Upload size={18} className="shrink-0" />
+                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-all duration-300 w-0 group-hover:w-auto">Importar</span>
+                    </motion.button>
+
                     {!showArchived && (
                         <>
                             {/* View Mode Toggle */}
@@ -835,6 +848,16 @@ const Clients: React.FC = () => {
                     />
                 )
             }
+
+            <ImportClientsModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                addClient={addClient}
+                showToast={showToast}
+                captadores={captadores}
+                addCaptador={addCaptador}
+                user={user}
+            />
         </div >
     );
 };

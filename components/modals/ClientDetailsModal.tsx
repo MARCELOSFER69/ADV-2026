@@ -13,6 +13,7 @@ import {
 import WhatsAppModal from './WhatsAppModal';
 import ConfirmModal from '../ui/ConfirmModal';
 import { formatCPFOrCNPJ, formatPhone, formatCurrencyInput, parseCurrencyToNumber } from '../../services/formatters';
+import { isClientIncomplete } from '../../services/importService';
 import { motion } from 'framer-motion';
 import { fetchAddressByCep } from '../../services/cepService';
 import { printDocuments } from '../../utils/printGenerator';
@@ -403,7 +404,12 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                                 {editedClient.foto ? (
                                     <img src={editedClient.foto} alt={editedClient.nome_completo} className="w-16 h-16 rounded-full border-2 border-slate-700 object-cover" />
                                 ) : (
-                                    <div className={`w-16 h-16 rounded-full border-2 border-white/10 flex items-center justify-center text-2xl font-bold shadow-lg ${editedClient.pendencias && editedClient.pendencias.length > 0 ? 'bg-red-600 text-white ring-4 ring-red-600/20' : 'bg-zinc-700 text-zinc-300'}`}>
+                                    <div className={`w-16 h-16 rounded-full border-2 border-white/10 flex items-center justify-center text-2xl font-bold shadow-lg 
+                                        ${editedClient.pendencias && editedClient.pendencias.length > 0
+                                            ? 'bg-red-600 text-white ring-4 ring-red-600/20'
+                                            : isClientIncomplete(editedClient)
+                                                ? 'bg-yellow-500 text-black ring-4 ring-yellow-500/20'
+                                                : 'bg-zinc-700 text-zinc-300'}`}>
                                         {String(editedClient.nome_completo || '').substring(0, 2).toUpperCase()}
                                     </div>
                                 )}
@@ -431,7 +437,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                                             </button>
                                         </div>
                                         <div className="flex items-center gap-2 group/cpf relative w-fit">
-                                            <p className="text-slate-400 text-sm">{String(client?.cpf_cnpj || 'Sem CPF')}</p>
+                                            <p className="text-slate-400 text-sm">{formatCPFOrCNPJ(client?.cpf_cnpj) || 'Sem CPF'}</p>
                                             <button
                                                 onClick={() => { navigator.clipboard.writeText(client.cpf_cnpj || ''); showToast('success', 'CPF copiado!'); }}
                                                 className="opacity-0 group-hover/cpf:opacity-100 transition-opacity text-slate-500 hover:text-white p-1"

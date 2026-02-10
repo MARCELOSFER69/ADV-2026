@@ -6,6 +6,7 @@ import { formatDateDisplay } from '../../utils/dateUtils';
 import { formatCPFOrCNPJ } from '../../services/formatters';
 import PendencyIndicator from '../ui/PendencyIndicator';
 import { motion } from 'framer-motion';
+import { isClientIncomplete } from '../../services/importService';
 
 interface ClientRowProps {
     client: Client;
@@ -78,7 +79,9 @@ const ClientRow: React.FC<ClientRowProps> = ({
                                 {client.foto ? <img src={client.foto} alt={client.nome_completo} className="w-8 h-8 rounded-full border border-slate-700 object-cover" /> : (
                                     <div className={`w-8 h-8 rounded-full border border-white/10 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm relative transition-all duration-300 ${hasPendencias
                                         ? 'bg-rose-600 text-white border-rose-500/50 shadow-[0_0_10px_rgba(225,29,72,0.2)]'
-                                        : 'bg-zinc-300 text-zinc-900'
+                                        : (client.import_source === 'imported' && isClientIncomplete(client))
+                                            ? 'bg-amber-500 text-white border-amber-400/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
+                                            : 'bg-zinc-300 text-zinc-900'
                                         }`}>
                                         {String(client.nome_completo || '').substring(0, 2).toUpperCase()}
                                     </div>

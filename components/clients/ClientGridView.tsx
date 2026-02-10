@@ -2,6 +2,7 @@ import React from 'react';
 import { Building2, AlertTriangle, Phone, MapPin, MessageCircle, RefreshCw, Archive, Trash2, Eye } from 'lucide-react';
 import { Client } from '../../types';
 import PendencyIndicator from '../ui/PendencyIndicator';
+import { isClientIncomplete } from '../../services/importService';
 
 interface ClientGridViewProps {
     sortedClients: Client[];
@@ -29,7 +30,7 @@ const ClientGridCard = React.memo(({ client, setSelectedClient, getClientStatus,
                         {client.foto ? (
                             <img src={client.foto} alt={client.nome_completo} className="w-14 h-14 rounded-full border-2 border-slate-700 object-cover" />
                         ) : (
-                            <div className={`w-14 h-14 rounded-full border-2 border-white/10 flex items-center justify-center font-bold text-xl shadow-inner relative transition-all duration-300 ${hasPendencias ? 'bg-rose-600 text-white border-rose-500/50' : 'bg-zinc-700 text-zinc-300'}`}>
+                            <div className={`w-14 h-14 rounded-full border-2 border-white/10 flex items-center justify-center font-bold text-xl shadow-inner relative transition-all duration-300 ${hasPendencias ? 'bg-rose-600 text-white border-rose-500/50' : (client.import_source === 'imported' && isClientIncomplete(client)) ? 'bg-amber-500 text-white border-amber-400/50' : 'bg-zinc-700 text-zinc-300'}`}>
                                 {String(client.nome_completo || '').substring(0, 2).toUpperCase()}
                             </div>
                         )}
