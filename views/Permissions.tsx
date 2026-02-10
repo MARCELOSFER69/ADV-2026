@@ -5,7 +5,8 @@ import { UserPermission } from '../types';
 import {
     UserCog, Plus, Trash2, Check, X, Loader2, Search, ChevronDown,
     Shield, Gavel, FileText, Briefcase, Calculator, FileScan, User,
-    LayoutDashboard, Users, DollarSign, MessageCircle
+    LayoutDashboard, Users, DollarSign, MessageCircle, Hourglass,
+    Stethoscope, CalendarCheck, HandCoins, Building, MapPin, Cpu
 } from 'lucide-react';
 
 const Permissions: React.FC = () => {
@@ -44,16 +45,28 @@ const Permissions: React.FC = () => {
             access_cases: true,
             access_financial: false,
             access_tools: true,
+            access_whatsapp: true,
+            access_retirements: true,
 
             // Novos Padrões Granulares
             access_personal: false,
             access_cases_judicial: true,
             access_cases_administrative: true,
             access_cases_insurance: true,
+            access_expertise: true,
+            access_events: true,
+
+            // Financeiro Granular
+            access_financial_calendar: false,
+            access_commissions: false,
+            access_office_expenses: false,
+
+            // Ferramentas Específicas
             access_tool_cnis: true,
             access_tool_gps: true,
             access_tool_docs: true,
-            access_whatsapp: true
+            access_tool_cep: true,
+            access_robots: false
         };
 
         const { error } = await supabase.from('user_permissions').insert([newUser]);
@@ -229,6 +242,10 @@ const Permissions: React.FC = () => {
                                             <ToggleSwitch checked={u.access_clients} onChange={() => handleTogglePermission(u.id, 'access_clients', !!u.access_clients)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-blue-600" />
                                         </div>
                                         <div className="flex justify-between items-center p-3 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors">
+                                            <span className="text-sm text-zinc-300 flex items-center gap-2"><Hourglass size={14} className="text-gold-500" /> Aposentadorias</span>
+                                            <ToggleSwitch checked={u.access_retirements} onChange={() => handleTogglePermission(u.id, 'access_retirements', !!u.access_retirements)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-gold-600" />
+                                        </div>
+                                        <div className="flex justify-between items-center p-3 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors">
                                             <span className="text-sm text-zinc-300 flex items-center gap-2"><User size={14} className="text-purple-500" /> Aba Pessoal</span>
                                             <ToggleSwitch checked={u.access_personal} onChange={() => handleTogglePermission(u.id, 'access_personal', !!u.access_personal)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-purple-600" />
                                         </div>
@@ -252,45 +269,83 @@ const Permissions: React.FC = () => {
                                     </div>
 
                                     <div className={`space-y-2 pl-2 border-l-2 border-zinc-800 ${!u.access_cases && u.role !== 'admin' ? 'opacity-50 pointer-events-none' : ''}`}>
-                                        <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
+                                        <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50 group/prop">
                                             <span className="text-sm text-zinc-300">Judicial / Trabalhista</span>
                                             <ToggleSwitch checked={u.access_cases_judicial} onChange={() => handleTogglePermission(u.id, 'access_cases_judicial', !!u.access_cases_judicial)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-yellow-600" />
                                         </div>
-                                        <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
+                                        <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50 group/prop">
                                             <span className="text-sm text-zinc-300">Administrativo (INSS)</span>
                                             <ToggleSwitch checked={u.access_cases_administrative} onChange={() => handleTogglePermission(u.id, 'access_cases_administrative', !!u.access_cases_administrative)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-yellow-600" />
                                         </div>
-                                        <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
+                                        <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50 group/prop">
                                             <span className="text-sm text-zinc-300">Seguro Defeso</span>
                                             <ToggleSwitch checked={u.access_cases_insurance} onChange={() => handleTogglePermission(u.id, 'access_cases_insurance', !!u.access_cases_insurance)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-yellow-600" />
+                                        </div>
+                                        <div className="w-full h-px bg-zinc-800 my-1 opacity-50" />
+                                        <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50 group/prop">
+                                            <span className="text-sm text-zinc-300 flex items-center gap-2"><Stethoscope size={14} className="text-yellow-500" /> Perícias</span>
+                                            <ToggleSwitch checked={u.access_expertise} onChange={() => handleTogglePermission(u.id, 'access_expertise', !!u.access_expertise)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-yellow-600" />
+                                        </div>
+                                        <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50 group/prop">
+                                            <span className="text-sm text-zinc-300 flex items-center gap-2"><CalendarCheck size={14} className="text-yellow-500" /> Eventos</span>
+                                            <ToggleSwitch checked={u.access_events} onChange={() => handleTogglePermission(u.id, 'access_events', !!u.access_events)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-yellow-600" />
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* 3. Ferramentas */}
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-bold text-zinc-500 uppercase flex items-center gap-2 mb-3 tracking-wider">
-                                        <Briefcase size={14} /> Ferramentas
-                                    </h4>
-
-                                    {/* Master Switch para "Ferramentas" */}
-                                    <div className="flex justify-between items-center mb-2 px-1">
-                                        <span className="text-xs text-zinc-400">Ver Módulo Ferramentas</span>
-                                        <ToggleSwitch checked={u.access_tools} onChange={() => handleTogglePermission(u.id, 'access_tools', !!u.access_tools)} disabled={u.role === 'admin'} />
+                                {/* 3. Financeiro & Ferramentas */}
+                                <div className="space-y-8">
+                                    {/* Sub-seção: Financeiro */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-xs font-bold text-zinc-500 uppercase flex items-center gap-2 mb-3 tracking-wider">
+                                            <DollarSign size={14} /> Financeiro
+                                        </h4>
+                                        <div className={`space-y-2 pl-2 border-l-2 border-zinc-800 ${!u.access_financial && u.role !== 'admin' ? 'opacity-50 pointer-events-none' : ''}`}>
+                                            <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
+                                                <span className="text-sm text-zinc-300 flex items-center gap-2"><LayoutDashboard size={14} className="text-emerald-500" /> Visão Geral</span>
+                                                <ToggleSwitch checked={u.access_financial} onChange={() => handleTogglePermission(u.id, 'access_financial', !!u.access_financial)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-emerald-600" />
+                                            </div>
+                                            <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
+                                                <span className="text-sm text-zinc-300 flex items-center gap-2"><HandCoins size={14} className="text-emerald-500" /> Comissões</span>
+                                                <ToggleSwitch checked={u.access_commissions} onChange={() => handleTogglePermission(u.id, 'access_commissions', !!u.access_commissions)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-emerald-600" />
+                                            </div>
+                                            <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
+                                                <span className="text-sm text-zinc-300 flex items-center gap-2"><Building size={14} className="text-emerald-500" /> Despesas Fixas</span>
+                                                <ToggleSwitch checked={u.access_office_expenses} onChange={() => handleTogglePermission(u.id, 'access_office_expenses', !!u.access_office_expenses)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-emerald-600" />
+                                            </div>
+                                            <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
+                                                <span className="text-sm text-zinc-300 flex items-center gap-2"><CalendarCheck size={14} className="text-emerald-500" /> Agenda Receb.</span>
+                                                <ToggleSwitch checked={u.access_financial_calendar} onChange={() => handleTogglePermission(u.id, 'access_financial_calendar', !!u.access_financial_calendar)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-emerald-600" />
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    <div className={`space-y-2 pl-2 border-l-2 border-zinc-800 ${!u.access_tools && u.role !== 'admin' ? 'opacity-50 pointer-events-none' : ''}`}>
-                                        <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
-                                            <span className="text-sm text-zinc-300 flex items-center gap-2"><FileScan size={14} className="text-pink-500" /> Leitor CNIS</span>
-                                            <ToggleSwitch checked={u.access_tool_cnis} onChange={() => handleTogglePermission(u.id, 'access_tool_cnis', !!u.access_tool_cnis)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-pink-600" />
-                                        </div>
-                                        <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
-                                            <span className="text-sm text-zinc-300 flex items-center gap-2"><Calculator size={14} className="text-pink-500" /> Calc. GPS</span>
-                                            <ToggleSwitch checked={u.access_tool_gps} onChange={() => handleTogglePermission(u.id, 'access_tool_gps', !!u.access_tool_gps)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-pink-600" />
-                                        </div>
-                                        <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
-                                            <span className="text-sm text-zinc-300 flex items-center gap-2"><FileText size={14} className="text-pink-500" /> Docs Builder</span>
-                                            <ToggleSwitch checked={u.access_tool_docs} onChange={() => handleTogglePermission(u.id, 'access_tool_docs', !!u.access_tool_docs)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-pink-600" />
+                                    {/* Sub-seção: Ferramentas */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-xs font-bold text-zinc-500 uppercase flex items-center gap-2 mb-3 tracking-wider">
+                                            <Briefcase size={14} /> Ferramentas
+                                        </h4>
+                                        <div className={`space-y-2 pl-2 border-l-2 border-zinc-800 ${!u.access_tools && u.role !== 'admin' ? 'opacity-50 pointer-events-none' : ''}`}>
+                                            <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
+                                                <span className="text-sm text-zinc-300 flex items-center gap-2"><FileScan size={14} className="text-pink-500" /> Leitor CNIS</span>
+                                                <ToggleSwitch checked={u.access_tool_cnis} onChange={() => handleTogglePermission(u.id, 'access_tool_cnis', !!u.access_tool_cnis)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-pink-600" />
+                                            </div>
+                                            <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
+                                                <span className="text-sm text-zinc-300 flex items-center gap-2"><Calculator size={14} className="text-pink-500" /> Calc. GPS</span>
+                                                <ToggleSwitch checked={u.access_tool_gps} onChange={() => handleTogglePermission(u.id, 'access_tool_gps', !!u.access_tool_gps)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-pink-600" />
+                                            </div>
+                                            <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
+                                                <span className="text-sm text-zinc-300 flex items-center gap-2"><Briefcase size={14} className="text-pink-500" /> Docs Builder</span>
+                                                <ToggleSwitch checked={u.access_tool_docs} onChange={() => handleTogglePermission(u.id, 'access_tool_docs', !!u.access_tool_docs)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-pink-600" />
+                                            </div>
+                                            <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
+                                                <span className="text-sm text-zinc-300 flex items-center gap-2"><MapPin size={14} className="text-pink-500" /> CEP Fácil</span>
+                                                <ToggleSwitch checked={u.access_tool_cep} onChange={() => handleTogglePermission(u.id, 'access_tool_cep', !!u.access_tool_cep)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-pink-600" />
+                                            </div>
+                                            <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
+                                                <span className="text-sm text-zinc-300 flex items-center gap-2"><Cpu size={14} className="text-pink-500" /> Robôs / IA</span>
+                                                <ToggleSwitch checked={u.access_robots} onChange={() => handleTogglePermission(u.id, 'access_robots', !!u.access_robots)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-pink-600" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

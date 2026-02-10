@@ -70,6 +70,9 @@ interface SidebarViewProps {
         canViewWhatsApp: boolean;
         canViewPersonal: boolean;
         canViewRobots: boolean;
+        canViewRetirements: boolean;
+        canViewExpertise: boolean;
+        canViewEvents: boolean;
     };
     onOpenSettings: () => void;
     isSettingsOpen: boolean;
@@ -95,7 +98,7 @@ const SidebarView = memo(({
         if (['financial', 'office-expenses', 'commissions', 'financial-calendar'].includes(currentView)) setIsFinancialOpen(true);
     }, [currentView]);
 
-    const { isAdmin, canViewFinancial, canViewCases, canViewClients, canViewTools, canViewWhatsApp, canViewPersonal, canViewRobots } = permissions;
+    const { isAdmin, canViewFinancial, canViewCases, canViewClients, canViewTools, canViewWhatsApp, canViewPersonal, canViewRobots, canViewRetirements, canViewExpertise, canViewEvents } = permissions;
 
     const mainItemsBeforeCases = useMemo(() => [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -105,8 +108,8 @@ const SidebarView = memo(({
     ], [canViewClients, mergedPreferences?.assistantTriggerPosition, canViewWhatsApp, setIsAssistantOpen]);
 
     const mainItemsAfterCases = useMemo(() => [
-        // ...(canViewCases ? [{ id: 'retirements', label: 'Aposentadorias', icon: Hourglass }] : []),
-    ], []);
+        ...(canViewRetirements ? [{ id: 'retirements', label: 'Aposentadorias', icon: Hourglass }] : []),
+    ], [canViewRetirements]);
 
     const judicialSubItems = [
         { id: 'Aposentadoria', label: 'Aposentadoria' },
@@ -128,24 +131,24 @@ const SidebarView = memo(({
     const caseItems = useMemo(() => [
         ...((isAdmin || user?.permissions?.access_cases_judicial) ? [{ id: 'cases-judicial', label: 'Judicial', icon: Gavel, subItems: judicialSubItems }] : []),
         ...((isAdmin || user?.permissions?.access_cases_administrative) ? [{ id: 'cases-administrative', label: 'Administrativo', icon: FileText, subItems: administrativeSubItems }] : []),
-        { id: 'expertise', label: 'Perícias', icon: Stethoscope },
-        { id: 'events', label: 'Eventos', icon: CalendarCheck },
-    ], [isAdmin, user?.permissions]);
+        ...(canViewExpertise ? [{ id: 'expertise', label: 'Perícias', icon: Stethoscope }] : []),
+        ...(canViewEvents ? [{ id: 'events', label: 'Eventos', icon: CalendarCheck }] : []),
+    ], [isAdmin, user?.permissions, canViewExpertise, canViewEvents]);
 
     const toolItems = useMemo(() => [
         ...((isAdmin || user?.permissions?.access_tool_cnis) ? [{ id: 'cnis', label: 'Leitor CNIS', icon: FileScan }] : []),
         ...((isAdmin || user?.permissions?.access_tool_gps) ? [{ id: 'gps-calculator', label: 'Calculadora GPS', icon: Calculator }] : []),
         ...((isAdmin || user?.permissions?.access_tool_docs) ? [{ id: 'document-builder', label: 'Criador Modelos', icon: Briefcase }] : []),
-        { id: 'cep-facil', label: 'CEP Fácil', icon: MapPin },
-        ...((isAdmin || user?.permissions?.access_robots) || canViewRobots ? [{ id: 'robots', label: 'Robôs', icon: Cpu }] : []),
+        ...((isAdmin || user?.permissions?.access_tool_cep) ? [{ id: 'cep-facil', label: 'CEP Fácil', icon: MapPin }] : []),
+        ...((isAdmin || user?.permissions?.access_robots || canViewRobots) ? [{ id: 'robots', label: 'Robôs', icon: Cpu }] : []),
     ], [isAdmin, user?.permissions, canViewRobots]);
 
     const financialItems = useMemo(() => [
         { id: 'financial', label: 'Visão Geral', icon: DollarSign },
-        { id: 'financial-calendar', label: 'Agenda Receb.', icon: CalendarCheck },
-        { id: 'commissions', label: 'Comissões', icon: HandCoins },
-        { id: 'office-expenses', label: 'Despesas Fixas', icon: Building },
-    ], []);
+        ...((isAdmin || user?.permissions?.access_financial_calendar) ? [{ id: 'financial-calendar', label: 'Agenda Receb.', icon: CalendarCheck }] : []),
+        ...((isAdmin || user?.permissions?.access_commissions) ? [{ id: 'commissions', label: 'Comissões', icon: HandCoins }] : []),
+        ...((isAdmin || user?.permissions?.access_office_expenses) ? [{ id: 'office-expenses', label: 'Despesas Fixas', icon: Building }] : []),
+    ], [isAdmin, user?.permissions]);
 
     const getInitials = (name: string) => {
         const cleanName = name ? name.trim() : '';
@@ -461,6 +464,9 @@ const Sidebar: React.FC = () => {
             canViewWhatsApp: isAdmin || user?.permissions?.access_whatsapp === true,
             canViewPersonal: isAdmin || user?.permissions?.access_personal === true,
             canViewRobots: isAdmin || user?.permissions?.access_robots === true,
+            canViewRetirements: isAdmin || user?.permissions?.access_retirements === true,
+            canViewExpertise: isAdmin || user?.permissions?.access_expertise === true,
+            canViewEvents: isAdmin || user?.permissions?.access_events === true,
         };
     }, [user]);
 

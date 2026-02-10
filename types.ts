@@ -608,6 +608,7 @@ export interface UserPermission {
   access_financial: boolean;
   access_tools: boolean;
   access_whatsapp?: boolean;
+  access_retirements?: boolean;
 
   // Permissões Granulares
   access_personal: boolean;
@@ -616,11 +617,19 @@ export interface UserPermission {
   access_cases_judicial?: boolean;
   access_cases_administrative?: boolean;
   access_cases_insurance?: boolean;
+  access_expertise?: boolean;
+  access_events?: boolean;
+
+  // Financeiro Granular
+  access_financial_calendar?: boolean;
+  access_commissions?: boolean;
+  access_office_expenses?: boolean;
 
   // Ferramentas Específicas
   access_tool_cnis?: boolean;
   access_tool_gps?: boolean;
   access_tool_docs?: boolean;
+  access_tool_cep?: boolean;
   access_robots?: boolean;
 }
 

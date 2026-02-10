@@ -20,7 +20,7 @@ const Financial = React.lazy(() => import('./views/Financial'));
 const OfficeExpenses = React.lazy(() => import('./views/OfficeExpenses'));
 const FinancialCalendar = React.lazy(() => import('./views/FinancialCalendar'));
 const Events = React.lazy(() => import('./views/Events'));
-// const Retirements = React.lazy(() => import('./views/Retirements'));
+const Retirements = React.lazy(() => import('./views/Retirements'));
 const CnisReader = React.lazy(() => import('./views/Tools/CnisReader'));
 const GpsCalculator = React.lazy(() => import('./views/Tools/GpsCalculator'));
 const DocumentBuilder = React.lazy(() => import('./views/Tools/DocumentBuilder'));
@@ -265,7 +265,9 @@ const AppContent: React.FC = () => {
             <FinancialCalendar />
           </View>
 
-          {/* Retirements view removed from here */}
+          <View id="retirements" activeView={currentView} isLowPerformance={isLowPerformance}>
+            <Retirements />
+          </View>
 
           <View id="cnis" activeView={currentView} isLowPerformance={isLowPerformance}>
             <CnisReader />
