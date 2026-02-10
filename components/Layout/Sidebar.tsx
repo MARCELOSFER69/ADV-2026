@@ -129,26 +129,26 @@ const SidebarView = memo(({
     ];
 
     const caseItems = useMemo(() => [
-        ...((isAdmin || user?.permissions?.access_cases_judicial) ? [{ id: 'cases-judicial', label: 'Judicial', icon: Gavel, subItems: judicialSubItems }] : []),
-        ...((isAdmin || user?.permissions?.access_cases_administrative) ? [{ id: 'cases-administrative', label: 'Administrativo', icon: FileText, subItems: administrativeSubItems }] : []),
+        ...(canViewCases && user?.permissions?.access_cases_judicial ? [{ id: 'cases-judicial', label: 'Judicial', icon: Gavel, subItems: judicialSubItems }] : []),
+        ...(canViewCases && user?.permissions?.access_cases_administrative ? [{ id: 'cases-administrative', label: 'Administrativo', icon: FileText, subItems: administrativeSubItems }] : []),
         ...(canViewExpertise ? [{ id: 'expertise', label: 'Perícias', icon: Stethoscope }] : []),
         ...(canViewEvents ? [{ id: 'events', label: 'Eventos', icon: CalendarCheck }] : []),
-    ], [isAdmin, user?.permissions, canViewExpertise, canViewEvents]);
+    ], [canViewCases, user?.permissions, canViewExpertise, canViewEvents]);
 
     const toolItems = useMemo(() => [
-        ...((isAdmin || user?.permissions?.access_tool_cnis) ? [{ id: 'cnis', label: 'Leitor CNIS', icon: FileScan }] : []),
-        ...((isAdmin || user?.permissions?.access_tool_gps) ? [{ id: 'gps-calculator', label: 'Calculadora GPS', icon: Calculator }] : []),
-        ...((isAdmin || user?.permissions?.access_tool_docs) ? [{ id: 'document-builder', label: 'Criador Modelos', icon: Briefcase }] : []),
-        ...((isAdmin || user?.permissions?.access_tool_cep) ? [{ id: 'cep-facil', label: 'CEP Fácil', icon: MapPin }] : []),
-        ...((isAdmin || user?.permissions?.access_robots || canViewRobots) ? [{ id: 'robots', label: 'Robôs', icon: Cpu }] : []),
-    ], [isAdmin, user?.permissions, canViewRobots]);
+        ...(canViewTools && user?.permissions?.access_tool_cnis ? [{ id: 'cnis', label: 'Leitor CNIS', icon: FileScan }] : []),
+        ...(canViewTools && user?.permissions?.access_tool_gps ? [{ id: 'gps-calculator', label: 'Calculadora GPS', icon: Calculator }] : []),
+        ...(canViewTools && user?.permissions?.access_tool_docs ? [{ id: 'document-builder', label: 'Criador Modelos', icon: Briefcase }] : []),
+        ...(canViewTools && user?.permissions?.access_tool_cep ? [{ id: 'cep-facil', label: 'CEP Fácil', icon: MapPin }] : []),
+        ...(canViewTools && (user?.permissions?.access_robots || canViewRobots) ? [{ id: 'robots', label: 'Robôs', icon: Cpu }] : []),
+    ], [canViewTools, user?.permissions, canViewRobots]);
 
     const financialItems = useMemo(() => [
-        { id: 'financial', label: 'Visão Geral', icon: DollarSign },
-        ...((isAdmin || user?.permissions?.access_financial_calendar) ? [{ id: 'financial-calendar', label: 'Agenda Receb.', icon: CalendarCheck }] : []),
-        ...((isAdmin || user?.permissions?.access_commissions) ? [{ id: 'commissions', label: 'Comissões', icon: HandCoins }] : []),
-        ...((isAdmin || user?.permissions?.access_office_expenses) ? [{ id: 'office-expenses', label: 'Despesas Fixas', icon: Building }] : []),
-    ], [isAdmin, user?.permissions]);
+        ...(canViewFinancial ? [{ id: 'financial', label: 'Visão Geral', icon: DollarSign }] : []),
+        ...(canViewFinancial && user?.permissions?.access_financial_calendar ? [{ id: 'financial-calendar', label: 'Agenda Receb.', icon: CalendarCheck }] : []),
+        ...(canViewFinancial && user?.permissions?.access_commissions ? [{ id: 'commissions', label: 'Comissões', icon: HandCoins }] : []),
+        ...(canViewFinancial && user?.permissions?.access_office_expenses ? [{ id: 'office-expenses', label: 'Despesas Fixas', icon: Building }] : []),
+    ], [canViewFinancial, user?.permissions]);
 
     const getInitials = (name: string) => {
         const cleanName = name ? name.trim() : '';
@@ -455,18 +455,27 @@ const Sidebar: React.FC = () => {
         const SUPER_ADMIN_EMAIL = 'marcelofernando@escritorio.com';
         const isSuperAdmin = user?.email?.trim().toLowerCase() === SUPER_ADMIN_EMAIL.trim().toLowerCase();
         const isAdmin = isSuperAdmin || user?.permissions?.role === 'admin';
+
+        // Helper to check permission, defaulting to true for admins if field is missing/null
+        const checkPerm = (field: string) => {
+            const val = (user?.permissions as any)?.[field];
+            if (val === false) return false;
+            if (val === true) return true;
+            return isAdmin; // Fallback for admins if not explicitly set
+        };
+
         return {
             isAdmin,
-            canViewFinancial: isAdmin || user?.permissions?.access_financial === true,
-            canViewCases: isAdmin || user?.permissions?.access_cases === true,
-            canViewClients: isAdmin || user?.permissions?.access_clients === true,
-            canViewTools: isAdmin || user?.permissions?.access_tools === true,
-            canViewWhatsApp: isAdmin || user?.permissions?.access_whatsapp === true,
-            canViewPersonal: isAdmin || user?.permissions?.access_personal === true,
-            canViewRobots: isAdmin || user?.permissions?.access_robots === true,
-            canViewRetirements: isAdmin || user?.permissions?.access_retirements === true,
-            canViewExpertise: isAdmin || user?.permissions?.access_expertise === true,
-            canViewEvents: isAdmin || user?.permissions?.access_events === true,
+            canViewFinancial: checkPerm('access_financial'),
+            canViewCases: checkPerm('access_cases'),
+            canViewClients: checkPerm('access_clients'),
+            canViewTools: checkPerm('access_tools'),
+            canViewWhatsApp: checkPerm('access_whatsapp'),
+            canViewPersonal: checkPerm('access_personal'),
+            canViewRobots: checkPerm('access_robots'),
+            canViewRetirements: checkPerm('access_retirements'),
+            canViewExpertise: checkPerm('access_expertise'),
+            canViewEvents: checkPerm('access_events'),
         };
     }, [user]);
 
