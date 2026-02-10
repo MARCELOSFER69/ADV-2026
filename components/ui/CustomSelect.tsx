@@ -8,7 +8,7 @@ interface Option {
 }
 
 interface CustomSelectProps {
-  label: string;
+  label: React.ReactNode;
   value: string;
   onChange: (value: string) => void;
   options: Option[];

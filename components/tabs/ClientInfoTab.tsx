@@ -278,10 +278,21 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
 
             {isEditMode ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 animate-in fade-in duration-300">
-                    <div><label className="block text-xs font-bold text-slate-500 mb-1">Data Nascimento</label><input type="date" className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500 [color-scheme:dark]" value={editedClient.data_nascimento || ''} onChange={e => setEditedClient({ ...editedClient, data_nascimento: e.target.value })} /></div>
+                    <div>
+                        <label className="flex items-center gap-1 text-xs font-bold text-slate-500 mb-1">
+                            Data Nascimento
+                            {!editedClient.data_nascimento && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                        </label>
+                        <input type="date" className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500 [color-scheme:dark]" value={editedClient.data_nascimento || ''} onChange={e => setEditedClient({ ...editedClient, data_nascimento: e.target.value })} />
+                    </div>
                     <div>
                         <CustomSelect
-                            label="Sexo"
+                            label={
+                                <span className="flex items-center gap-1">
+                                    Sexo
+                                    {!editedClient.sexo && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                                </span>
+                            }
                             value={editedClient.sexo || ''}
                             onChange={(val) => setEditedClient({ ...editedClient, sexo: val as any })}
                             options={[
@@ -291,7 +302,13 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
                             placeholder="Selecione"
                         />
                     </div>
-                    <div><label className="block text-xs font-bold text-slate-500 mb-1">Telefone</label><input className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.telefone || ''} onChange={e => setEditedClient({ ...editedClient, telefone: formatPhone(e.target.value) })} /></div>
+                    <div>
+                        <label className="flex items-center gap-1 text-xs font-bold text-slate-500 mb-1">
+                            Telefone
+                            {!editedClient.telefone && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                        </label>
+                        <input className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.telefone || ''} onChange={e => setEditedClient({ ...editedClient, telefone: formatPhone(e.target.value) })} />
+                    </div>
                     <div className="md:col-span-2"><label className="block text-xs font-bold text-slate-500 mb-1">Email</label><input type="email" className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.email || ''} onChange={e => setEditedClient({ ...editedClient, email: e.target.value })} /></div>
 
                     <div className="md:col-span-3 border-t border-white/5 pt-4 mt-2 mb-2">
@@ -336,17 +353,50 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
                     <div><CustomSelect label="Filial" value={editedClient.filial as string || ''} onChange={(val) => setEditedClient({ ...editedClient, filial: val, captador: '' })} options={BRANCH_OPTIONS} icon={Building2} placeholder="Selecione" /></div>
                     <div className="md:col-span-2 relative"><label className="block text-xs font-bold text-slate-500 mb-1">Captador {editedClient.filial && <span className="text-xs font-normal text-slate-600 ml-1">({filteredCaptadores.length} disponíveis)</span>}</label><div className="flex gap-2">{isAddingCaptador ? (<div className="flex-1 flex gap-2 animate-in slide-in-from-left-2 fade-in duration-200"><input autoFocus className="w-full bg-[#18181b] border border-white/5 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-gold-500" placeholder="Nome do novo captador..." value={newCaptadorName} onChange={(e) => setNewCaptadorName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleAddCaptador(); if (e.key === 'Escape') { setIsAddingCaptador(false); setNewCaptadorName(''); } }} /><button onClick={handleAddCaptador} className="bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded-lg transition-colors"><Check size={18} /></button><button onClick={() => { setIsAddingCaptador(false); setNewCaptadorName(''); }} className="bg-red-600 hover:bg-red-500 text-white p-2 rounded-lg transition-colors"><X size={18} /></button></div>) : (<div className="flex-1 flex gap-2"><div className="flex-1"><CustomSelect label="" value={editedClient.captador || ''} onChange={(val) => setEditedClient({ ...editedClient, captador: val })} options={filteredCaptadores.map(c => ({ label: c.nome, value: c.nome }))} icon={Share2} placeholder={editedClient.filial ? "Selecione..." : "Selecione uma filial primeiro"} /></div>{editedClient.filial && (<button onClick={() => setIsAddingCaptador(true)} className="bg-[#18181b] border border-white/5 hover:border-gold-500 hover:text-gold-500 text-slate-400 p-2.5 rounded-xl transition-all h-[42px] mt-auto"><Plus size={18} /></button>)}{editedClient.filial && editedClient.captador && (<button onClick={handleDeleteCaptadorInit} className="bg-[#18181b] border border-white/5 hover:border-red-500 hover:text-red-500 text-slate-400 p-2.5 rounded-xl transition-all h-[42px] mt-auto"><Trash2 size={18} /></button>)}</div>)}</div></div>
                     <div className="md:col-span-3 border-t border-white/5 pt-4 mt-2"><h5 className="text-sm font-bold text-gold-500 mb-3 font-serif">Documentação</h5></div>
-                    <div><label className="block text-xs font-bold text-slate-500 mb-1">RG</label><input className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.rg || ''} onChange={e => setEditedClient({ ...editedClient, rg: e.target.value })} /></div>
+                    <div>
+                        <label className="flex items-center gap-1 text-xs font-bold text-slate-500 mb-1">
+                            RG
+                            {!editedClient.rg && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                        </label>
+                        <input className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.rg || ''} onChange={e => setEditedClient({ ...editedClient, rg: e.target.value })} />
+                    </div>
                     <div><label className="block text-xs font-bold text-slate-500 mb-1">Org. Emissor</label><input className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.orgao_emissor || ''} onChange={e => setEditedClient({ ...editedClient, orgao_emissor: e.target.value })} /></div>
                     <div><label className="block text-xs font-bold text-slate-500 mb-1">Profissão</label><input className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.profissao || ''} onChange={e => setEditedClient({ ...editedClient, profissao: e.target.value })} /></div>
                     <div><label className="block text-xs font-bold text-slate-500 mb-1">Estado Civil</label><select className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.estado_civil || ''} onChange={e => setEditedClient({ ...editedClient, estado_civil: e.target.value })}><option value="">Selecione</option><option value="Solteiro(a)">Solteiro(a)</option><option value="Casado(a)">Casado(a)</option><option value="Divorciado(a)">Divorciado(a)</option><option value="Viúvo(a)">Viúvo(a)</option><option value="União Estável">União Estável</option></select></div>
                     <div><label className="block text-xs font-bold text-slate-500 mb-1">Nacionalidade</label><input className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.nacionalidade || ''} onChange={e => setEditedClient({ ...editedClient, nacionalidade: e.target.value })} /></div>
                     <div className="md:col-span-3 border-t border-white/5 pt-4 mt-2"><h5 className="text-sm font-bold text-gold-500 mb-3 font-serif">Endereço</h5></div>
-                    <div className="relative"><label className="block text-xs font-bold text-slate-500 mb-1">CEP</label><input className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.cep || ''} onChange={handleCepChange} /></div>
-                    <div className="md:col-span-2"><label className="block text-xs font-bold text-slate-500 mb-1">Logradouro</label><input className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.endereco || ''} onChange={e => setEditedClient({ ...editedClient, endereco: e.target.value })} /></div>
+                    <div className="relative">
+                        <label className="flex items-center gap-1 text-xs font-bold text-slate-500 mb-1">
+                            CEP
+                            {!editedClient.cep && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                        </label>
+                        <input className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.cep || ''} onChange={handleCepChange} />
+                    </div>
+                    <div className="md:col-span-2">
+                        <label className="flex items-center gap-1 text-xs font-bold text-slate-500 mb-1">
+                            Logradouro
+                            {!editedClient.endereco && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                        </label>
+                        <input className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.endereco || ''} onChange={e => setEditedClient({ ...editedClient, endereco: e.target.value })} />
+                    </div>
                     <div><label className="block text-xs font-bold text-slate-500 mb-1">Número</label><input className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.numero_casa || ''} onChange={e => setEditedClient({ ...editedClient, numero_casa: e.target.value })} /></div>
-                    <div><label className="block text-xs font-bold text-slate-500 mb-1">Bairro</label><input className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.bairro || ''} onChange={e => setEditedClient({ ...editedClient, bairro: e.target.value })} /></div>
-                    <div><label className="block text-xs font-bold text-slate-500 mb-1">Cidade/UF</label><div className="flex gap-2"><input className="w-2/3 bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.cidade || ''} onChange={e => setEditedClient({ ...editedClient, cidade: e.target.value })} /><input className="w-1/3 bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.uf || ''} onChange={e => setEditedClient({ ...editedClient, uf: e.target.value })} /></div></div>
+                    <div>
+                        <label className="flex items-center gap-1 text-xs font-bold text-slate-500 mb-1">
+                            Bairro
+                            {!editedClient.bairro && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                        </label>
+                        <input className="w-full bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.bairro || ''} onChange={e => setEditedClient({ ...editedClient, bairro: e.target.value })} />
+                    </div>
+                    <div>
+                        <label className="flex items-center gap-1 text-xs font-bold text-slate-500 mb-1">
+                            Cidade/UF
+                            {(!editedClient.cidade || !editedClient.uf) && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                        </label>
+                        <div className="flex gap-2">
+                            <input className="w-2/3 bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.cidade || ''} onChange={e => setEditedClient({ ...editedClient, cidade: e.target.value })} />
+                            <input className="w-1/3 bg-[#18181b] border border-white/5 rounded px-2 py-1 text-sm text-white outline-none focus:border-gold-500" value={editedClient.uf || ''} onChange={e => setEditedClient({ ...editedClient, uf: e.target.value })} />
+                        </div>
+                    </div>
                     <div className="md:col-span-3 border-t border-white/5 pt-4 mt-2"><h5 className="text-sm font-bold text-red-500 mb-3 font-serif">Pendências</h5></div>
                     <div className="md:col-span-3 flex flex-wrap gap-2">{PENDING_OPTIONS.map(option => { const isSelected = editedClient.pendencias?.includes(option); return (<button key={option} type="button" onClick={() => togglePendencia(option)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${isSelected ? 'bg-red-500/20 border-red-500 text-red-400' : 'bg-[#18181b] border-white/10 text-slate-400 hover:text-white'}`}>{option}</button>); })}</div>
                     <div className="md:col-span-3 border-t border-white/5 pt-4 mt-2">
@@ -426,10 +476,37 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
 
             {!isEditMode && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <div className="p-4 bg-[#18181b] border border-white/5 rounded-xl hover:border-white/10 transition-colors"><span className="text-xs text-slate-500 uppercase font-bold block mb-1">Telefone</span><div className="flex items-center gap-2"><span className="text-slate-200 font-medium">{String(client.telefone || '-')}</span>{client.telefone && <button onClick={() => setIsWhatsAppModalOpen(true)} className="text-emerald-500 hover:text-emerald-400 p-1 rounded hover:bg-emerald-500/10 transition-colors" title="WhatsApp"><MessageCircle size={16} /></button>}</div></div>
-                    <div className="p-4 bg-[#18181b] border border-white/5 rounded-xl hover:border-white/10 transition-colors"><span className="text-xs text-slate-500 uppercase font-bold block mb-1">Email</span><span className="text-slate-200 font-medium truncate block" title={client.email}>{String(client.email || '-')}</span></div>
-                    <div className="p-4 bg-[#18181b] border border-white/5 rounded-xl md:col-span-2 hover:border-white/10 transition-colors"><span className="text-xs text-slate-500 uppercase font-bold block mb-1">Endereço</span><span className="text-slate-200 font-medium flex items-center gap-2"><MapPin size={14} className="text-gold-500" /> {String(client.endereco ? `${client.endereco}, ${client.numero_casa || 'S/N'} - ${client.bairro || ''}, ${client.cidade || ''} - ${client.uf || ''}` : '-')}</span></div>
-                    <div className="p-4 bg-[#18181b] border border-white/5 rounded-xl hover:border-white/10 transition-colors"><span className="text-xs text-slate-500 uppercase font-bold block mb-1">Data Nascimento</span><span className="text-slate-200 font-medium">{formatDateDisplay(client.data_nascimento)}</span></div>
+                    <div className="p-4 bg-[#18181b] border border-white/5 rounded-xl hover:border-white/10 transition-colors">
+                        <span className="text-xs text-slate-500 uppercase font-bold mb-1 flex items-center gap-1">
+                            Telefone
+                            {!client.telefone && <AlertTriangle size={12} className="text-amber-500" />}
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-slate-200 font-medium">{String(client.telefone || '-')}</span>
+                            {client.telefone && <button onClick={() => setIsWhatsAppModalOpen(true)} className="text-emerald-500 hover:text-emerald-400 p-1 rounded hover:bg-emerald-500/10 transition-colors" title="WhatsApp"><MessageCircle size={16} /></button>}
+                        </div>
+                    </div>
+                    <div className="p-4 bg-[#18181b] border border-white/5 rounded-xl hover:border-white/10 transition-colors">
+                        <span className="text-xs text-slate-500 uppercase font-bold block mb-1">Email</span>
+                        <span className="text-slate-200 font-medium truncate block" title={client.email}>{String(client.email || '-')}</span>
+                    </div>
+                    <div className="p-4 bg-[#18181b] border border-white/5 rounded-xl md:col-span-2 hover:border-white/10 transition-colors">
+                        <span className="text-xs text-slate-500 uppercase font-bold mb-1 flex items-center gap-1">
+                            Endereço
+                            {(!client.endereco || !client.bairro || !client.cidade || !client.uf) && <AlertTriangle size={12} className="text-amber-500" />}
+                        </span>
+                        <span className="text-slate-200 font-medium flex items-center gap-2">
+                            <MapPin size={14} className="text-gold-500" />
+                            {String(client.endereco ? `${client.endereco}, ${client.numero_casa || 'S/N'} - ${client.bairro || ''}, ${client.cidade || ''} - ${client.uf || ''}` : '-')}
+                        </span>
+                    </div>
+                    <div className="p-4 bg-[#18181b] border border-white/5 rounded-xl hover:border-white/10 transition-colors">
+                        <span className="text-xs text-slate-500 uppercase font-bold mb-1 flex items-center gap-1">
+                            Data Nascimento
+                            {!client.data_nascimento && <AlertTriangle size={12} className="text-amber-500" />}
+                        </span>
+                        <span className="text-slate-200 font-medium">{formatDateDisplay(client.data_nascimento)}</span>
+                    </div>
                     <div className="p-4 bg-[#18181b] border border-white/5 rounded-xl hover:border-white/10 transition-colors"><span className="text-xs text-slate-500 uppercase font-bold block mb-1">Filial</span><span className="text-emerald-500 font-bold">{String(client.filial || 'Matriz')}</span></div>
                     <div className="p-4 bg-[#18181b] border border-white/5 rounded-xl md:col-span-2 hover:border-white/10 transition-colors"><span className="text-xs text-slate-500 uppercase font-bold block mb-1">Observação</span><p className="text-slate-300 text-sm italic">{String(client.observacao || 'Sem observações.')}</p></div>
 

@@ -407,7 +407,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                                     <div className={`w-16 h-16 rounded-full border-2 border-white/10 flex items-center justify-center text-2xl font-bold shadow-lg 
                                         ${editedClient.pendencias && editedClient.pendencias.length > 0
                                             ? 'bg-red-600 text-white ring-4 ring-red-600/20'
-                                            : isClientIncomplete(editedClient)
+                                            : (editedClient.import_source === 'imported' && isClientIncomplete(editedClient))
                                                 ? 'bg-yellow-500 text-black ring-4 ring-yellow-500/20'
                                                 : 'bg-zinc-700 text-zinc-300'}`}>
                                         {String(editedClient.nome_completo || '').substring(0, 2).toUpperCase()}

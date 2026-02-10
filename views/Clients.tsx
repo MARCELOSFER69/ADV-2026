@@ -34,6 +34,12 @@ const DEFAULT_CLIENT_COLUMNS: ColumnConfig[] = [
     { id: 'nascimento', label: 'Nascimento', visible: false, order: 7 },
     { id: 'captador', label: 'Captador', visible: false, order: 8 },
     { id: 'email', label: 'Email', visible: false, order: 9 },
+    { id: 'profissao', label: 'Profissão', visible: false, order: 10 },
+    { id: 'reap_21', label: 'REAP 2021', visible: false, order: 11 },
+    { id: 'reap_22', label: 'REAP 2022', visible: false, order: 12 },
+    { id: 'reap_23', label: 'REAP 2023', visible: false, order: 13 },
+    { id: 'reap_24', label: 'REAP 2024', visible: false, order: 14 },
+    { id: 'reap_25', label: 'REAP 2025', visible: false, order: 15 },
 ];
 
 const PENDING_OPTIONS = [
@@ -504,6 +510,28 @@ const Clients: React.FC = () => {
                         case 'email':
                             value = client.email || 'N/A';
                             break;
+                        case 'profissao':
+                            value = client.profissao || 'N/A';
+                            break;
+                        case 'reap_21':
+                        case 'reap_22':
+                        case 'reap_23':
+                        case 'reap_24': {
+                            const year = col.id.replace('reap_', '20');
+                            const done = client.reap_history?.[year];
+                            value = done === true ? 'Sim' : 'Não';
+                            break;
+                        }
+                        case 'reap_25': {
+                            const months = client.reap_history?.['2025'];
+                            if (Array.isArray(months)) {
+                                const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                                value = months.map(m => monthNames[m - 1]).join(', ');
+                            } else {
+                                value = months === true ? 'Sim' : 'Não';
+                            }
+                            break;
+                        }
                     }
                     row[col.label] = value;
                 });
@@ -853,6 +881,7 @@ const Clients: React.FC = () => {
                 isOpen={isImportModalOpen}
                 onClose={() => setIsImportModalOpen(false)}
                 addClient={addClient}
+                updateClient={updateClient}
                 showToast={showToast}
                 captadores={captadores}
                 addCaptador={addCaptador}

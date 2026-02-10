@@ -84,7 +84,11 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
                             </div>
 
                             <div className="col-span-12 md:col-span-8">
-                                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Nome Completo <span className="text-red-500">*</span></label>
+                                <label className="flex items-center gap-1 text-xs font-bold text-zinc-400 uppercase mb-1">
+                                    Nome Completo
+                                    <span className="text-red-500">*</span>
+                                    {!newClient.nome_completo && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                                </label>
                                 <div className="relative group">
                                     <User className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-yellow-600 transition-colors" size={18} />
                                     <input
@@ -99,7 +103,11 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
                             </div>
 
                             <div className="col-span-12 md:col-span-4">
-                                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">CPF/CNPJ <span className="text-red-500">*</span></label>
+                                <label className="flex items-center gap-1 text-xs font-bold text-zinc-400 uppercase mb-1">
+                                    CPF/CNPJ
+                                    <span className="text-red-500">*</span>
+                                    {!newClient.cpf_cnpj && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                                </label>
                                 <div className="relative group flex gap-2">
                                     <div className="relative flex-1">
                                         <CreditCard className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${newClient.cpf_cnpj && 'text-zinc-600 group-focus-within:text-yellow-600'}`} size={18} />
@@ -123,7 +131,11 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
                             </div>
 
                             <div className="col-span-6 md:col-span-3">
-                                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">RG <span className="text-red-500">*</span></label>
+                                <label className="flex items-center gap-1 text-xs font-bold text-zinc-400 uppercase mb-1">
+                                    RG
+                                    <span className="text-red-500">*</span>
+                                    {!newClient.rg && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                                </label>
                                 <div className="relative group">
                                     <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-yellow-600 transition-colors" size={18} />
                                     <input required className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 pl-10 pr-4 py-2.5 rounded-xl focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600/20 outline-none placeholder:text-zinc-600" value={newClient.rg || ''} onChange={e => setNewClient({ ...newClient, rg: e.target.value })} placeholder="0000000" />
@@ -136,7 +148,11 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
                             </div>
 
                             <div className="col-span-6 md:col-span-3">
-                                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Nascimento <span className="text-red-500">*</span></label>
+                                <label className="flex items-center gap-1 text-xs font-bold text-zinc-400 uppercase mb-1">
+                                    Nascimento
+                                    <span className="text-red-500">*</span>
+                                    {!newClient.data_nascimento && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                                </label>
                                 <div className="relative group">
                                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 z-10 pointer-events-none" size={18} />
                                     <input
@@ -152,7 +168,13 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
 
                             <div className="col-span-6 md:col-span-2">
                                 <CustomSelect
-                                    label="Sexo"
+                                    label={
+                                        <span className="flex items-center gap-1">
+                                            Sexo
+                                            <span className="text-red-500">*</span>
+                                            {!newClient.sexo && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                                        </span>
+                                    }
                                     value={newClient.sexo || ''}
                                     onChange={(val) => setNewClient({ ...newClient, sexo: val as any })}
                                     options={SEX_OPTIONS}
@@ -228,7 +250,10 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
                             </div>
 
                             <div className="col-span-12 md:col-span-3">
-                                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Telefone</label>
+                                <label className="flex items-center gap-1 text-xs font-bold text-zinc-400 uppercase mb-1">
+                                    Telefone
+                                    {!newClient.telefone && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                                </label>
                                 <div className="relative group">
                                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-yellow-600 transition-colors" size={18} />
                                     <input className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 pl-10 pr-4 py-2.5 rounded-xl focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600/20 outline-none placeholder:text-zinc-600" value={newClient.telefone || ''} onChange={e => setNewClient({ ...newClient, telefone: formatPhone(e.target.value) })} placeholder="(00) 00000-0000" />
@@ -292,7 +317,10 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
                             </div>
 
                             <div className="col-span-12 md:col-span-3">
-                                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">CEP</label>
+                                <label className="flex items-center gap-1 text-xs font-bold text-zinc-400 uppercase mb-1">
+                                    CEP
+                                    {!newClient.cep && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                                </label>
                                 <div className="relative group">
                                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-yellow-600 transition-colors" size={18} />
                                     <input className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 pl-10 pr-8 py-2.5 rounded-xl focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600/20 outline-none placeholder:text-zinc-600" value={newClient.cep || ''} onChange={(e) => handleCepChange(e)} placeholder="00000-000" maxLength={9} />
@@ -301,7 +329,10 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
                             </div>
 
                             <div className="col-span-12 md:col-span-7">
-                                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Logradouro (Rua)</label>
+                                <label className="flex items-center gap-1 text-xs font-bold text-zinc-400 uppercase mb-1">
+                                    Logradouro
+                                    {!newClient.endereco && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                                </label>
                                 <input className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 px-4 py-2.5 rounded-xl focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600/20 outline-none placeholder:text-zinc-600" value={newClient.endereco || ''} onChange={e => setNewClient({ ...newClient, endereco: e.target.value })} placeholder="Rua, Avenida..." />
                             </div>
 
@@ -311,17 +342,26 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
                             </div>
 
                             <div className="col-span-12 md:col-span-4">
-                                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Bairro</label>
+                                <label className="flex items-center gap-1 text-xs font-bold text-zinc-400 uppercase mb-1">
+                                    Bairro
+                                    {!newClient.bairro && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                                </label>
                                 <input className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 px-4 py-2.5 rounded-xl focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600/20 outline-none placeholder:text-zinc-600" value={newClient.bairro || ''} onChange={e => setNewClient({ ...newClient, bairro: e.target.value })} />
                             </div>
 
                             <div className="col-span-12 md:col-span-6">
-                                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Cidade</label>
+                                <label className="flex items-center gap-1 text-xs font-bold text-zinc-400 uppercase mb-1">
+                                    Cidade
+                                    {!newClient.cidade && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                                </label>
                                 <input className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 px-4 py-2.5 rounded-xl focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600/20 outline-none placeholder:text-zinc-600" value={newClient.cidade || ''} onChange={e => setNewClient({ ...newClient, cidade: e.target.value })} />
                             </div>
 
                             <div className="col-span-12 md:col-span-2">
-                                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">UF</label>
+                                <label className="flex items-center gap-1 text-xs font-bold text-zinc-400 uppercase mb-1">
+                                    UF
+                                    {!newClient.uf && <AlertTriangle size={12} className="text-amber-500 animate-pulse" />}
+                                </label>
                                 <input className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 px-4 py-2.5 rounded-xl focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600/20 outline-none uppercase placeholder:text-zinc-600" value={newClient.uf || ''} onChange={e => setNewClient({ ...newClient, uf: e.target.value })} maxLength={2} />
                             </div>
                         </div>

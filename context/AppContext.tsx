@@ -707,7 +707,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 'interviewStatus', 'interviewDate', 'filial', 'captador',
                 'representante_nome', 'representante_cpf', 'pendencias',
                 'observacao', 'foto', 'status', 'senha_gov', 'senha_inss',
-                'motivo_arquivamento', 'rgp_status', 'reap_status', 'documentos',
+                'motivo_arquivamento', 'rgp_status', 'reap_status', 'reap_ano_base', 'reap_history', 'documentos',
                 'import_source', 'data_cadastro'
             ];
 
@@ -715,7 +715,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             validKeys.forEach(key => {
                 const value = (newClient as any)[key];
                 if (value !== undefined) {
-                    payload[key] = value;
+                    // Sanitização: String vazia vira null (evita erro de sintaxe em colunas DATE)
+                    payload[key] = (typeof value === 'string' && value.trim() === '') ? null : value;
                 }
             });
 
@@ -747,7 +748,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 'interviewStatus', 'interviewDate', 'filial', 'captador',
                 'representante_nome', 'representante_cpf', 'pendencias',
                 'observacao', 'foto', 'status', 'senha_gov', 'senha_inss',
-                'motivo_arquivamento', 'rgp_status', 'reap_status', 'documentos',
+                'motivo_arquivamento', 'rgp_status', 'reap_status', 'reap_ano_base', 'reap_history', 'documentos',
                 'import_source'
             ];
 
@@ -758,7 +759,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             validKeys.forEach(key => {
                 const value = (client as any)[key];
                 if (value !== undefined) {
-                    payload[key] = value;
+                    // Sanitização: String vazia vira null (evita erro de sintaxe em colunas DATE)
+                    payload[key] = (typeof value === 'string' && value.trim() === '') ? null : value;
                 }
             });
 
@@ -872,7 +874,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             validKeys.forEach(key => {
                 const value = (newCase as any)[key];
                 if (value !== undefined) {
-                    payload[key] = value;
+                    // Sanitização: String vazia vira null (evita erro de sintaxe em colunas DATE)
+                    payload[key] = (typeof value === 'string' && value.trim() === '') ? null : value;
                 }
             });
 
@@ -918,7 +921,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             validKeys.forEach(key => {
                 const value = (updatedCase as any)[key];
                 if (value !== undefined) {
-                    payload[key] = value;
+                    // Sanitização: String vazia vira null (evita erro de sintaxe em colunas DATE)
+                    payload[key] = (typeof value === 'string' && value.trim() === '') ? null : value;
                 }
             });
 
@@ -1056,7 +1060,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         validKeys.forEach(key => {
             const value = (record as any)[key];
             if (value !== undefined) {
-                payload[key] = value;
+                // Sanitização: String vazia vira null (evita erro de sintaxe em colunas DATE)
+                payload[key] = (typeof value === 'string' && value.trim() === '') ? null : value;
             }
         });
 

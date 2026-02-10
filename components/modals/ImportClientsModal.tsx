@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { X, Upload, FileSpreadsheet, AlertTriangle, CheckCircle2, Loader2, Building2, Users, ChevronRight, ChevronLeft, Trash2, Download, Copy, Clock } from 'lucide-react';
 import { Client, Branch, Captador, User } from '../../types';
 import { parseImportExcel, enrichClientWithCep, getIncompleteFields, findDuplicateCpfs, findIntraSpreadsheetDuplicates, matchCaptador, normalizeString, downloadTemplateExcel, saveImportLog, fetchImportLogs } from '../../services/importService';
+import { checkCpfExists } from '../../services/clientsService';
 import CustomSelect from '../ui/CustomSelect';
 import { v4 as uuidv4 } from 'uuid';
 import { formatDateDisplay } from '../../utils/dateUtils';
@@ -10,6 +11,7 @@ interface ImportClientsModalProps {
     isOpen: boolean;
     onClose: () => void;
     addClient: (client: Client) => Promise<void>;
+    updateClient: (client: Client) => Promise<void>;
     showToast: (type: 'success' | 'error' | 'warning', message: string) => void;
     captadores: Captador[];
     addCaptador: (nome: string, filial: string) => Promise<Captador | null>;
@@ -41,7 +43,7 @@ interface ImportResult {
     errors: string[];
 }
 
-const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose, addClient, showToast, captadores, addCaptador, user }) => {
+const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose, addClient, updateClient, showToast, captadores, addCaptador, user }) => {
     const [step, setStep] = useState<ImportStep>('upload');
     const [parsedClients, setParsedClients] = useState<Partial<Client>[]>([]);
     const [selectedBranch, setSelectedBranch] = useState('');
@@ -247,36 +249,44 @@ const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose
                 // Match captador (accent-insensitive)
                 const matchedCaptador = matchCaptador(enriched.captador || '', captadores, selectedBranch);
 
-                const newId = uuidv4();
-                const clientToInsert: Client = {
-                    id: newId,
-                    nome_completo: enriched.nome_completo || '',
-                    cpf_cnpj: enriched.cpf_cnpj || '',
-                    cep: enriched.cep || '',
-                    endereco: enriched.endereco || '',
-                    bairro: enriched.bairro || '',
-                    cidade: enriched.cidade || '',
-                    uf: enriched.uf || '',
-                    captador: matchedCaptador || enriched.captador || '',
-                    senha_gov: enriched.senha_gov || '',
-                    filial: selectedBranch,
-                    import_source: 'imported',
-                    status: 'ativo',
-                    pendencias: enriched.pendencias || [],
-                } as Client;
+                // --- Lógica de Upsert ---
+                const { exists, client: existingClient } = await checkCpfExists(enriched.cpf_cnpj || '');
 
-                await addClient(clientToInsert);
-                importResult.success++;
-                importedNames.push(clientToInsert.nome_completo);
-                importedIds.push(newId);
+                if (exists && existingClient) {
+                    // Atualiza cliente existente
+                    const clientToUpdate: Client = {
+                        ...enriched,
+                        id: existingClient.id,
+                        captador: matchedCaptador || enriched.captador || '',
+                        filial: selectedBranch,
+                        import_source: 'imported'
+                    } as Client;
+
+                    await updateClient(clientToUpdate);
+                    importResult.success++;
+                    importedNames.push(clientToUpdate.nome_completo);
+                    importedIds.push(existingClient.id);
+                } else {
+                    // Adiciona novo cliente
+                    const newId = uuidv4();
+                    const clientToInsert: Client = {
+                        ...enriched,
+                        id: newId,
+                        captador: matchedCaptador || enriched.captador || '',
+                        filial: selectedBranch,
+                        import_source: 'imported',
+                        status: 'ativo',
+                        data_cadastro: new Date().toISOString()
+                    } as Client;
+
+                    await addClient(clientToInsert);
+                    importResult.success++;
+                    importedNames.push(clientToInsert.nome_completo);
+                    importedIds.push(newId);
+                }
             } catch (err: any) {
                 const msg = err.message || 'desconhecido';
-                if (msg.includes('duplicate') || msg.includes('unique') || msg.includes('já existe') || msg.includes('23505')) {
-                    importResult.skipped++;
-                    importResult.errors.push(`CPF ${rawClient.cpf_cnpj} (${rawClient.nome_completo}) já existe. Ignorado.`);
-                } else {
-                    importResult.errors.push(`Erro em ${rawClient.nome_completo}: ${msg}`);
-                }
+                importResult.errors.push(`Erro em ${rawClient.nome_completo}: ${msg}`);
             }
 
             if (i % 5 === 4) {
@@ -519,37 +529,77 @@ const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose
                                 </div>
                             </div>
 
-                            <div className="border border-zinc-800 rounded-xl overflow-hidden">
-                                <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
-                                    <table className="w-full text-sm">
-                                        <thead className="sticky top-0 bg-zinc-900 z-10">
+                            <div className="border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950/30">
+                                <div className="max-h-[500px] overflow-auto custom-scrollbar">
+                                    <table className="w-full text-sm border-collapse min-w-[2000px]">
+                                        <thead className="sticky top-0 bg-zinc-900 z-20">
                                             <tr className="border-b border-zinc-800">
-                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3">#</th>
-                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3">Nome</th>
-                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3">CPF</th>
-                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3">Captador</th>
-                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3">CEP</th>
-                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3">Pendências</th>
-                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3">Status</th>
-                                                <th className="text-center text-xs text-zinc-500 font-medium px-4 py-3 w-12"></th>
+                                                <th className="sticky left-0 bg-zinc-900 z-30 text-left text-xs text-zinc-500 font-medium px-4 py-3 w-12 border-r border-zinc-800">#</th>
+                                                <th className="sticky left-12 bg-zinc-900 z-30 text-left text-xs text-zinc-500 font-medium px-4 py-3 min-w-[250px] border-r border-zinc-800 shadow-[2px_0_5px_rgba(0,0,0,0.3)]">Nome / CPF</th>
+                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3 min-w-[120px]">Nascimento</th>
+                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3 min-w-[100px]">Sexo</th>
+                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3 min-w-[150px]">Telefone</th>
+                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3 min-w-[150px]">RG / Órgão</th>
+                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3 min-w-[180px]">Profissão</th>
+                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3 min-w-[220px]">Manutenção REAP</th>
+                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3 min-w-[100px]">CEP</th>
+                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3 min-w-[300px]">Endereço / Nº / Bairro</th>
+                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3 min-w-[200px]">Cidade / UF</th>
+                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3 min-w-[150px]">Senha Gov</th>
+                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3 min-w-[150px]">Captador</th>
+                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3 min-w-[200px]">Pendências</th>
+                                                <th className="text-left text-xs text-zinc-500 font-medium px-4 py-3 min-w-[100px]">Cadastro</th>
+                                                <th className="sticky right-0 bg-zinc-900 z-30 text-center text-xs text-zinc-500 font-medium px-4 py-3 w-12 border-l border-zinc-800 shadow-[-2px_0_5px_rgba(0,0,0,0.3)]"></th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {parsedClients.map((client, idx) => {
                                                 const missing = getIncompleteFields(client);
                                                 const pendencias = client.pendencias || [];
+                                                const reapHistory = client.reap_history || {};
+                                                const hasReap = Object.keys(reapHistory).length > 0;
+
                                                 return (
-                                                    <tr key={idx} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
-                                                        <td className="px-4 py-2.5 text-zinc-600 text-xs">{idx + 1}</td>
-                                                        <td className="px-4 py-2.5 text-zinc-200 font-medium">{client.nome_completo || '—'}</td>
-                                                        <td className="px-4 py-2.5 text-zinc-400 font-mono text-xs">{client.cpf_cnpj || '—'}</td>
-                                                        <td className="px-4 py-2.5 text-zinc-400">{client.captador || '—'}</td>
-                                                        <td className="px-4 py-2.5 text-zinc-400 font-mono text-xs">{client.cep || '—'}</td>
+                                                    <tr key={idx} className="border-b border-zinc-800/50 hover:bg-zinc-800/40 transition-colors group">
+                                                        <td className="sticky left-0 bg-zinc-950 group-hover:bg-zinc-900 z-10 px-4 py-2.5 text-zinc-600 text-xs border-r border-zinc-800">{idx + 1}</td>
+                                                        <td className="sticky left-12 bg-zinc-950 group-hover:bg-zinc-900 z-10 px-4 py-2.5 min-w-[250px] border-r border-zinc-800 shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
+                                                            <div className="text-zinc-200 font-bold truncate max-w-[220px]">{client.nome_completo || '—'}</div>
+                                                            <div className="text-[10px] text-zinc-500 font-mono tracking-tighter">{client.cpf_cnpj || '—'}</div>
+                                                        </td>
+                                                        <td className="px-4 py-2.5 text-zinc-300 text-xs">{client.data_nascimento || '—'}</td>
+                                                        <td className="px-4 py-2.5 text-zinc-300 text-xs">{client.sexo || '—'}</td>
+                                                        <td className="px-4 py-2.5 text-zinc-300 text-xs">{client.telefone || '—'}</td>
+                                                        <td className="px-4 py-2.5 text-zinc-300 text-xs">
+                                                            {client.rg ? `${client.rg}${client.orgao_emissor ? ` / ${client.orgao_emissor}` : ''}` : '—'}
+                                                        </td>
+                                                        <td className="px-4 py-2.5 text-zinc-300 text-xs truncate max-w-[180px]">{client.profissao || '—'}</td>
+                                                        <td className="px-4 py-2.5">
+                                                            {hasReap ? (
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {Object.keys(reapHistory).sort().map(year => (
+                                                                        <span key={year} className="text-[9px] px-1.5 py-0.5 bg-gold-500/10 text-gold-500 rounded border border-gold-500/20 font-bold" title={`Histórico REAP ${year}`}>
+                                                                            {year}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-zinc-600 text-xs">—</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-2.5 text-zinc-300 text-xs font-mono">{client.cep || '—'}</td>
+                                                        <td className="px-4 py-2.5 text-zinc-300 text-xs truncate max-w-[300px]">
+                                                            {client.endereco ? `${client.endereco}${client.numero_casa ? `, ${client.numero_casa}` : ''}${client.bairro ? ` - ${client.bairro}` : ''}` : '—'}
+                                                        </td>
+                                                        <td className="px-4 py-2.5 text-zinc-300 text-xs">
+                                                            {client.cidade ? `${client.cidade}${client.uf ? `/${client.uf}` : ''}` : '—'}
+                                                        </td>
+                                                        <td className="px-4 py-2.5 text-zinc-400 text-xs font-mono">{client.senha_gov || '—'}</td>
+                                                        <td className="px-4 py-2.5 text-zinc-300 text-xs">{client.captador || '—'}</td>
                                                         <td className="px-4 py-2.5">
                                                             {pendencias.length > 0 ? (
                                                                 <div className="flex flex-wrap gap-1">
                                                                     {pendencias.map(p => (
-                                                                        <span key={p} className="text-[9px] px-1.5 py-0.5 bg-red-500/10 text-red-400 rounded border border-red-500/20">
+                                                                        <span key={p} className="text-[9px] px-1.5 py-0.5 bg-red-500/10 text-red-400 rounded border border-red-500/20 whitespace-nowrap">
                                                                             {p}
                                                                         </span>
                                                                     ))}
@@ -558,24 +608,24 @@ const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose
                                                                 <span className="text-zinc-600 text-xs">—</span>
                                                             )}
                                                         </td>
-                                                        <td className="px-4 py-2.5">
+                                                        <td className="px-4 py-2.5 whitespace-nowrap">
                                                             {missing.length > 0 ? (
-                                                                <span className="text-[10px] px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded-full border border-amber-500/20">
-                                                                    {missing.length} campos
+                                                                <span className="text-[10px] px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded-full border border-amber-500/20 font-bold">
+                                                                    {missing.length} pendentes
                                                                 </span>
                                                             ) : (
-                                                                <span className="text-[10px] px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20">
+                                                                <span className="text-[10px] px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20 font-bold">
                                                                     Completo
                                                                 </span>
                                                             )}
                                                         </td>
-                                                        <td className="px-4 py-2.5 text-center">
+                                                        <td className="sticky right-0 bg-zinc-950 group-hover:bg-zinc-900 z-10 px-4 py-2.5 text-center border-l border-zinc-800 shadow-[-2px_0_5px_rgba(0,0,0,0.1)]">
                                                             <button
                                                                 onClick={() => removeClient(idx)}
-                                                                className="text-zinc-600 hover:text-red-400 transition-colors p-1 rounded hover:bg-red-500/10"
-                                                                title="Remover"
+                                                                className="text-zinc-600 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10"
+                                                                title="Remover da lista"
                                                             >
-                                                                <Trash2 size={14} />
+                                                                <Trash2 size={16} />
                                                             </button>
                                                         </td>
                                                     </tr>

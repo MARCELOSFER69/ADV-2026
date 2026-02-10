@@ -131,6 +131,7 @@ export interface Client {
   rgp_data_primeiro?: string;
   reap_status?: 'Regular' | 'Pendente Anual' | 'Não Realizada';
   reap_ano_base?: number;
+  reap_history?: Record<string, boolean | number[]>;
   updated_at?: string;
   gps_status_calculado?: 'puxada' | 'pendente' | 'regular' | null;
   import_source?: 'imported' | null;
