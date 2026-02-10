@@ -56,6 +56,11 @@ const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose
     const [spreadsheetDupes, setSpreadsheetDupes] = useState<SpreadsheetDupeGroup[]>([]);
     const [importLogs, setImportLogs] = useState<any[]>([]);
     const [selectedLog, setSelectedLog] = useState<any | null>(null);
+
+    // New state for Update Existing feature
+    const [shouldUpdateDuplicates, setShouldUpdateDuplicates] = useState(false);
+    const [fieldsToUpdate, setFieldsToUpdate] = useState<Set<string>>(new Set(['reap_history']));
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const abortRef = useRef(false);
 
@@ -71,6 +76,8 @@ const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose
         setSpreadsheetDupes([]);
         setImportLogs([]);
         setSelectedLog(null);
+        setShouldUpdateDuplicates(false);
+        setFieldsToUpdate(new Set(['reap_history']));
         abortRef.current = false;
     }, []);
 
@@ -183,6 +190,12 @@ const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose
 
     const handleKeepDuplicates = useCallback(() => {
         setDuplicates([]);
+        setShouldUpdateDuplicates(false);
+        setStep('preview');
+    }, []);
+
+    const handlePrepareUpdate = useCallback(() => {
+        setShouldUpdateDuplicates(true);
         setStep('preview');
     }, []);
 
@@ -249,23 +262,53 @@ const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose
                 // Match captador (accent-insensitive)
                 const matchedCaptador = matchCaptador(enriched.captador || '', captadores, selectedBranch);
 
-                // --- Lógica de Upsert ---
+                // --- Lógica de Upsert / Update Seletivo ---
                 const { exists, client: existingClient } = await checkCpfExists(enriched.cpf_cnpj || '');
 
                 if (exists && existingClient) {
-                    // Atualiza cliente existente
-                    const clientToUpdate: Client = {
-                        ...enriched,
-                        id: existingClient.id,
-                        captador: matchedCaptador || enriched.captador || '',
-                        filial: selectedBranch,
-                        import_source: 'imported'
-                    } as Client;
+                    if (shouldUpdateDuplicates) {
+                        // Atualização seletiva
+                        const updatePayload: Partial<Client> = {
+                            id: existingClient.id,
+                            filial: selectedBranch, // Sempre atualiza a filial para a selecionada
+                        };
 
-                    await updateClient(clientToUpdate);
-                    importResult.success++;
-                    importedNames.push(clientToUpdate.nome_completo);
-                    importedIds.push(existingClient.id);
+                        if (fieldsToUpdate.has('nome_completo')) updatePayload.nome_completo = enriched.nome_completo;
+                        if (fieldsToUpdate.has('data_nascimento')) updatePayload.data_nascimento = enriched.data_nascimento;
+                        if (fieldsToUpdate.has('sexo')) updatePayload.sexo = enriched.sexo;
+                        if (fieldsToUpdate.has('telefone')) updatePayload.telefone = enriched.telefone;
+                        if (fieldsToUpdate.has('profissao')) updatePayload.profissao = enriched.profissao;
+                        if (fieldsToUpdate.has('senha_gov')) updatePayload.senha_gov = enriched.senha_gov;
+                        if (fieldsToUpdate.has('pendencias')) updatePayload.pendencias = enriched.pendencias;
+                        if (fieldsToUpdate.has('captador')) updatePayload.captador = matchedCaptador || enriched.captador || '';
+
+                        if (fieldsToUpdate.has('reap_history')) {
+                            updatePayload.reap_history = enriched.reap_history;
+                            updatePayload.reap_ano_base = enriched.reap_ano_base;
+                            updatePayload.reap_status = enriched.reap_status;
+                            updatePayload.rgp_status = enriched.rgp_status;
+                        }
+
+                        if (fieldsToUpdate.has('endereco_completo')) {
+                            updatePayload.cep = enriched.cep;
+                            updatePayload.endereco = enriched.endereco;
+                            updatePayload.numero_casa = enriched.numero_casa;
+                            updatePayload.bairro = enriched.bairro;
+                            updatePayload.cidade = enriched.cidade;
+                            updatePayload.uf = enriched.uf;
+                        }
+
+                        await updateClient(updatePayload as Client);
+                        importResult.success++;
+                        importedNames.push(enriched.nome_completo || 'Sem Nome');
+                        importedIds.push(existingClient.id);
+                    } else {
+                        // Comportamento antigo: ignorar ou sobrescrever depende do que o usuário decidiu no step anterior
+                        // Se chegou aqui com shouldUpdateDuplicates = false e exists = true,
+                        // significa que o usuário decidiu "Manter na planilha" (Keep) ou o flux fugiu?
+                        // Na verdade, se shouldUpdateDuplicates é false, nós pulamos (skipped)
+                        importResult.skipped++;
+                    }
                 } else {
                     // Adiciona novo cliente
                     const newId = uuidv4();
@@ -339,7 +382,7 @@ const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose
                             {step === 'checking' && 'Verificando CPFs duplicados...'}
                             {step === 'spreadsheet_dupes' && `CPFs duplicados encontrados na planilha`}
                             {step === 'duplicates' && `${duplicates.length} CPFs já existem no sistema`}
-                            {step === 'preview' && `${parsedClients.length} clientes prontos — revise e selecione a filial`}
+                            {step === 'preview' && (shouldUpdateDuplicates ? `Configurando atualização para ${duplicates.length} clientes existentes` : `${parsedClients.length} clientes prontos — revise e selecione a filial`)}
                             {step === 'importing' && `Importando... ${progress}%`}
                             {step === 'done' && 'Importação finalizada'}
                             {step === 'history' && 'Logs de auditoria das últimas importações'}
@@ -507,25 +550,75 @@ const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose
                     {step === 'preview' && (
                         <div className="space-y-4">
                             <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1 max-w-xs">
-                                        <CustomSelect
-                                            label="Filial para todos os clientes"
-                                            value={selectedBranch}
-                                            onChange={setSelectedBranch}
-                                            options={BRANCH_OPTIONS}
-                                            icon={Building2}
-                                            placeholder="Selecione a filial..."
-                                        />
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex-1 max-w-xs">
+                                            <CustomSelect
+                                                label="Filial para todos os clientes"
+                                                value={selectedBranch}
+                                                onChange={setSelectedBranch}
+                                                options={BRANCH_OPTIONS}
+                                                icon={Building2}
+                                                placeholder="Selecione a filial..."
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-2 text-sm text-zinc-400">
+                                            <Users size={16} />
+                                            <span><strong className="text-white">{parsedClients.length}</strong> clientes</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-sm text-zinc-400">
+                                            <FileSpreadsheet size={16} />
+                                            <span className="text-xs">{fileName}</span>
+                                        </div>
+                                        {shouldUpdateDuplicates && (
+                                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-500 text-xs font-bold">
+                                                <Clock size={14} /> MODO ATUALIZAÇÃO ATIVO
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="flex items-center gap-2 text-sm text-zinc-400">
-                                        <Users size={16} />
-                                        <span><strong className="text-white">{parsedClients.length}</strong> clientes</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-zinc-400">
-                                        <FileSpreadsheet size={16} />
-                                        <span className="text-xs">{fileName}</span>
-                                    </div>
+
+                                    {shouldUpdateDuplicates && (
+                                        <div className="border-t border-zinc-800 pt-4">
+                                            <p className="text-xs font-bold text-zinc-400 uppercase mb-3 flex items-center gap-2">
+                                                <CheckCircle2 size={14} className="text-amber-500" />
+                                                Selecione os dados que deseja atualizar nos clientes existentes:
+                                            </p>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                                {[
+                                                    { id: 'nome_completo', label: 'Nome Completo' },
+                                                    { id: 'data_nascimento', label: 'Nascimento' },
+                                                    { id: 'telefone', label: 'Telefone' },
+                                                    { id: 'profissao', label: 'Profissão' },
+                                                    { id: 'captador', label: 'Captador' },
+                                                    { id: 'reap_history', label: 'Histórico REAP' },
+                                                    { id: 'senha_gov', label: 'Senha Gov' },
+                                                    { id: 'endereco_completo', label: 'Endereço Completo' },
+                                                    { id: 'pendencias', label: 'Pendências' },
+                                                ].map(field => (
+                                                    <label
+                                                        key={field.id}
+                                                        className={`flex items-center gap-2 p-2 rounded-lg border transition-all cursor-pointer ${fieldsToUpdate.has(field.id) ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : 'bg-zinc-800/30 border-zinc-700/50 text-zinc-500 hover:border-zinc-600'}`}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            className="sr-only"
+                                                            checked={fieldsToUpdate.has(field.id)}
+                                                            onChange={() => {
+                                                                const next = new Set(fieldsToUpdate);
+                                                                if (next.has(field.id)) next.delete(field.id);
+                                                                else next.add(field.id);
+                                                                setFieldsToUpdate(next);
+                                                            }}
+                                                        />
+                                                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${fieldsToUpdate.has(field.id) ? 'bg-amber-500 border-amber-500' : 'border-zinc-600'}`}>
+                                                            {fieldsToUpdate.has(field.id) && <CheckCircle2 size={10} className="text-black" />}
+                                                        </div>
+                                                        <span className="text-[11px] font-medium whitespace-nowrap">{field.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -826,7 +919,16 @@ const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose
                 <div className="p-6 border-t border-zinc-800 flex justify-between items-center">
                     {(step === 'preview' || step === 'history') && (
                         <button
-                            onClick={() => { setStep('upload'); setParsedClients([]); setFileName(''); setDuplicates([]); setSpreadsheetDupes([]); setImportLogs([]); setSelectedLog(null); }}
+                            onClick={() => {
+                                setStep('upload');
+                                setParsedClients([]);
+                                setFileName('');
+                                setDuplicates([]);
+                                setSpreadsheetDupes([]);
+                                setImportLogs([]);
+                                setSelectedLog(null);
+                                setShouldUpdateDuplicates(false);
+                            }}
                             className="px-4 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors flex items-center gap-2 text-sm"
                         >
                             <ChevronLeft size={16} /> Voltar
@@ -856,13 +958,19 @@ const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose
                                     onClick={handleKeepDuplicates}
                                     className="px-5 py-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors font-medium"
                                 >
-                                    Manter na planilha
+                                    Pular e não importar
+                                </button>
+                                <button
+                                    onClick={handlePrepareUpdate}
+                                    className="px-6 py-2.5 rounded-xl font-bold shadow-lg flex items-center gap-2 transition-all active:scale-95 border border-amber-600/50 text-amber-500 hover:bg-amber-600/10"
+                                >
+                                    <Clock size={18} /> Atualizar Existentes
                                 </button>
                                 <button
                                     onClick={handleRemoveDuplicates}
                                     className="px-6 py-2.5 rounded-xl font-bold shadow-lg flex items-center gap-2 transition-all active:scale-95 bg-red-600 text-white hover:bg-red-500 shadow-red-600/20"
                                 >
-                                    <Trash2 size={18} /> Remover {duplicates.length} Duplicados
+                                    <Trash2 size={18} /> Remover da Planilha
                                 </button>
                             </>
                         )}
