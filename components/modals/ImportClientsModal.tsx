@@ -228,7 +228,7 @@ const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose
         const captadoresToAdd = new Set<string>();
 
         for (const client of parsedClients) {
-            const rawCaptador = (client.captador || '').trim();
+            const rawCaptador = (client.captador || '').trim().toUpperCase();
             if (rawCaptador && !existingCaptadorNames.has(normalizeString(rawCaptador))) {
                 captadoresToAdd.add(rawCaptador);
                 existingCaptadorNames.add(normalizeString(rawCaptador)); // prevent duplicate adds
@@ -280,7 +280,8 @@ const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose
                         if (fieldsToUpdate.has('profissao')) updatePayload.profissao = enriched.profissao;
                         if (fieldsToUpdate.has('senha_gov')) updatePayload.senha_gov = enriched.senha_gov;
                         if (fieldsToUpdate.has('pendencias')) updatePayload.pendencias = enriched.pendencias;
-                        if (fieldsToUpdate.has('captador')) updatePayload.captador = matchedCaptador || enriched.captador || '';
+                        const finalCaptador = (matchedCaptador || enriched.captador || '').toUpperCase();
+                        if (fieldsToUpdate.has('captador')) updatePayload.captador = finalCaptador;
 
                         if (fieldsToUpdate.has('reap_history')) {
                             updatePayload.reap_history = enriched.reap_history;
@@ -315,7 +316,7 @@ const ImportClientsModal: React.FC<ImportClientsModalProps> = ({ isOpen, onClose
                     const clientToInsert: Client = {
                         ...enriched,
                         id: newId,
-                        captador: matchedCaptador || enriched.captador || '',
+                        captador: (matchedCaptador || enriched.captador || '').toUpperCase(),
                         filial: selectedBranch,
                         import_source: 'imported',
                         status: 'ativo',

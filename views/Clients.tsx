@@ -417,8 +417,10 @@ const Clients: React.FC = () => {
     const handleAddCaptadorNew = async () => {
         if (!newCaptadorName.trim()) return;
         try {
-            await addCaptador(newCaptadorName, newClient.filial as string);
-            setNewClient({ ...newClient, captador: newCaptadorName });
+            const added = await addCaptador(newCaptadorName, newClient.filial as string);
+            if (added) {
+                setNewClient({ ...newClient, captador: added.nome });
+            }
             setIsAddingCaptador(false);
             setNewCaptadorName('');
         } catch (error) {

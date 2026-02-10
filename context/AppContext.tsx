@@ -1151,7 +1151,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
     const addCaptador = useCallback(async (nome: string, filial: string) => {
         try {
-            const newC = { id: crypto.randomUUID(), nome, filial };
+            const upperNome = nome.toUpperCase();
+            const newC = { id: crypto.randomUUID(), nome: upperNome, filial };
             const { error } = await supabase.from('captadores').insert([newC]);
             if (error) throw error;
             setCaptadores(prev => [...prev, newC as any]);
