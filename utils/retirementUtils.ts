@@ -13,7 +13,7 @@ export interface RetirementProjection {
 export const calculateRetirementProjection = (
     birthDate: string | undefined,
     gender: 'Masculino' | 'Feminino' | string | undefined,
-    preferredMode?: 'Rural' | 'Urbana'
+    preferredMode?: 'Rural' | 'Urbana' | 'Híbrida'
 ): RetirementProjection | null => {
     if (!birthDate || !gender) return null;
 
@@ -41,7 +41,9 @@ export const calculateRetirementProjection = (
     const isEligible = isRuralEligible || isUrbanEligible;
 
     const calcBestChance = ruralRemaining <= urbanRemaining ? 'Rural' : 'Urbana';
-    const activeMode = preferredMode || calcBestChance;
+    // Se for Híbrida, usamos Urbana como base (comum em sistemas, ou ajustável conforme regra de negócio)
+    // Se preferredMode for undefined, usa a melhor chance.
+    const activeMode = (preferredMode === 'Híbrida' ? 'Urbana' : preferredMode) || calcBestChance;
     const yearsRemaining = activeMode === 'Rural' ? ruralRemaining : urbanRemaining;
 
     return {

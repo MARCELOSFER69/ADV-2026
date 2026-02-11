@@ -294,6 +294,15 @@ export interface CaseNote {
   created_at: string;
 }
 
+export interface ClientNote {
+  id: UUID;
+  client_id: UUID;
+  conteudo: string;
+  user_name: string;
+  user_id?: string;
+  created_at: string;
+}
+
 export interface ClientHistory {
   id: UUID;
   client_id: UUID;

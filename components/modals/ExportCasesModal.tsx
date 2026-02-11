@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, FileText, Check, Download, Loader2, History, Trash2, Calendar, User as UserIcon, ChevronDown, ChevronRight, MessageSquare, ArrowLeft } from 'lucide-react';
+import ConfirmModal from '../ui/ConfirmModal';
 import * as XLSX from 'xlsx';
 import { Case, CaseStatus, CaseType, GeneratedReport, CaseNote, RetirementCandidate } from '../../types';
 import { calculateRetirementProjection } from '../../utils/retirementUtils';
@@ -80,6 +81,10 @@ const ExportCasesModal: React.FC<ExportCasesModalProps> = ({
     const [expandedCases, setExpandedCases] = useState<Set<string>>(new Set());
     const [selectedNotes, setSelectedNotes] = useState<Record<string, Set<string>>>({}); // caseId -> Set of noteIds
 
+    // Delete Confirmation State
+    const [reportToDelete, setReportToDelete] = useState<GeneratedReport | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
     // Carregar histórico quando mudar para a aba de histórico
     React.useEffect(() => {
         if (activeTab === 'history' && user?.id) {
@@ -111,15 +116,24 @@ const ExportCasesModal: React.FC<ExportCasesModalProps> = ({
         }
     };
 
-    const handleDeleteReport = async (report: GeneratedReport) => {
-        if (!window.confirm('Deseja realmente excluir este relatório da nuvem?')) return;
+    const handleDeleteClick = (report: GeneratedReport) => {
+        setReportToDelete(report);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDeleteReport = async () => {
+        if (!reportToDelete) return;
+
         try {
-            await deleteReportService(report);
-            setReports(prev => prev.filter(r => r.id !== report.id));
+            await deleteReportService(reportToDelete);
+            setReports(prev => prev.filter(r => r.id !== reportToDelete.id));
             showToast('success', 'Relatório excluído com sucesso.');
         } catch (error) {
             console.error('Erro ao excluir relatório:', error);
             showToast('error', 'Erro ao excluir relatório.');
+        } finally {
+            setIsDeleteModalOpen(false);
+            setReportToDelete(null);
         }
     };
 
@@ -406,6 +420,26 @@ const ExportCasesModal: React.FC<ExportCasesModalProps> = ({
                 className="absolute inset-0 bg-black/80 backdrop-blur-md"
             />
 
+            <ConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDeleteReport}
+                title="Excluir Relatório"
+                message={`Deseja realmente excluir o relatório "${reportToDelete?.name}" da nuvem? Esta ação não pode ser desfeita.`}
+                confirmLabel="Excluir"
+                variant="danger"
+            />
+
+            <ConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDeleteReport}
+                title="Excluir Relatório"
+                message={`Deseja realmente excluir o relatório "${reportToDelete?.name}" da nuvem? Esta ação não pode ser desfeita.`}
+                confirmLabel="Excluir"
+                variant="danger"
+            />
+
             <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -567,7 +601,7 @@ const ExportCasesModal: React.FC<ExportCasesModalProps> = ({
                                                     <Download size={16} />
                                                 </a>
                                                 <button
-                                                    onClick={() => handleDeleteReport(report)}
+                                                    onClick={() => handleDeleteClick(report)}
                                                     className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-xl transition-all"
                                                     title="Excluir da Nuvem"
                                                 >

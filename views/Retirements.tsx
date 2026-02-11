@@ -87,7 +87,7 @@ const Retirements: React.FC = () => {
             .map(client => {
                 if (!client.data_nascimento || !client.sexo) return null;
 
-                const proj = calculateRetirementProjection(client.data_nascimento, client.sexo, client.aposentadoria_modalidade);
+                const proj = calculateRetirementProjection(client.data_nascimento, client.sexo, client.aposentadoria_modalidade as 'Rural' | 'Urbana' | 'Híbrida' | undefined);
                 if (!proj) return null;
 
                 return {

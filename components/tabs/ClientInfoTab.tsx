@@ -1,12 +1,13 @@
 import React, { memo, useMemo, useState } from 'react';
-import { Client, Case, Captador, Branch, CaseStatus } from '../../types';
+import { Client, Case, Captador, Branch, CaseStatus, ClientNote } from '../../types';
 import { formatDateDisplay } from '../../utils/dateUtils';
 import { formatCurrencyInput, formatPhone } from '../../services/formatters';
-import { AlertTriangle, CheckCircle2, Users, Clock, Building2, Share2, Plus, Check, X, Trash2, FileSpreadsheet, MessageCircle, MapPin, FileText, ChevronRight, Shield, Gavel, User, CreditCard } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Users, Clock, Building2, Share2, Plus, Check, X, Trash2, FileSpreadsheet, MessageCircle, MapPin, FileText, ChevronRight, Shield, Gavel, User, CreditCard, Send } from 'lucide-react';
 import CustomSelect from '../ui/CustomSelect';
 import { useApp } from '../../context/AppContext';
 import { fetchAddressByCep } from '../../services/cepService';
 import { getIncompleteFields } from '../../services/importService';
+import { fetchClientNotes, addClientNote, deleteClientNote } from '../../services/clientsService';
 
 interface ClientInfoTabProps {
     client: Client;
@@ -35,7 +36,7 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
     client, editedClient, isEditMode, setEditedClient,
     setIsWhatsAppModalOpen, cases, onSelectCase, openNewCaseWithParams, onClose
 }) => {
-    const { captadores, addCaptador, deleteCaptador, showToast, updateCase } = useApp();
+    const { captadores, addCaptador, deleteCaptador, showToast, updateCase, user } = useApp();
 
     // Local State moved from Parent
     const [isAddingCaptador, setIsAddingCaptador] = useState(false);
@@ -53,6 +54,41 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
 
     // Address Loading
     const [isLoadingCep, setIsLoadingCep] = useState(false);
+
+    // Notes State
+    const [notes, setNotes] = useState<ClientNote[]>([]);
+    const [newNoteContent, setNewNoteContent] = useState('');
+    const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+
+    React.useEffect(() => {
+        if (client.id) {
+            setIsLoadingNotes(true);
+            fetchClientNotes(client.id)
+                .then(setNotes)
+                .finally(() => setIsLoadingNotes(false));
+        }
+    }, [client.id]);
+
+    const handleAddNote = async () => {
+        if (!newNoteContent.trim()) return;
+        const newNote = await addClientNote(client.id, newNoteContent, user?.name || 'Sistema', user?.id);
+        if (newNote) {
+            setNotes([newNote, ...notes]);
+            setNewNoteContent('');
+            showToast('success', 'Anotação adicionada');
+        } else {
+            showToast('error', 'Erro ao adicionar anotação');
+        }
+    };
+
+    const handleDeleteNote = async (noteId: string) => {
+        if (await deleteClientNote(noteId)) {
+            setNotes(notes.filter(n => n.id !== noteId));
+            showToast('success', 'Anotação removida');
+        } else {
+            showToast('error', 'Erro ao remover anotação');
+        }
+    };
 
     // Derived Data
     const filteredCaptadores = useMemo(() => {
@@ -400,12 +436,57 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
                     <div className="md:col-span-3 border-t border-white/5 pt-4 mt-2"><h5 className="text-sm font-bold text-red-500 mb-3 font-serif">Pendências</h5></div>
                     <div className="md:col-span-3 flex flex-wrap gap-2">{PENDING_OPTIONS.map(option => { const isSelected = editedClient.pendencias?.includes(option); return (<button key={option} type="button" onClick={() => togglePendencia(option)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${isSelected ? 'bg-red-500/20 border-red-500 text-red-400' : 'bg-[#18181b] border-white/10 text-slate-400 hover:text-white'}`}>{option}</button>); })}</div>
                     <div className="md:col-span-3 border-t border-white/5 pt-4 mt-2">
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Observação</label>
-                        <textarea
-                            className="w-full bg-[#18181b] border border-white/5 rounded-lg p-3 text-sm text-white outline-none focus:border-gold-500 resize-none h-24"
-                            value={editedClient.observacao || ''}
-                            onChange={e => setEditedClient({ ...editedClient, observacao: e.target.value })}
-                        />
+                        <div className="md:col-span-3 border-t border-white/5 pt-4 mt-2">
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Anotações do Cliente</label>
+                            <div className="bg-[#131418] border border-white/5 rounded-lg overflow-hidden">
+                                <div className="max-h-40 overflow-y-auto p-3 custom-scrollbar space-y-2">
+                                    {isLoadingNotes ? (
+                                        <p className="text-xs text-slate-500 text-center py-2">Carregando anotações...</p>
+                                    ) : notes.length === 0 ? (
+                                        <p className="text-xs text-slate-500 text-center py-2 italic opacity-50">Nenhuma anotação neste cliente.</p>
+                                    ) : (
+                                        notes.map(note => (
+                                            <div key={note.id} className="group relative bg-[#18181b] p-2.5 rounded border border-white/5 hover:border-white/10 transition-colors">
+                                                <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed">{note.conteudo}</p>
+                                                <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/5">
+                                                    <span className="text-[10px] text-slate-500 font-medium">
+                                                        {note.user_name} • {formatDateDisplay(note.created_at)}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => handleDeleteNote(note.id)}
+                                                        className="text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1"
+                                                        title="Excluir anotação"
+                                                    >
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                                <div className="p-2 bg-[#18181b] border-t border-white/5 flex gap-2">
+                                    <textarea
+                                        className="flex-1 bg-[#0f1014] border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-gold-500 resize-none h-9 min-h-[36px] max-h-24 focus:h-20 transition-all custom-scrollbar placeholder:text-slate-600"
+                                        placeholder="Adicionar nova anotação..."
+                                        value={newNoteContent}
+                                        onChange={e => setNewNoteContent(e.target.value)}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                handleAddNote();
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        onClick={handleAddNote}
+                                        disabled={!newNoteContent.trim()}
+                                        className="bg-gold-600 hover:bg-gold-500 disabled:opacity-50 disabled:cursor-not-allowed text-white w-9 h-9 rounded-lg flex items-center justify-center transition-colors shadow-lg shadow-gold-900/20"
+                                    >
+                                        <Send size={14} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             ) : null}

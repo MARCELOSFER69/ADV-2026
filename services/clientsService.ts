@@ -1,6 +1,6 @@
 
 import { supabase } from './supabaseClient';
-import { Client, CaseStatus } from '../types';
+import { Client, CaseStatus, ClientNote } from '../types';
 import { auditService } from './auditService';
 
 export const fetchClientsData = async (page: number, perPage: number, search?: string, filters?: any) => {
@@ -264,5 +264,67 @@ export const checkCpfExists = async (cpf: string, excludeId?: string): Promise<{
     } catch (error) {
         console.error("Error checking CPF:", error);
         return { exists: false };
+    }
+};
+
+export const fetchClientNotes = async (clientId: string): Promise<ClientNote[]> => {
+    try {
+        const { data, error } = await supabase
+            .from('client_notes')
+            .select('*')
+            .eq('client_id', clientId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Error fetching client notes:', error);
+        return [];
+    }
+};
+
+export const addClientNote = async (clientId: string, conteudo: string, userName: string, userId?: string): Promise<ClientNote | null> => {
+    try {
+        const { data, error } = await supabase
+            .from('client_notes')
+            .insert([{ client_id: clientId, conteudo, user_name: userName, user_id: userId }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Error adding client note:', error);
+        return null;
+    }
+};
+
+export const deleteClientNote = async (noteId: string): Promise<boolean> => {
+    try {
+        const { error } = await supabase
+            .from('client_notes')
+            .delete()
+            .eq('id', noteId);
+
+        if (error) throw error;
+        return true;
+    } catch (error) {
+        console.error('Error deleting client note:', error);
+        return false;
+    }
+};
+
+export const updateClientNote = async (noteId: string, conteudo: string): Promise<boolean> => {
+    try {
+        const { error } = await supabase
+            .from('client_notes')
+            .update({ conteudo })
+            .eq('id', noteId);
+
+        if (error) throw error;
+        return true;
+    } catch (error) {
+        console.error('Error updating client note:', error);
+        return false;
     }
 };
