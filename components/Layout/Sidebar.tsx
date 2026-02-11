@@ -91,11 +91,20 @@ const SidebarView = memo(({
     const [isFinancialOpen, setIsFinancialOpen] = useState(false);
     const [expandedCaseCategory, setExpandedCaseCategory] = useState<string | null>(null);
 
-    // Auto-open accordions based on view (Effect stays local to View)
+    // Auto-open/close accordions based on view (Effect stays local to View)
     useEffect(() => {
-        if (['cnis', 'gps-calculator', 'document-builder', 'cep-facil'].includes(currentView)) setIsToolsOpen(true);
-        if (['cases-judicial', 'cases-administrative', 'cases-insurance', 'cases'].includes(currentView)) setIsCasesOpen(true);
-        if (['financial', 'office-expenses', 'commissions', 'financial-calendar'].includes(currentView)) setIsFinancialOpen(true);
+        const isToolView = ['cnis', 'gps-calculator', 'document-builder', 'cep-facil', 'robots'].includes(currentView);
+        const isCaseView = ['cases-judicial', 'cases-administrative', 'cases-insurance', 'cases', 'expertise', 'events'].includes(currentView);
+        const isFinancialView = ['financial', 'office-expenses', 'commissions', 'financial-calendar'].includes(currentView);
+
+        setIsToolsOpen(isToolView);
+        setIsCasesOpen(isCaseView);
+        setIsFinancialOpen(isFinancialView);
+
+        // Reset sub-categories if not in a case view
+        if (!isCaseView) {
+            setExpandedCaseCategory(null);
+        }
     }, [currentView]);
 
     const { isAdmin, canViewFinancial, canViewCases, canViewClients, canViewTools, canViewWhatsApp, canViewPersonal, canViewRobots, canViewRetirements, canViewExpertise, canViewEvents } = permissions;
