@@ -225,13 +225,13 @@ const GpsCalculator: React.FC = () => {
 
                     // Crop preciso com base na localização detectada
                     const { topLeftCorner, bottomRightCorner, bottomLeftCorner, topRightCorner } = code.location;
-                    const padding = 15; // Mais justo
-                    const topPadding = 65; // Ajustado para remover o traço pontilhado e manter o texto
+                    const padding = 20; // Um pouco mais de respiro nas laterais
+                    const topPadding = 48; // Ajustado para remover o traço pontilhado e manter o texto "Pague com o PIX"
 
                     const minX = Math.max(0, Math.min(topLeftCorner.x, bottomLeftCorner.x) - padding);
                     const minY = Math.max(0, Math.min(topLeftCorner.y, topRightCorner.y) - topPadding);
                     const maxX = Math.max(bottomRightCorner.x, topRightCorner.x) + padding;
-                    const maxY = Math.max(bottomRightCorner.y, bottomLeftCorner.y) + 15; // Menos espaço em baixo
+                    const maxY = Math.max(bottomRightCorner.y, bottomLeftCorner.y) + 20;
 
                     const width = Math.min(canvas.width - minX, maxX - minX);
                     const height = Math.min(canvas.height - minY, maxY - minY);
@@ -745,7 +745,7 @@ const GpsCalculator: React.FC = () => {
                                             <img
                                                 src={selectedGuide.qrData}
                                                 alt="QR Code Pix"
-                                                className="w-full max-w-[380px] aspect-square object-contain brightness-95 contrast-125"
+                                                className="w-full max-w-[440px] aspect-square object-contain brightness-95 contrast-125"
                                             />
                                         ) : (
                                             <div className="w-64 h-64 flex flex-col items-center justify-center text-zinc-400 bg-zinc-50 rounded-2xl border-2 border-dashed border-zinc-200">
