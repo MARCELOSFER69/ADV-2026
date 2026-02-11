@@ -78,6 +78,7 @@ const GpsCalculator: React.FC = () => {
     const [selectedGuide, setSelectedGuide] = useState<(GpsGuide & { client_id?: string; case_id?: string; qrData?: string }) | null>(null);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [guidesDatabaseStatus, setGuidesDatabaseStatus] = useState<Record<string, Case[]>>({});
+    const [matchedClientsMap, setMatchedClientsMap] = useState<Record<string, { id: string; name: string }>>({});
     const [processingProgress, setProcessingProgress] = useState<{ current: number; total: number } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -104,12 +105,12 @@ const GpsCalculator: React.FC = () => {
                 status = 'warning_duplicate';
             }
 
-            // 3. Encontrar nome do cliente e caso vinculado
+            // 3. Encontrar nome do cliente e caso vinculado (Usando o mapa direto do banco)
             const cleanGuideCpf = normalizeCpf(guide.cpf);
-            const client = clients.find(c => normalizeCpf(c.cpf_cnpj || '') === cleanGuideCpf);
+            const clientMatch = matchedClientsMap[cleanGuideCpf];
 
             // 4. Verificação no Banco de Dados (Robustez Aumentada)
-            const matchedCases = client ? guidesDatabaseStatus[client.id] || [] : [];
+            const matchedCases = clientMatch ? guidesDatabaseStatus[clientMatch.id] || [] : [];
             let dbRecord = null;
             const normalizedGuideComp = normalizeComp(guide.competenceRaw);
 
@@ -131,12 +132,12 @@ const GpsCalculator: React.FC = () => {
             return {
                 ...guide,
                 status,
-                name: client?.nome_completo,
-                client_id: client?.id,
+                name: clientMatch?.name,
+                client_id: clientMatch?.id,
                 dbRecord
             };
         });
-    }, [rawGuides, referenceMonth, clients, guidesDatabaseStatus]);
+    }, [rawGuides, referenceMonth, clients, guidesDatabaseStatus, matchedClientsMap]);
 
     const filteredGuides = useMemo(() => {
         if (!searchQuery) return processedGuides;
@@ -319,11 +320,29 @@ const GpsCalculator: React.FC = () => {
             } else {
                 setRawGuides(extracted);
 
-                // --- BUSCAR STATUS NO BANCO DE DADOS ---
-                const identifiedCpfs = [...new Set(extracted.map(g => normalizeCpf(g.cpf)))];
-                const matchedClients = clients.filter(c => identifiedCpfs.includes(normalizeCpf(c.cpf_cnpj || '')));
-                const clientIds = matchedClients.map(c => c.id);
+                // --- BUSCA DIRETA E ROBUSTA DE CLIENTES POR CPF ---
+                const rawCpfs = [...new Set(extracted.map(g => g.cpf))];
+                const normalizedCpfs = rawCpfs.map(normalizeCpf);
 
+                // Busca por CPF exato ou normalizado (com/sem pontuação/zeros)
+                const { data: dbClients } = await supabase
+                    .from('clients')
+                    .select('id, nome_completo, cpf_cnpj')
+                    .or(`cpf_cnpj.in.(${rawCpfs.map(c => `"${c}"`).join(',')}),cpf_cnpj.in.(${normalizedCpfs.map(c => `"${c}"`).join(',')})`);
+
+                const clientMap: Record<string, { id: string; name: string }> = {};
+                const clientIds: string[] = [];
+
+                if (dbClients) {
+                    dbClients.forEach(c => {
+                        const normC = normalizeCpf(c.cpf_cnpj || '');
+                        clientMap[normC] = { id: c.id, name: c.nome_completo };
+                        clientIds.push(c.id);
+                    });
+                    setMatchedClientsMap(clientMap);
+                }
+
+                // --- BUSCAR STATUS NO BANCO DE DADOS (CASOS) ---
                 if (clientIds.length > 0) {
                     const { data: casesWithGps } = await supabase
                         .from('cases')
