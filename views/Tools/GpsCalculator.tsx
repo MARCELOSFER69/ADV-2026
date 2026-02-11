@@ -34,7 +34,30 @@ interface GpsGuide {
 const MONTH_MAP: Record<string, string> = {
     'janeiro': '01', 'fevereiro': '02', 'março': '03', 'marco': '03', 'abril': '04',
     'maio': '05', 'junho': '06', 'julho': '07', 'agosto': '08',
-    'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
+    'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12',
+    '01': '01', '02': '02', '03': '03', '04': '04', '05': '05', '06': '06',
+    '07': '07', '08': '08', '09': '09', '10': '10', '11': '11', '12': '12'
+};
+
+const normalizeCpf = (val: string) => {
+    if (!val) return '';
+    const digits = val.replace(/\D/g, '');
+    // Se for CPF (11 ou menos), pad com zeros até 11. Se for CNPJ (14), deixa como está.
+    if (digits.length <= 11) return digits.padStart(11, '0');
+    return digits;
+};
+
+const normalizeComp = (val: string) => {
+    if (!val) return '';
+    const parts = val.split('/');
+    if (parts.length !== 2) return val.toLowerCase().trim();
+    let month = parts[0].trim().toLowerCase();
+    let year = parts[1].trim();
+
+    const monthNum = MONTH_MAP[month] || month.padStart(2, '0');
+    const fullYear = year.length === 2 ? '20' + year : year;
+
+    return `${monthNum}/${fullYear}`;
 };
 
 import { useAllClients } from '../../hooks/useClients';
@@ -54,7 +77,8 @@ const GpsCalculator: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [selectedGuide, setSelectedGuide] = useState<(GpsGuide & { client_id?: string; case_id?: string; qrData?: string }) | null>(null);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-    const [guidesDatabaseStatus, setGuidesDatabaseStatus] = useState<Record<string, Case>>({});
+    const [guidesDatabaseStatus, setGuidesDatabaseStatus] = useState<Record<string, Case[]>>({});
+    const [processingProgress, setProcessingProgress] = useState<{ current: number; total: number } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // --- ARITMÉTICA E PROCESSAMENTO ---
@@ -81,17 +105,26 @@ const GpsCalculator: React.FC = () => {
             }
 
             // 3. Encontrar nome do cliente e caso vinculado
-            const cleanGuideCpf = guide.cpf.replace(/\D/g, '');
-            const client = clients.find(c => c.cpf_cnpj?.replace(/\D/g, '') === cleanGuideCpf);
+            const cleanGuideCpf = normalizeCpf(guide.cpf);
+            const client = clients.find(c => normalizeCpf(c.cpf_cnpj || '') === cleanGuideCpf);
 
-            // 4. Verificação no Banco de Dados (NOVO)
-            const matchedCase = client ? guidesDatabaseStatus[client.id] : null;
+            // 4. Verificação no Banco de Dados (Robustez Aumentada)
+            const matchedCases = client ? guidesDatabaseStatus[client.id] || [] : [];
             let dbRecord = null;
-            if (matchedCase && matchedCase.gps_lista) {
-                dbRecord = matchedCase.gps_lista.find(g => g.competencia === guide.competenceRaw);
-                if (dbRecord) {
-                    if (dbRecord.status === 'Paga') status = 'already_paid';
-                    else if (dbRecord.status === 'Puxada') status = 'already_pulled';
+            const normalizedGuideComp = normalizeComp(guide.competenceRaw);
+
+            for (const mCase of matchedCases) {
+                if (mCase.gps_lista) {
+                    const found = mCase.gps_lista.find(g => normalizeComp(g.competencia) === normalizedGuideComp);
+                    if (found) {
+                        dbRecord = found;
+                        if (found.status === 'Paga') {
+                            status = 'already_paid';
+                            break;
+                        } else if (found.status === 'Puxada') {
+                            status = 'already_pulled';
+                        }
+                    }
                 }
             }
 
@@ -158,19 +191,22 @@ const GpsCalculator: React.FC = () => {
         setIsLoading(true);
         setError(null);
         setRawGuides([]);
+        setProcessingProgress(null);
 
         try {
             const arrayBuffer = await pdfFile.arrayBuffer();
             const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
             const pdf = await loadingTask.promise;
 
+            setProcessingProgress({ current: 0, total: pdf.numPages });
             const extracted: GpsGuide[] = [];
 
             for (let i = 1; i <= pdf.numPages; i++) {
+                setProcessingProgress({ current: i, total: pdf.numPages });
                 const page = await pdf.getPage(i);
 
                 // --- DETECÇÃO INTELIGENTE DE QR CODE (jsQR) ---
-                const viewport = page.getViewport({ scale: 4.0 }); // Resolução ultra-alta para evitar borrões
+                const viewport = page.getViewport({ scale: 2.5 }); // Otimizado de 4.0 para 2.5 para performance em arquivos grandes
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 canvas.height = viewport.height;
@@ -284,8 +320,8 @@ const GpsCalculator: React.FC = () => {
                 setRawGuides(extracted);
 
                 // --- BUSCAR STATUS NO BANCO DE DADOS ---
-                const identifiedCpfs = [...new Set(extracted.map(g => g.cpf.replace(/\D/g, '')))];
-                const matchedClients = clients.filter(c => identifiedCpfs.includes(c.cpf_cnpj?.replace(/\D/g, '') || ''));
+                const identifiedCpfs = [...new Set(extracted.map(g => normalizeCpf(g.cpf)))];
+                const matchedClients = clients.filter(c => identifiedCpfs.includes(normalizeCpf(c.cpf_cnpj || '')));
                 const clientIds = matchedClients.map(c => c.id);
 
                 if (clientIds.length > 0) {
@@ -295,12 +331,10 @@ const GpsCalculator: React.FC = () => {
                         .in('client_id', clientIds);
 
                     if (casesWithGps) {
-                        const statusMap: Record<string, Case> = {};
+                        const statusMap: Record<string, Case[]> = {};
                         casesWithGps.forEach(c => {
-                            // Prioridade para Seguro Defeso se houver mais de um caso
-                            if (!statusMap[c.client_id] || c.titulo?.toLowerCase().includes('seguro defeso')) {
-                                statusMap[c.client_id] = c as unknown as Case;
-                            }
+                            if (!statusMap[c.client_id]) statusMap[c.client_id] = [];
+                            statusMap[c.client_id].push(c as unknown as Case);
                         });
                         setGuidesDatabaseStatus(statusMap);
                     }
@@ -444,10 +478,21 @@ const GpsCalculator: React.FC = () => {
                     <input type="file" ref={fileInputRef} className="hidden" accept="application/pdf" onChange={handleFileInput} />
 
                     {isLoading ? (
-                        <div className="flex flex-col items-center animate-pulse">
+                        <div className="flex flex-col items-center">
                             <Loader2 size={48} className="text-yellow-500 animate-spin mb-4" />
                             <h3 className="text-lg font-bold text-white">Processando Guias...</h3>
-                            <p className="text-zinc-500 text-sm">Lendo páginas e extraindo valores...</p>
+                            {processingProgress && (
+                                <div className="mt-2 flex flex-col items-center">
+                                    <p className="text-zinc-500 text-sm">Página {processingProgress.current} de {processingProgress.total}</p>
+                                    <div className="w-48 h-1 bg-zinc-800 rounded-full mt-2 overflow-hidden">
+                                        <div
+                                            className="h-full bg-yellow-500 transition-all duration-300"
+                                            style={{ width: `${(processingProgress.current / processingProgress.total) * 100}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                            <p className="text-zinc-400 text-xs mt-4">Analisando páginas e extraindo dados...</p>
                         </div>
                     ) : (
                         <>
