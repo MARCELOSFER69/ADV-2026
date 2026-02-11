@@ -265,3 +265,66 @@ export const updateCaseNote = async (noteId: string, conteudo: string): Promise<
         throw error;
     }
 };
+export const updateCaseGpsStatus = async (
+    caseId: string,
+    competence: string,
+    status: 'Paga' | 'Puxada' | 'Pendente',
+    paymentDate?: string,
+    value?: number
+): Promise<void> => {
+    try {
+        // 1. Fetch current GPS list
+        const { data, error } = await supabase
+            .from('cases')
+            .select('gps_lista')
+            .eq('id', caseId)
+            .single();
+
+        if (error) throw error;
+
+        const gpsList = (data.gps_lista || []) as any[];
+
+        // 2. Procura se já existe a competência
+        const existingIndex = gpsList.findIndex(item => item.competencia === competence);
+
+        let updatedList;
+        const today = new Date().toISOString().split('T')[0];
+
+        if (existingIndex >= 0) {
+            // Atualiza existente
+            updatedList = gpsList.map((item, idx) => {
+                if (idx === existingIndex) {
+                    return {
+                        ...item,
+                        status,
+                        valor: value !== undefined ? value : item.valor,
+                        data_pagamento: paymentDate || today
+                    };
+                }
+                return item;
+            });
+        } else {
+            // Cria nova entrada
+            const newItem = {
+                id: crypto.randomUUID(),
+                competencia: competence,
+                valor: value || 0,
+                status,
+                data_pagamento: paymentDate || today,
+                forma_pagamento: 'Boleto'
+            };
+            updatedList = [...gpsList, newItem];
+        }
+
+        // 3. Save back
+        const { error: updateError } = await supabase
+            .from('cases')
+            .update({ gps_lista: updatedList })
+            .eq('id', caseId);
+
+        if (updateError) throw updateError;
+    } catch (error) {
+        console.error(`Erro updateCaseGpsStatus (${caseId}):`, error);
+        throw error;
+    }
+};

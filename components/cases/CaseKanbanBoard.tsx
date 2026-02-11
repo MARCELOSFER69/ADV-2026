@@ -35,6 +35,7 @@ interface CaseKanbanBoardProps {
     onUpdateClient?: (updatedClient: Client) => Promise<void>;
     onUpdateCase?: (updatedCase: Case) => Promise<void>;
     situationFilters?: string[];
+    activeTypeFilter?: string;
 }
 
 const KanbanColumn: React.FC<{
@@ -79,7 +80,8 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
     onProjectionClick,
     onUpdateClient,
     onUpdateCase,
-    situationFilters = []
+    situationFilters = [],
+    activeTypeFilter = 'all'
 }) => {
     const [activeDragCase, setActiveDragCase] = useState<Case | null>(null);
     const [protocolarFilter, setProtocolarFilter] = useState<{ eligible: boolean, notEligible: boolean }>({
@@ -290,7 +292,7 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
                                             </h3>
 
                                             {/* Filter Toggle (Protocolar only) */}
-                                            {status === CaseStatus.PROTOCOLAR && (
+                                            {status === CaseStatus.PROTOCOLAR && activeTypeFilter === 'Aposentadoria' && (
                                                 <div className="flex items-center gap-1 opacity-0 group-hover/header:opacity-100 transition-all duration-300 ml-2 scale-90 origin-left">
                                                     <button
                                                         onClick={() => setProtocolarFilter(prev => {

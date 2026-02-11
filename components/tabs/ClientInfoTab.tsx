@@ -2,12 +2,13 @@ import React, { memo, useMemo, useState } from 'react';
 import { Client, Case, Captador, Branch, CaseStatus, ClientNote } from '../../types';
 import { formatDateDisplay } from '../../utils/dateUtils';
 import { formatCurrencyInput, formatPhone } from '../../services/formatters';
-import { AlertTriangle, CheckCircle2, Users, Clock, Building2, Share2, Plus, Check, X, Trash2, FileSpreadsheet, MessageCircle, MapPin, FileText, ChevronRight, Shield, Gavel, User, CreditCard, Send } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Users, Clock, Building2, Share2, Plus, Check, X, Trash2, FileSpreadsheet, MessageCircle, MapPin, FileText, ChevronRight, Shield, Gavel, User, CreditCard, Send, Edit2 } from 'lucide-react';
 import CustomSelect from '../ui/CustomSelect';
 import { useApp } from '../../context/AppContext';
 import { fetchAddressByCep } from '../../services/cepService';
 import { getIncompleteFields } from '../../services/importService';
-import { fetchClientNotes, addClientNote, deleteClientNote } from '../../services/clientsService';
+import { fetchClientNotes, addClientNote, deleteClientNote, updateClientNote } from '../../services/clientsService';
+import { ClientNoteModal } from '../modals/ClientNoteModal';
 
 interface ClientInfoTabProps {
     client: Client;
@@ -59,6 +60,8 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
     const [notes, setNotes] = useState<ClientNote[]>([]);
     const [newNoteContent, setNewNoteContent] = useState('');
     const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+    const [selectedNote, setSelectedNote] = useState<ClientNote | null>(null);
+    const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
 
     React.useEffect(() => {
         if (client.id) {
@@ -87,6 +90,17 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
             showToast('success', 'Anotação removida');
         } else {
             showToast('error', 'Erro ao remover anotação');
+        }
+    };
+
+    const handleUpdateNote = async (noteId: string, content: string) => {
+        if (await updateClientNote(noteId, content)) {
+            setNotes(notes.map(n => n.id === noteId ? { ...n, conteudo: content } : n));
+            showToast('success', 'Anotação atualizada');
+            setIsNoteModalOpen(false);
+            setSelectedNote(null);
+        } else {
+            showToast('error', 'Erro ao atualizar anotação');
         }
     };
 
@@ -447,18 +461,27 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
                                     ) : (
                                         notes.map(note => (
                                             <div key={note.id} className="group relative bg-[#18181b] p-2.5 rounded border border-white/5 hover:border-white/10 transition-colors">
-                                                <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed">{note.conteudo}</p>
+                                                <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed line-clamp-3">{note.conteudo}</p>
                                                 <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/5">
                                                     <span className="text-[10px] text-slate-500 font-medium">
                                                         {note.user_name} • {formatDateDisplay(note.created_at)}
                                                     </span>
-                                                    <button
-                                                        onClick={() => handleDeleteNote(note.id)}
-                                                        className="text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1"
-                                                        title="Excluir anotação"
-                                                    >
-                                                        <Trash2 size={12} />
-                                                    </button>
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                        <button
+                                                            onClick={() => { setSelectedNote(note); setIsNoteModalOpen(true); }}
+                                                            className="text-slate-600 hover:text-blue-400 p-1 transition-colors"
+                                                            title="Editar/Visualizar"
+                                                        >
+                                                            <Edit2 size={12} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteNote(note.id)}
+                                                            className="text-slate-600 hover:text-red-500 p-1 transition-colors"
+                                                            title="Excluir"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))
@@ -682,6 +705,14 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
                     </div>
                 </div>
             )}
+
+            <ClientNoteModal
+                isOpen={isNoteModalOpen}
+                onClose={() => { setIsNoteModalOpen(false); setSelectedNote(null); }}
+                note={selectedNote}
+                onSave={handleUpdateNote}
+                onDelete={handleDeleteNote}
+            />
         </>
     );
 };

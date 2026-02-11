@@ -30,9 +30,14 @@ const renderPaymentDetails = (record: FinancialRecord) => {
                     {record.forma_pagamento}
                 </div>
             )}
-            {(record.recebedor || record.captador_nome) && (
+            {record.recebedor && record.recebedor !== 'INSS' && (
                 <div className="flex items-center gap-1.5 text-xs text-zinc-400">
-                    <User size={12} /> {record.recebedor || record.captador_nome}
+                    <User size={12} /> {record.recebedor}
+                </div>
+            )}
+            {record.captador_nome && (
+                <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+                    <User size={12} /> {record.captador_nome}
                 </div>
             )}
             {record.conta && (
@@ -52,6 +57,17 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
     deleteFinancialRecord
 }) => {
     const [selectedGpsDay, setSelectedGpsDay] = React.useState<{ date: string; records: FinancialRecord[] } | null>(null);
+    const [expandedDates, setExpandedDates] = React.useState<Set<string>>(new Set());
+
+    const toggleDate = (date: string) => {
+        const newExpanded = new Set(expandedDates);
+        if (newExpanded.has(date)) {
+            newExpanded.delete(date);
+        } else {
+            newExpanded.add(date);
+        }
+        setExpandedDates(newExpanded);
+    };
 
     return (
         <div className="bg-[#0f1014] rounded-xl border border-white/10 overflow-hidden flex flex-col shadow-2xl">
@@ -97,32 +113,67 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                                                         <table className="w-full">
                                                             <tbody>
                                                                 {item.children.map(child => (
-                                                                    <tr
-                                                                        key={child.id}
-                                                                        className={`border-b border-zinc-800/50 last:border-0 hover:bg-white/5 transition-colors ${child.isGpsDaySummary ? 'cursor-pointer' : ''}`}
-                                                                        onClick={(e) => {
-                                                                            if (child.isGpsDaySummary) {
-                                                                                e.stopPropagation();
-                                                                                setSelectedGpsDay({ date: child.data_vencimento, records: child.records });
-                                                                            }
-                                                                        }}
-                                                                    >
-                                                                        <td className="py-2 px-4 text-xs text-zinc-400 w-32 font-mono">{formatDateDisplay(child.data_vencimento)}</td>
-                                                                        <td className="py-2 px-4 text-xs text-zinc-300">
-                                                                            {child.tipo === FinancialType.COMISSAO && <span className="mr-2 text-[9px] font-bold bg-purple-500/20 text-purple-300 px-1 py-0.5 rounded uppercase">COMISSÃO</span>}
-                                                                            {child.isGpsDaySummary && <span className="mr-2 text-[9px] font-bold bg-blue-500/20 text-blue-300 px-1 py-0.5 rounded uppercase">RESUMO GPS</span>}
-                                                                            {child.titulo}
-                                                                        </td>
-                                                                        <td className="py-2 px-4">
-                                                                            {child.isGpsDaySummary ? <span className="text-[10px] text-zinc-500 italic">Clique para ver clientes</span> : renderPaymentDetails(child)}
-                                                                        </td>
-                                                                        <td className={`py-2 px-4 text-xs font-bold text-right w-32 ${child.tipo === FinancialType.RECEITA ? 'text-emerald-500' : 'text-red-500'}`}>{child.tipo === FinancialType.RECEITA ? '+' : '-'} {child.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                                                                        <td className="py-2 px-4 w-16 text-right">
-                                                                            {!child.isGpsDaySummary && <button onClick={() => deleteFinancialRecord(child.id)} className="text-zinc-600 hover:text-red-500 p-1 rounded"><Trash2 size={12} /></button>}
-                                                                            {child.isGpsDaySummary && <ChevronRight size={14} className="text-zinc-700 ml-auto" />}
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
+                                                                    child.isDateHeader ? (
+                                                                        <tr key={child.id} className="bg-zinc-900 border-b border-zinc-800/80 cursor-pointer hover:bg-zinc-800 transition-colors" onClick={() => toggleDate(child.date)}>
+                                                                            <td colSpan={5} className="py-2 px-4">
+                                                                                <div className="flex items-center justify-between">
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <div className="text-gold-500">
+                                                                                            {expandedDates.has(child.date) ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                                                                        </div>
+                                                                                        <span className="text-[10px] font-black uppercase tracking-widest text-[#D4AF37]">
+                                                                                            {formatDateDisplay(child.date)}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-4">
+                                                                                        <span className="text-[10px] text-zinc-400 font-medium">
+                                                                                            {child.count} {child.count === 1 ? 'Guia' : 'Guias'}
+                                                                                        </span>
+                                                                                        <span className="text-[10px] font-bold text-zinc-300">
+                                                                                            {(child.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                    ) : (
+                                                                        (!item.isGpsSummary || expandedDates.has(child.data_vencimento?.substring(0, 10))) && (
+                                                                            <tr
+                                                                                key={child.id}
+                                                                                className={`border-b border-zinc-800/50 last:border-0 hover:bg-white/5 transition-colors ${child.isGpsDaySummary ? 'cursor-pointer' : ''}`}
+                                                                                onClick={(e) => {
+                                                                                    if (child.isGpsDaySummary) {
+                                                                                        e.stopPropagation();
+                                                                                        setSelectedGpsDay({ date: child.data_vencimento, records: child.records });
+                                                                                    }
+                                                                                }}
+                                                                            >
+                                                                                <td className="py-2 px-4 text-xs text-zinc-400 w-32 font-mono">{formatDateDisplay(child.data_vencimento)}</td>
+                                                                                <td className="py-2 px-4 text-xs text-zinc-300">
+                                                                                    {child.clients?.nome_completo ? (
+                                                                                        <div>
+                                                                                            <div className="font-semibold text-zinc-200">{child.clients.nome_completo}</div>
+                                                                                            <div className="text-[10px] text-zinc-500">{child.titulo}</div>
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <>
+                                                                                            {child.tipo === FinancialType.COMISSAO && <span className="mr-2 text-[9px] font-bold bg-purple-500/20 text-purple-300 px-1 py-0.5 rounded uppercase">COMISSÃO</span>}
+                                                                                            {child.isGpsDaySummary && <span className="mr-2 text-[9px] font-bold bg-blue-500/20 text-blue-300 px-1 py-0.5 rounded uppercase">RESUMO GPS</span>}
+                                                                                            {child.titulo}
+                                                                                        </>
+                                                                                    )}
+                                                                                </td>
+                                                                                <td className="py-2 px-4">
+                                                                                    {child.isGpsDaySummary ? <span className="text-[10px] text-zinc-500 italic">Clique para ver clientes</span> : renderPaymentDetails(child)}
+                                                                                </td>
+                                                                                <td className={`py-2 px-4 text-xs font-bold text-right w-32 ${child.tipo === FinancialType.RECEITA ? 'text-emerald-500' : 'text-red-500'}`}>{child.tipo === FinancialType.RECEITA ? '+' : '-'} {(child.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                                                                <td className="py-2 px-4 w-16 text-right">
+                                                                                    {!child.isGpsDaySummary && child.tipo_movimentacao !== 'GPS' && <button onClick={() => deleteFinancialRecord(child.id)} className="text-zinc-600 hover:text-red-500 p-1 rounded"><Trash2 size={12} /></button>}
+                                                                                    {child.isGpsDaySummary && <ChevronRight size={14} className="text-zinc-700 ml-auto" />}
+                                                                                </td>
+                                                                            </tr>
+                                                                        )
+                                                                    )))}
                                                             </tbody>
                                                         </table>
                                                     </div>

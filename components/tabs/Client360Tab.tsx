@@ -3,7 +3,11 @@ import { useApp } from '../../context/AppContext';
 // import { useAllCases } from '../../hooks/useCases'; // REMOVED
 import { Client, Case } from '../../types';
 import ProcessTimeline from '../ProcessTimeline';
-import { Briefcase, DollarSign, CheckCircle2, AlertTriangle, ChevronRight, LayoutDashboard, Send, Clock, Check, X, Settings2 } from 'lucide-react';
+import { Briefcase, DollarSign, CheckCircle2, AlertTriangle, ChevronRight, LayoutDashboard, Send, Clock, Check, X, Settings2, FileText, Trash2, Plus, Edit2 } from 'lucide-react';
+import { fetchClientNotes, addClientNote, deleteClientNote, updateClientNote } from '../../services/clientsService';
+import { ClientNote } from '../../types';
+import { formatDateDisplay } from '../../utils/dateUtils';
+import { ClientNoteModal } from '../modals/ClientNoteModal';
 import { motion } from 'framer-motion';
 
 interface Client360TabProps {
@@ -21,6 +25,13 @@ const Client360Tab: React.FC<Client360TabProps> = ({ client, onSelectCase, cases
     // Preference: Estimated Fee Percentage (default 30)
     const feePercentage = user?.preferences?.estimatedFeePercentage ?? 30;
     const [tempPercentage, setTempPercentage] = useState(feePercentage);
+
+    // Notes State
+    const [notes, setNotes] = useState<ClientNote[]>([]);
+    const [newNoteContent, setNewNoteContent] = useState('');
+    const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+    const [selectedNote, setSelectedNote] = useState<ClientNote | null>(null);
+    const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
 
     const clientCases = cases.length > 0 ? cases : (client.cases || []);
 
@@ -65,8 +76,54 @@ const Client360Tab: React.FC<Client360TabProps> = ({ client, onSelectCase, cases
                 setIsLoading(false);
             }
         };
+
+        const loadNotes = async () => {
+            setIsLoadingNotes(true);
+            try {
+                const data = await fetchClientNotes(client.id);
+                setNotes(data);
+            } catch (err) {
+                console.error('Erro ao carregar anotações:', err);
+            } finally {
+                setIsLoadingNotes(false);
+            }
+        };
+
         loadUnifiedHistory();
+        loadNotes();
     }, [client.id, getUnifiedClientHistory]);
+
+    const handleAddNote = async () => {
+        if (!newNoteContent.trim()) return;
+        const newNote = await addClientNote(client.id, newNoteContent, user?.name || 'Sistema', user?.id);
+        if (newNote) {
+            setNotes([newNote, ...notes]);
+            setNewNoteContent('');
+            showToast('success', 'Anotação adicionada');
+        } else {
+            showToast('error', 'Erro ao adicionar anotação');
+        }
+    };
+
+    const handleDeleteNote = async (noteId: string) => {
+        if (await deleteClientNote(noteId)) {
+            setNotes(notes.filter(n => n.id !== noteId));
+            showToast('success', 'Anotação removida');
+        } else {
+            showToast('error', 'Erro ao remover anotação');
+        }
+    };
+
+    const handleUpdateNote = async (noteId: string, content: string) => {
+        if (await updateClientNote(noteId, content)) {
+            setNotes(notes.map(n => n.id === noteId ? { ...n, conteudo: content } : n));
+            showToast('success', 'Anotação atualizada');
+            setIsNoteModalOpen(false);
+            setSelectedNote(null);
+        } else {
+            showToast('error', 'Erro ao atualizar anotação');
+        }
+    };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -186,6 +243,71 @@ const Client360Tab: React.FC<Client360TabProps> = ({ client, onSelectCase, cases
                             )}
                         </div>
                     </div>
+
+                    {/* Notes Section */}
+                    <div>
+                        <h4 className="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2 font-serif">
+                            <FileText size={16} className="text-gold-500" />
+                            Anotações do Cliente
+                        </h4>
+                        <div className="bg-[#131418] border border-white/5 rounded-xl overflow-hidden">
+                            <div className="max-h-60 overflow-y-auto p-3 custom-scrollbar space-y-2">
+                                {isLoadingNotes ? (
+                                    <p className="text-xs text-slate-500 text-center py-2">Carregando anotações...</p>
+                                ) : notes.length === 0 ? (
+                                    <p className="text-xs text-slate-500 text-center py-2 italic opacity-50">Nenhuma anotação.</p>
+                                ) : (
+                                    notes.map(note => (
+                                        <div key={note.id} className="group relative bg-[#18181b] p-3 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+                                            <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed line-clamp-3">{note.conteudo}</p>
+                                            <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/5">
+                                                <span className="text-[10px] text-slate-500 font-medium">
+                                                    {note.user_name} • {formatDateDisplay(note.created_at)}
+                                                </span>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                    <button
+                                                        onClick={() => { setSelectedNote(note); setIsNoteModalOpen(true); }}
+                                                        className="text-slate-600 hover:text-blue-400 p-1 transition-colors"
+                                                        title="Editar/Visualizar"
+                                                    >
+                                                        <Edit2 size={12} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteNote(note.id)}
+                                                        className="text-slate-600 hover:text-red-500 p-1 transition-colors"
+                                                        title="Excluir"
+                                                    >
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            <div className="p-2 bg-[#18181b] border-t border-white/5 flex gap-2">
+                                <textarea
+                                    className="flex-1 bg-[#0f1014] border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-gold-500 resize-none h-9 min-h-[36px] max-h-24 focus:h-20 transition-all custom-scrollbar placeholder:text-slate-600"
+                                    placeholder="Nova anotação..."
+                                    value={newNoteContent}
+                                    onChange={e => setNewNoteContent(e.target.value)}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleAddNote();
+                                        }
+                                    }}
+                                />
+                                <button
+                                    onClick={handleAddNote}
+                                    disabled={!newNoteContent.trim()}
+                                    className="bg-gold-600 hover:bg-gold-500 disabled:opacity-50 disabled:cursor-not-allowed text-white w-9 h-9 rounded-lg flex items-center justify-center transition-colors shadow-lg shadow-gold-900/20"
+                                >
+                                    <Send size={14} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Right Column: Unified Timeline */}
@@ -206,6 +328,14 @@ const Client360Tab: React.FC<Client360TabProps> = ({ client, onSelectCase, cases
                     )}
                 </div>
             </div>
+
+            <ClientNoteModal
+                isOpen={isNoteModalOpen}
+                onClose={() => { setIsNoteModalOpen(false); setSelectedNote(null); }}
+                note={selectedNote}
+                onSave={handleUpdateNote}
+                onDelete={handleDeleteNote}
+            />
         </div>
     );
 };

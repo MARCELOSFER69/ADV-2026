@@ -1,9 +1,11 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { Calculator, UploadCloud, AlertCircle, FileText, CheckCircle2, Loader2, Trash2, AlertTriangle, Calendar, DollarSign, Ban, Search } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Calculator, UploadCloud, AlertCircle, FileText, CheckCircle2, Loader2, Trash2, AlertTriangle, Calendar, DollarSign, Ban, Search, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import * as pdfjsLib from 'pdfjs-dist';
-import { useApp } from '../../context/AppContext';
-import { Client } from '../../types';
+import jsQR from 'jsqr';
+import { Client, Case } from '../../types';
+import { updateCaseGpsStatus } from '../../services/casesService';
+import { supabase } from '../../services/supabaseClient';
 
 
 // --- CORREÇÃO DO WORKER (IMPORTAÇÃO LOCAL) ---
@@ -23,7 +25,10 @@ interface GpsGuide {
     competenceRaw: string; // Ex: "Novembro/2024"
     competenceIso: string; // Ex: "2024-11"
     value: number;
-    status: 'ok' | 'error_competence' | 'warning_duplicate';
+    status: 'ok' | 'error_competence' | 'warning_duplicate' | 'already_paid' | 'already_pulled';
+    qrData?: string;
+    paidLocally?: boolean;
+    dbRecord?: any; // Record found in database
 }
 
 const MONTH_MAP: Record<string, string> = {
@@ -33,9 +38,11 @@ const MONTH_MAP: Record<string, string> = {
 };
 
 import { useAllClients } from '../../hooks/useClients';
+import { useApp } from '../../context/AppContext';
 // ... imports
 
 const GpsCalculator: React.FC = () => {
+    const { setCurrentView, setClientToView } = useApp();
     const { data: clients = [] } = useAllClients();
     // const { clients } = useApp(); // Removed
     const [isDragging, setIsDragging] = useState(false);
@@ -45,6 +52,9 @@ const GpsCalculator: React.FC = () => {
     const [referenceMonth, setReferenceMonth] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [error, setError] = useState<string | null>(null);
+    const [selectedGuide, setSelectedGuide] = useState<(GpsGuide & { client_id?: string; case_id?: string; qrData?: string }) | null>(null);
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+    const [guidesDatabaseStatus, setGuidesDatabaseStatus] = useState<Record<string, Case>>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // --- ARITMÉTICA E PROCESSAMENTO ---
@@ -65,18 +75,35 @@ const GpsCalculator: React.FC = () => {
             if (referenceMonth && guide.competenceIso !== referenceMonth) {
                 status = 'error_competence';
             }
-            // 2. Validação de Duplicidade (Prioridade Média)
+            // 2. Validação de Duplicidade no PDF (Prioridade Média)
             else if (guide.cpf && cpfCounts[guide.cpf] > 1) {
                 status = 'warning_duplicate';
             }
 
-            // 3. Encontrar nome do cliente
+            // 3. Encontrar nome do cliente e caso vinculado
             const cleanGuideCpf = guide.cpf.replace(/\D/g, '');
             const client = clients.find(c => c.cpf_cnpj?.replace(/\D/g, '') === cleanGuideCpf);
 
-            return { ...guide, status, name: client?.nome_completo };
+            // 4. Verificação no Banco de Dados (NOVO)
+            const matchedCase = client ? guidesDatabaseStatus[client.id] : null;
+            let dbRecord = null;
+            if (matchedCase && matchedCase.gps_lista) {
+                dbRecord = matchedCase.gps_lista.find(g => g.competencia === guide.competenceRaw);
+                if (dbRecord) {
+                    if (dbRecord.status === 'Paga') status = 'already_paid';
+                    else if (dbRecord.status === 'Puxada') status = 'already_pulled';
+                }
+            }
+
+            return {
+                ...guide,
+                status,
+                name: client?.nome_completo,
+                client_id: client?.id,
+                dbRecord
+            };
         });
-    }, [rawGuides, referenceMonth, clients]);
+    }, [rawGuides, referenceMonth, clients, guidesDatabaseStatus]);
 
     const filteredGuides = useMemo(() => {
         if (!searchQuery) return processedGuides;
@@ -141,6 +168,55 @@ const GpsCalculator: React.FC = () => {
 
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
+
+                // --- DETECÇÃO INTELIGENTE DE QR CODE (jsQR) ---
+                const viewport = page.getViewport({ scale: 4.0 }); // Resolução ultra-alta para evitar borrões
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                await page.render({ canvasContext: context!, viewport }).promise;
+
+                const imageData = context!.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                let qrData = '';
+
+                if (code) {
+                    console.log(`[Página ${i}] QR Code detectado!`, code.location);
+
+                    // Crop preciso com base na localização detectada
+                    const { topLeftCorner, bottomRightCorner, bottomLeftCorner, topRightCorner } = code.location;
+                    const padding = 15; // Mais justo
+                    const topPadding = 65; // Ajustado para remover o traço pontilhado e manter o texto
+
+                    const minX = Math.max(0, Math.min(topLeftCorner.x, bottomLeftCorner.x) - padding);
+                    const minY = Math.max(0, Math.min(topLeftCorner.y, topRightCorner.y) - topPadding);
+                    const maxX = Math.max(bottomRightCorner.x, topRightCorner.x) + padding;
+                    const maxY = Math.max(bottomRightCorner.y, bottomLeftCorner.y) + 15; // Menos espaço em baixo
+
+                    const width = Math.min(canvas.width - minX, maxX - minX);
+                    const height = Math.min(canvas.height - minY, maxY - minY);
+
+                    const qrCanvas = document.createElement('canvas');
+                    qrCanvas.width = width;
+                    qrCanvas.height = height;
+                    const qrCtx = qrCanvas.getContext('2d');
+                    qrCtx?.drawImage(canvas, minX, minY, width, height, 0, 0, width, height);
+                    qrData = qrCanvas.toDataURL('image/png');
+                } else {
+                    console.warn(`[Página ${i}] QR Code não detectado via jsQR. Tentando fallback...`);
+                    // Fallback: Tentando capturar a área inferior direita (geralmente onde fica no DAE/eSocial)
+                    const qrCanvas = document.createElement('canvas');
+                    const qrCtx = qrCanvas.getContext('2d');
+                    qrCanvas.width = 400;
+                    qrCanvas.height = 400;
+                    // Ajuste de coordenadas: Final da página, lado direito
+                    qrCtx?.drawImage(canvas, viewport.width - 450, viewport.height - 500, 400, 400, 0, 0, 400, 400);
+                    qrData = qrCanvas.toDataURL('image/png');
+                }
+
                 const textContent = await page.getTextContent();
 
                 // 1. Garante que pegamos apenas as strings, limpando espaços vazios extras
@@ -194,7 +270,8 @@ const GpsCalculator: React.FC = () => {
                         competenceRaw: foundCompetence,
                         competenceIso: parseCompetenceToIso(foundCompetence),
                         value: foundValue,
-                        status: 'ok'
+                        status: 'ok',
+                        qrData // Salva a imagem do QR code vinculada à página
                     });
                 } else {
                     console.warn(`[Page ${i}] Dados incompletos. Valor: ${foundValue}, Comp: ${foundCompetence}`);
@@ -205,6 +282,29 @@ const GpsCalculator: React.FC = () => {
                 setError('Nenhuma guia válida encontrada. Verifique o console (F12) para ver os itens extraídos.');
             } else {
                 setRawGuides(extracted);
+
+                // --- BUSCAR STATUS NO BANCO DE DADOS ---
+                const identifiedCpfs = [...new Set(extracted.map(g => g.cpf.replace(/\D/g, '')))];
+                const matchedClients = clients.filter(c => identifiedCpfs.includes(c.cpf_cnpj?.replace(/\D/g, '') || ''));
+                const clientIds = matchedClients.map(c => c.id);
+
+                if (clientIds.length > 0) {
+                    const { data: casesWithGps } = await supabase
+                        .from('cases')
+                        .select('id, client_id, gps_lista, titulo')
+                        .in('client_id', clientIds);
+
+                    if (casesWithGps) {
+                        const statusMap: Record<string, Case> = {};
+                        casesWithGps.forEach(c => {
+                            // Prioridade para Seguro Defeso se houver mais de um caso
+                            if (!statusMap[c.client_id] || c.titulo?.toLowerCase().includes('seguro defeso')) {
+                                statusMap[c.client_id] = c as unknown as Case;
+                            }
+                        });
+                        setGuidesDatabaseStatus(statusMap);
+                    }
+                }
 
                 // Se o usuário ainda não escolheu o mês, sugerir o primeiro encontrado
                 if (!referenceMonth && extracted.length > 0) {
@@ -217,6 +317,59 @@ const GpsCalculator: React.FC = () => {
             setError(err.name === 'PasswordException' ? 'Arquivo protegido por senha.' : 'Erro ao ler o arquivo PDF.');
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handlePayClick = async (guide: any) => {
+        if (!guide.client_id) return;
+
+        setIsUpdatingStatus(true);
+        try {
+            // Tenta encontrar casos vinculados ao cliente
+            const { data: casesData } = await supabase
+                .from('cases')
+                .select('id, titulo')
+                .eq('client_id', guide.client_id);
+
+            if (casesData && casesData.length > 0) {
+                // Se houver casos, preferimos o que já tem GPS ou o mais recente (maior ID de uuid não garante ordem, mas aqui pegamos qualquer um)
+                // Prioridade para Seguro Defeso se houver no título
+                const seguroDefeso = casesData.find(c => c.titulo?.toLowerCase().includes('seguro defeso'));
+                setSelectedGuide({ ...guide, case_id: seguroDefeso?.id || casesData[0].id });
+            } else {
+                // Se não encontrar caso, permite ver o QR mas avisa no modal
+                setSelectedGuide({ ...guide });
+            }
+        } catch (err) {
+            console.error(err);
+            setSelectedGuide({ ...guide });
+        } finally {
+            setIsUpdatingStatus(false);
+        }
+    };
+
+    const markAsPaid = async () => {
+        if (!selectedGuide || !selectedGuide.case_id) return;
+
+        setIsUpdatingStatus(true);
+        try {
+            // Competência vinda do PDF é "Janeiro/2026", precisamos bater com o banco
+            await updateCaseGpsStatus(
+                selectedGuide.case_id,
+                selectedGuide.competenceRaw,
+                'Paga',
+                undefined,
+                selectedGuide.value
+            );
+
+            // Sucesso! Remove ou atualiza localmente? 
+            // Vamos apenas avisar e fechar
+            setRawGuides(prev => prev.map(g => g.id === selectedGuide.id ? { ...g, paidLocally: true } : g));
+            setSelectedGuide(null);
+        } catch (err) {
+            alert('Erro ao atualizar status no banco de dados.');
+        } finally {
+            setIsUpdatingStatus(false);
         }
     };
 
@@ -408,10 +561,23 @@ const GpsCalculator: React.FC = () => {
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
                                                     {guide.name ? (
-                                                        <>
-                                                            <span className="font-bold text-white text-sm">{guide.name}</span>
-                                                            <span className="font-mono text-zinc-500 text-xs">{guide.cpf}</span>
-                                                        </>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (guide.client_id) {
+                                                                    setClientToView(guide.client_id, 'info');
+                                                                    setCurrentView('clients');
+                                                                }
+                                                            }}
+                                                            className="flex flex-col text-left group/name"
+                                                            title="Ver dados do cliente"
+                                                        >
+                                                            <span className="font-bold text-white text-sm group-hover/name:text-gold-500 transition-colors">
+                                                                {guide.name}
+                                                            </span>
+                                                            <span className="font-mono text-zinc-500 text-xs">
+                                                                {guide.cpf}
+                                                            </span>
+                                                        </button>
                                                     ) : (
                                                         <span className="font-mono text-zinc-300 text-sm">{guide.cpf}</span>
                                                     )}
@@ -428,9 +594,27 @@ const GpsCalculator: React.FC = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                {guide.status === 'ok' && (
+                                                {guide.status === 'ok' && !guide.paidLocally && (
+                                                    <button
+                                                        onClick={() => handlePayClick(guide)}
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-bold bg-gold-500/10 text-gold-500 border border-gold-500/20 hover:bg-gold-500/20 transition-colors"
+                                                    >
+                                                        < DollarSign size={12} /> PAGAR
+                                                    </button>
+                                                )}
+                                                {guide.paidLocally && (
                                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                                        <CheckCircle2 size={12} /> OK
+                                                        <CheckCircle2 size={12} /> PAGO
+                                                    </span>
+                                                )}
+                                                {guide.status === 'already_paid' && (
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                                                        <CheckCircle2 size={12} /> JÁ PAGA NO SISTEMA
+                                                    </span>
+                                                )}
+                                                {guide.status === 'already_pulled' && (
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                        <FileText size={12} /> JÁ PUXADA
                                                     </span>
                                                 )}
                                                 {guide.status === 'error_competence' && (
@@ -440,7 +624,7 @@ const GpsCalculator: React.FC = () => {
                                                 )}
                                                 {guide.status === 'warning_duplicate' && (
                                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-medium bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
-                                                        <AlertTriangle size={12} /> Duplicado
+                                                        <AlertTriangle size={12} /> Duplicado no PDF
                                                     </span>
                                                 )}
                                             </td>
@@ -452,6 +636,116 @@ const GpsCalculator: React.FC = () => {
                     </div>
                 </div>
             )}
+            {/* Modal de Pagamento Pix */}
+            <AnimatePresence>
+                {selectedGuide && (
+                    <div className="fixed inset-0 z-[40000] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+                            onClick={() => !isUpdatingStatus && setSelectedGuide(null)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-[#0f1014] w-full max-w-lg rounded-3xl border border-white/10 shadow-3xl relative z-10 overflow-hidden"
+                        >
+                            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-gold-500/10 rounded-xl text-gold-500">
+                                        < DollarSign size={20} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-white font-serif">Pagar com PIX</h3>
+                                        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mt-0.5">Escaneie para concluir</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setSelectedGuide(null)}
+                                    disabled={isUpdatingStatus}
+                                    className="p-2 text-zinc-500 hover:text-white transition-colors disabled:opacity-30"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="p-6 pb-8 pt-4 flex flex-col items-center">
+                                {/* Exibição do QR Code Extraído */}
+                                <div className="relative group">
+                                    <div className="absolute -inset-4 bg-gold-500/5 rounded-[2rem] blur-2xl group-hover:bg-gold-500/10 transition-all duration-500" />
+                                    <div className="relative bg-white p-2 rounded-[2rem] shadow-2xl transition-transform hover:scale-[1.01] overflow-hidden">
+                                        {selectedGuide.qrData ? (
+                                            <img
+                                                src={selectedGuide.qrData}
+                                                alt="QR Code Pix"
+                                                className="w-full max-w-[380px] aspect-square object-contain brightness-95 contrast-125"
+                                            />
+                                        ) : (
+                                            <div className="w-64 h-64 flex flex-col items-center justify-center text-zinc-400 bg-zinc-50 rounded-2xl border-2 border-dashed border-zinc-200">
+                                                <Ban size={48} className="mb-4 opacity-20" />
+                                                <p className="text-[10px] font-bold uppercase tracking-tighter">QR Code não localizado</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="mt-10 w-full space-y-4">
+                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Contribuinte</span>
+                                            <span className="text-[10px] text-zinc-500 font-mono">{selectedGuide.cpf}</span>
+                                        </div>
+                                        <div className="text-sm font-bold text-white">{selectedGuide.name || 'Cliente Não Identificado'}</div>
+                                    </div>
+
+                                    <div className="flex gap-4">
+                                        <div className="flex-1 p-4 bg-white/5 rounded-2xl border border-white/5">
+                                            <span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Competência</span>
+                                            <span className="text-sm font-bold text-zinc-200">{selectedGuide.competenceRaw}</span>
+                                        </div>
+                                        <div className="flex-1 p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
+                                            <span className="text-[10px] text-emerald-500/50 uppercase font-black tracking-widest block mb-1">Valor Total</span>
+                                            <span className="text-sm font-bold text-emerald-400">
+                                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedGuide.value)}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {selectedGuide.case_id ? (
+                                        <button
+                                            onClick={markAsPaid}
+                                            disabled={isUpdatingStatus}
+                                            className="w-full h-14 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 text-white rounded-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-xl shadow-emerald-600/20"
+                                        >
+                                            {isUpdatingStatus ? (
+                                                <Loader2 size={20} className="animate-spin" />
+                                            ) : (
+                                                <>
+                                                    <CheckCircle2 size={20} />
+                                                    <span>Marcar como Pago</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    ) : (
+                                        <div className="p-4 bg-yellow-500/5 rounded-2xl border border-yellow-500/10 flex items-start gap-3">
+                                            <AlertTriangle size={18} className="text-yellow-500 shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-[11px] font-bold text-yellow-500 uppercase tracking-wide">Atenção</p>
+                                                <p className="text-[10px] text-zinc-400 leading-relaxed mt-0.5 text-balance">
+                                                    Não encontramos uma lista de GPS vinculada a este cliente. Você pode pagar o Pix, mas a baixa automática não será possível.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

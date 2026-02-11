@@ -542,6 +542,7 @@ const Cases: React.FC = () => {
                     onUpdateClient={updateClient}
                     onUpdateCase={updateCase}
                     situationFilters={situationFilters}
+                    activeTypeFilter={filters.tipo}
                 />
             ) : (
                 <CaseList

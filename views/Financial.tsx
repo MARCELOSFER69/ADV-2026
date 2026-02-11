@@ -181,7 +181,9 @@ const Financial: React.FC = () => {
         const gpsAggregationGroup: any = {
             type: 'group',
             id: 'group-gps-aggregated',
-            title: 'PAGAMENTOS GPS (AGREGADO)',
+
+
+            title: 'GUIAS GPS (INSS)',
             clientName: 'Escritório',
             totalEntradas: 0,
             totalSaidas: 0,
@@ -193,12 +195,40 @@ const Financial: React.FC = () => {
         const dailyGps: Record<string, FinancialRecord[]> = {};
 
         filteredRecords.forEach(record => {
-            if (record.tipo_movimentacao === 'GPS' && record.status_pagamento) {
-                const date = record.data_vencimento;
+            // AGREGAR TODAS AS GPS (Pagas ou Pendentes)
+            if (record.tipo_movimentacao === 'GPS') {
+                const date = record.data_vencimento.substring(0, 10);
                 if (!dailyGps[date]) dailyGps[date] = [];
                 dailyGps[date].push(record);
 
-                gpsAggregationGroup.totalSaidas += Number(record.valor) || 0;
+                // Somar ao total do grupo apenas se for pago?
+                // O usuário pediu "grupo somado".
+                // Se o financeiro mostra saldo, geralmente considera realizado.
+                // Mas para visualização de previsão, pode mostrar tudo.
+                // Vamos somar tudo ao valor do grupo para mostrar o "Volume Financeiro de GPS"
+                // E o status indicará se é Despesa Realizada ou Prevista.
+                // Mas a lógica do FinancialTable usa `totalSaidas` para calcular `saldo`.
+                // Se somarmos pendentes, o saldo ficará negativo "previsto".
+                // Isso é Ok. O status da linha vai indicar.
+
+                // Se quiser separar, teríamos dois grupos. Mas o usuário pediu "um grupo somado".
+
+                if (record.status_pagamento) {
+                    gpsAggregationGroup.totalSaidas += Number(record.valor) || 0;
+                } else {
+                    // Se for pendente, também somamos? 
+                    // Se somarmos, vai abater do saldo do dashboard se não cuidarmos.
+                    // Mas aqui estamos construindo `processedData`, que é visual.
+                    // O `totals` lá embaixo (lines 310+) usa `calculatedExpense` que soma `gpsAggregationGroup.totalSaidas`.
+                    // Se somarmos pendentes, vai parecer que já gastamos.
+                    // Melhor somar APENAS PAGOS para o TOTAL GERAL do Dashboard, mas mostrar o total do GRUPO incluindo pendentes?
+                    // A estrutura `FinancialViewItem` tem `saldo` derivado de `totalEntradas - totalSaidas`.
+                    // Vamos somar TUDO no grupo visual, mas cuidar com o `calculatedExpense`.
+
+                    // WAIT: `gpsAggregationGroup.totalSaidas` é usado para o `saldo` visual da linha.
+                    gpsAggregationGroup.totalSaidas += Number(record.valor) || 0;
+                }
+
                 if (!gpsAggregationGroup.dataReferencia || new Date(date) > new Date(gpsAggregationGroup.dataReferencia)) {
                     gpsAggregationGroup.dataReferencia = date;
                 }
@@ -280,21 +310,48 @@ const Financial: React.FC = () => {
             gpsAggregationGroup.status = 'DESPESA';
             gpsAggregationGroup.valorColorClass = 'text-red-400';
 
-            // Transform dailyGps into children objects
-            gpsAggregationGroup.children = Object.entries(dailyGps)
-                .map(([date, records]) => ({
-                    id: `gps-day-${date}`,
-                    data_vencimento: date,
-                    titulo: `${records.length} ${records.length === 1 ? 'Guia Paga' : 'Guias Pagas'}`,
-                    valor: records.reduce((sum, r) => sum + r.valor, 0),
-                    tipo: FinancialType.DESPESA,
-                    records: records, // For the modal
-                    isGpsDaySummary: true
-                }))
-                .sort((a, b) => new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime());
+            // Add ALL individual GPS records as children, sorted by date
+            // This satisfies the request to show individual items "separated" by line,
+            // while keeping them grouped in the main "GUIAS GPS" folder.
+            // visual separation by day is handled by the sorting.
+            const allGpsRecords = Object.values(dailyGps).flat().sort((a, b) =>
+                new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime()
+            );
+
+            const childrenWithHeaders: any[] = [];
+            let lastDate = '';
+
+            // Helper to calculate daily totals
+            const getDailyStats = (date: string) => {
+                const records = (dailyGps[date] || []).filter(r => r.tipo_movimentacao === 'GPS');
+                const total = records.filter(r => r.status_pagamento).reduce((sum, r) => sum + (Number(r.valor) || 0), 0);
+                const count = records.length;
+                return { total, count };
+            };
+
+            allGpsRecords.forEach(record => {
+                const currentDate = record.data_vencimento.substring(0, 10);
+                if (currentDate !== lastDate) {
+                    const stats = getDailyStats(currentDate);
+                    childrenWithHeaders.push({
+                        id: `header-${currentDate}`,
+                        isDateHeader: true,
+                        date: currentDate,
+                        data_vencimento: currentDate,
+                        total: stats.total,
+                        count: stats.count
+                    });
+                    lastDate = currentDate;
+                }
+                childrenWithHeaders.push(record);
+            });
+
+            gpsAggregationGroup.children = childrenWithHeaders;
 
             standaloneItems.push(gpsAggregationGroup);
-            calculatedExpense += gpsAggregationGroup.totalSaidas;
+
+            const totalPaidGps = allGpsRecords.filter(r => r.status_pagamento).reduce((sum, r) => sum + (Number(r.valor) || 0), 0);
+            calculatedExpense += totalPaidGps;
         }
 
         const sortedData = [...processedGroups, ...standaloneItems].flat().sort((a, b) => {

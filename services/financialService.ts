@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { FinancialRecord } from '../types';
+import { FinancialRecord, FinancialType, GPS } from '../types';
 
 export interface FinancialFilters {
     type?: string;
@@ -84,7 +84,116 @@ export const fetchFinancialRecords = async (
         throw error;
     }
 
-    return (data as FinancialRecord[]) || [];
+    let records = (data as FinancialRecord[]) || [];
+
+    // --- BUSCAR GPS (Injetar como Despesas) ---
+    // Apenas se não houver filtro excluindo Despesas ou Status Pendente/Pago conflitante
+    const shouldFetchGps =
+        (!filters.type || filters.type === 'all' || filters.type === FinancialType.DESPESA) &&
+        (!filters.receiver) && // GPS geralmente tem recebedor 'INSS' implicito ou null
+        (!filters.account);     // GPS pode não ter conta definida na lista
+
+    if (shouldFetchGps) {
+        try {
+            // Buscar casos que têm GPS
+            let gpsQuery = supabase
+                .from('cases')
+                .select('id, gps_lista, client_id, titulo, numero_processo, clients(nome_completo, cpf_cnpj, filial)')
+                .not('gps_lista', 'is', null)
+                // O filtro de filial se aplica ao cliente do caso
+                .eq(filters.filial && filters.filial !== 'all' ? 'clients.filial' : '', filters.filial && filters.filial !== 'all' ? filters.filial : ''); // Supabase ignora chave vazia? Não. Precisa lógica condicional melhor.
+
+            if (filters.filial && filters.filial !== 'all') {
+                gpsQuery = gpsQuery.eq('clients.filial', filters.filial);
+            }
+
+            if (filters.search) {
+                // Se busca textual, verifica se bate com titulo/processo OU se a palavra "GPS" está na busca
+                const term = filters.search.toLowerCase();
+                if (!term.includes('gps') && !term.includes('inss')) {
+                    // Se a busca não é por GPS, filtramos os casos que batem textualmente
+                    gpsQuery = gpsQuery.or(`titulo.ilike.%${filters.search}%,numero_processo.ilike.%${filters.search}%`);
+                }
+            }
+
+            const { data: casesWithGps, error: gpsError } = await gpsQuery;
+
+            if (!gpsError && casesWithGps) {
+                const gpsRecords: FinancialRecord[] = [];
+
+                casesWithGps.forEach((c: any) => {
+                    const gpsList = (c.gps_lista || []) as GPS[];
+                    gpsList.forEach(gps => {
+                        // Determinar Data de Vencimento
+                        // Se não tem data_pagamento, assumimos vencimento baseado na competência (dia 15 do mês seguinte)
+                        // Ex: 01/2026 -> Vence 15/02/2026
+                        let dueDate = gps.data_pagamento;
+                        if (!dueDate) {
+                            try {
+                                const [month, year] = gps.competencia.split('/').map(Number);
+                                if (month && year) {
+                                    // Mês seguinte, dia 15
+                                    const date = new Date(year, month, 15);
+                                    dueDate = date.toISOString().split('T')[0];
+                                }
+                            } catch (e) { }
+                        }
+
+                        if (!dueDate) return; // Sem data, ignora
+
+                        // Filtro de Data
+                        if (dueDate < startDate || dueDate > endDate) return;
+
+                        // Filtro de Status
+                        const isPaid = gps.status === 'Paga';
+                        if (filters.status === 'paid' && !isPaid) return;
+                        if (filters.status === 'pending' && isPaid) return;
+
+                        // Filtro Texto (Se busca explicita por GPS)
+                        if (filters.search) {
+                            const term = filters.search.toLowerCase();
+                            // Se o termo não bateu no titulo do caso (já filtrado na query),
+                            // verificamos se bate na própria GPS (competência)
+                            const contextMatch = (c.titulo || '').toLowerCase().includes(term) || (c.numero_processo || '').toLowerCase().includes(term);
+                            const gpsMatch = gps.competencia.includes(term) || 'gps'.includes(term) || 'inss'.includes(term);
+
+                            if (!contextMatch && !gpsMatch) return;
+                        }
+
+                        // Mapear para FinancialRecord
+                        gpsRecords.push({
+                            id: `gps-${c.id}-${gps.id}`, // ID Virtual único
+                            case_id: c.id,
+                            client_id: c.client_id,
+                            titulo: `GPS - ${gps.competencia}`,
+                            tipo: FinancialType.DESPESA,
+                            tipo_movimentacao: 'GPS',
+                            valor: gps.valor,
+                            data_vencimento: dueDate,
+                            status_pagamento: isPaid,
+                            captador_nome: 'INSS', // Ou deixamos null
+                            // recebedor: 'Previdência Social', // Removed as per user request
+                            forma_pagamento: gps.forma_pagamento || 'Boleto',
+                            // Dados relacionais flat
+                            clients: c.clients,
+                            cases: { titulo: c.titulo, numero_processo: c.numero_processo, client_id: c.client_id }
+                        });
+                    });
+                });
+
+                // Merge
+                records = [...records, ...gpsRecords];
+            }
+        } catch (err) {
+            console.error('Erro ao buscar GPS para financeiro:', err);
+            // Não falha o request principal, apenas loga e segue sem GPS
+        }
+    }
+
+    // Ordenar final mesclado
+    return records.sort((a, b) => {
+        return new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime();
+    });
 };
 
 export const fetchFinancialSummary = async (startDate: string, endDate: string) => {
@@ -107,14 +216,70 @@ export const fetchFinancialSummary = async (startDate: string, endDate: string) 
 
 export const fetchFinancialsByCaseId = async (caseId: string): Promise<FinancialRecord[]> => {
     try {
-        const { data, error } = await supabase
+        // 1. Buscar registros da tabela física
+        const { data: physicalRecords, error: physError } = await supabase
             .from('financial_records')
             .select('*')
             .eq('case_id', caseId)
             .order('data_vencimento', { ascending: false });
 
-        if (error) throw error;
-        return (data as FinancialRecord[]) || [];
+        if (physError) throw physError;
+
+        // 2. Buscar GPS (dados virtuais da lista do caso)
+        const { data: caseData, error: caseError } = await supabase
+            .from('cases')
+            .select('id, gps_lista, client_id, titulo, numero_processo, clients(nome_completo, cpf_cnpj, filial)')
+            .eq('id', caseId)
+            .single();
+
+        if (caseError) throw caseError;
+
+        const gpsList = (caseData.gps_lista || []) as GPS[];
+        const gpsRecords: FinancialRecord[] = gpsList.map(gps => {
+            // Determinar Data de Vencimento (Lógica idêntica ao fetchFinancialRecords)
+            let dueDate = gps.data_pagamento;
+            if (!dueDate) {
+                try {
+                    const [month, year] = gps.competencia.split('/').map(Number);
+                    if (month && year) {
+                        const date = new Date(year, month, 15);
+                        dueDate = date.toISOString().split('T')[0];
+                    }
+                } catch (e) { }
+            }
+
+            const isPaid = gps.status === 'Paga';
+            const clientData = Array.isArray(caseData.clients) ? caseData.clients[0] : caseData.clients;
+
+            return {
+                id: `gps-${caseId}-${gps.id}`,
+                case_id: caseId,
+                client_id: caseData.client_id,
+                titulo: `GPS - ${gps.competencia}`,
+                tipo: FinancialType.DESPESA,
+                tipo_movimentacao: 'GPS',
+                valor: gps.valor,
+                data_vencimento: dueDate || '',
+                status_pagamento: isPaid,
+                captador_nome: 'INSS',
+                forma_pagamento: gps.forma_pagamento || 'Boleto',
+                clients: clientData ? {
+                    nome_completo: clientData.nome_completo,
+                    cpf_cnpj: clientData.cpf_cnpj
+                } : undefined,
+                cases: {
+                    titulo: caseData.titulo,
+                    numero_processo: caseData.numero_processo,
+                    client_id: caseData.client_id
+                }
+            } as FinancialRecord;
+        }).filter(r => r.data_vencimento);
+
+        // 3. Merge e Ordenação
+        const merged = [...(physicalRecords || []), ...gpsRecords];
+        return merged.sort((a, b) => {
+            return new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime();
+        });
     } catch (error) {
         console.error(`Erro ao buscar financeiro do caso ${caseId}:`, error);
         throw error;
