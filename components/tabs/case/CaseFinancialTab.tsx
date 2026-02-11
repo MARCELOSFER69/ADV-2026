@@ -464,13 +464,17 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                                     </div>
                                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
                                                         <div>
-                                                            <label className="text-[10px] text-zinc-500 uppercase block">Vencimento</label>
-                                                            <input
-                                                                type="date"
-                                                                className="bg-transparent border-none p-0 text-sm text-white font-medium outline-none disabled:opacity-50"
-                                                                value={inst.data_vencimento}
-                                                                onChange={e => updateInstallment({ ...inst, data_vencimento: e.target.value }, client?.nome_completo || 'Cliente')}
-                                                            />
+                                                            <label className="text-[10px] text-zinc-500 uppercase block mb-1">Vencimento</label>
+                                                            <div className="flex items-center gap-2 group/date relative">
+                                                                <input
+                                                                    type="date"
+                                                                    className="bg-[#131418] border border-white/5 rounded px-2 py-1 text-sm text-white font-medium outline-none focus:border-gold-500/50 transition-colors cursor-pointer w-full appearance-none"
+                                                                    value={inst.data_vencimento}
+                                                                    onChange={e => updateInstallment({ ...inst, data_vencimento: e.target.value }, client?.nome_completo || 'Cliente')}
+                                                                    onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                                                                />
+                                                                <Calendar size={12} className="absolute right-2 text-zinc-500 pointer-events-none group-hover/date:text-gold-500 transition-colors" />
+                                                            </div>
                                                         </div>
                                                         <div>
                                                             <label className="text-[10px] text-zinc-500 uppercase block">Valor</label>
