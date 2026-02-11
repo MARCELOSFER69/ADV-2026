@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Calculator, AlertCircle, Briefcase } from 'lucide-react';
-import { Client } from '../../types';
+import { Client, RetirementCandidate } from '../../types';
 import PendencyIndicator from '../ui/PendencyIndicator';
 
 export interface DetailedCalculation {
@@ -14,14 +14,14 @@ export interface DetailedCalculation {
     isContributionOk: boolean;
 }
 
-export interface RetirementCandidate {
-    client: Client;
-    age: { years: number; months: number };
-    ruralRemaining: number;
-    urbanRemaining: number;
-    bestChance: string;
-    yearsRemaining: number;
-}
+// export interface RetirementCandidate { // REMOVED: using centralized interface from types
+//     client: Client;
+//     age: { years: number; months: number };
+//     ruralRemaining: number;
+//     urbanRemaining: number;
+//     bestChance: string;
+//     yearsRemaining: number;
+// }
 
 interface RetirementCardProps {
     candidate: RetirementCandidate;

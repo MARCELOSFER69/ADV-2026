@@ -16,10 +16,11 @@ import {
     SortableContext,
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Case, CaseStatus } from '../../types';
+import { Case, CaseStatus, CaseType, RetirementCandidate, Client } from '../../types';
 import CaseKanbanCard from '../CaseKanbanCard';
 import { formatCurrency } from '../../services/formatters';
 import { getStatusHeaderColor } from '../../utils/caseUtils';
+import { calculateRetirementProjection } from '../../utils/retirementUtils';
 
 interface CaseKanbanBoardProps {
     cases: Case[];
@@ -30,6 +31,10 @@ interface CaseKanbanBoardProps {
     columnWidth: number;
     setColumnWidth: (width: number) => void;
     cardScale: number;
+    onProjectionClick?: (candidate: RetirementCandidate) => void;
+    onUpdateClient?: (updatedClient: Client) => Promise<void>;
+    onUpdateCase?: (updatedCase: Case) => Promise<void>;
+    situationFilters?: string[];
 }
 
 const KanbanColumn: React.FC<{
@@ -70,9 +75,17 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
     onArchiveClick,
     columnWidth,
     setColumnWidth,
-    cardScale
+    cardScale,
+    onProjectionClick,
+    onUpdateClient,
+    onUpdateCase,
+    situationFilters = []
 }) => {
     const [activeDragCase, setActiveDragCase] = useState<Case | null>(null);
+    const [protocolarFilter, setProtocolarFilter] = useState<{ eligible: boolean, notEligible: boolean }>({
+        eligible: true,
+        notEligible: true
+    });
 
     // --- REMOVED: Client Lookup Map (Now using case fields directly) ---
     // const clientMap = useMemo(...);
@@ -197,7 +210,63 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
             >
                 <div className="flex gap-6 min-w-max h-full px-2">
                     {columns.map((status) => {
-                        const columnCases = cases.filter(c => c.status === status);
+                        let columnCases = cases.filter(c => c.status === status);
+
+                        // Aplica filtro específico para "A Protocolar"
+                        if (status === CaseStatus.PROTOCOLAR) {
+                            columnCases = columnCases.filter(c => {
+                                const isApos = String(c.tipo).toLowerCase().includes('aposentadoria') || c.tipo === CaseType.APOSENTADORIA;
+                                if (!isApos) return true; // Não filtra casos que não são aposentadoria
+
+                                const proj = calculateRetirementProjection(c.client_birth_date, c.client_sexo, (c.modalidade || (c as any).aposentadoria_modalidade) as any);
+                                const isEligible = proj?.isEligible || false;
+                                const yearsRemaining = proj?.yearsRemaining || 999;
+
+
+
+                                // 1. Filtro antigo de botões (Mantido por compatibilidade ou removido se não for usar)
+                                if (protocolarFilter.eligible && protocolarFilter.notEligible && situationFilters.length === 0) return true;
+
+                                // 2. Novo Filtro de Situação (Múltipla Escolha)
+                                if (situationFilters.length > 0) {
+                                    let matchSituation = false;
+                                    // Broaden check: Match if yearsRemaining is ~0 OR if generally eligible (isEligible flag)
+                                    if (situationFilters.includes('Já elegível') && (yearsRemaining <= 0.001 || isEligible)) matchSituation = true;
+                                    if (situationFilters.includes('Menos de 1 ano') && yearsRemaining <= 1 && yearsRemaining > 0.001) matchSituation = true;
+                                    if (situationFilters.includes('Menos de 2 anos') && yearsRemaining <= 2 && yearsRemaining > 0.001) matchSituation = true;
+                                    if (situationFilters.includes('Menos de 3 anos') && yearsRemaining <= 3 && yearsRemaining > 0.001) matchSituation = true;
+                                    if (situationFilters.includes('Menos de 4 anos') && yearsRemaining <= 4 && yearsRemaining > 0.001) matchSituation = true;
+                                    if (situationFilters.includes('Menos de 5 anos') && yearsRemaining <= 5 && yearsRemaining > 0.001) matchSituation = true;
+
+                                    return matchSituation;
+                                }
+
+                                // Fallback para o filtro antigo se nada selecionado no novo
+                                if (protocolarFilter.eligible && isEligible) return true;
+                                if (protocolarFilter.notEligible && !isEligible) return true;
+                                return false;
+                            });
+                        }
+
+                        // Custom sorting for "A Protocolar" column: Retirement projections first
+                        if (status === CaseStatus.PROTOCOLAR) {
+                            columnCases = [...columnCases].sort((a, b) => {
+                                const isAposA = String(a.tipo).toLowerCase().includes('aposentadoria') || a.tipo === CaseType.APOSENTADORIA;
+                                const isAposB = String(b.tipo).toLowerCase().includes('aposentadoria') || b.tipo === CaseType.APOSENTADORIA;
+
+                                if (isAposA && isAposB) {
+                                    const projA = calculateRetirementProjection(a.client_birth_date, a.client_sexo, (a.modalidade || (a as any).aposentadoria_modalidade) as any);
+                                    const projB = calculateRetirementProjection(b.client_birth_date, b.client_sexo, (b.modalidade || (b as any).aposentadoria_modalidade) as any);
+                                    const valA = projA ? projA.yearsRemaining : 999;
+                                    const valB = projB ? projB.yearsRemaining : 999;
+                                    return valA - valB;
+                                }
+                                if (isAposA) return -1;
+                                if (isAposB) return 1;
+                                return 0;
+                            });
+                        }
+
                         const totalColumnValue = columnCases.reduce((acc, curr) => acc + curr.valor_causa, 0);
 
                         // Performance optimization: limit rendered cards to 50
@@ -212,17 +281,45 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
                                 onColumnResizeDown={handleColumnResizeDown}
                             >
                                 {/* PREMIUM HEADER */}
-                                <div className="mb-4 px-1">
+                                <div className="mb-4 px-1 relative group/header">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="font-black text-slate-300 flex items-center gap-2 text-[10px] uppercase tracking-widest">
-                                            <span className={`w-2 h-2 rounded-full ${getStatusHeaderColor(status)} shadow-[0_0_8px_currentColor]`} />
-                                            {status}
-                                        </h3>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-black text-slate-300 flex items-center gap-2 text-[10px] uppercase tracking-widest">
+                                                <span className={`w-2 h-2 rounded-full ${getStatusHeaderColor(status)} shadow-[0_0_8px_currentColor]`} />
+                                                {status}
+                                            </h3>
+
+                                            {/* Filter Toggle (Protocolar only) */}
+                                            {status === CaseStatus.PROTOCOLAR && (
+                                                <div className="flex items-center gap-1 opacity-0 group-hover/header:opacity-100 transition-all duration-300 ml-2 scale-90 origin-left">
+                                                    <button
+                                                        onClick={() => setProtocolarFilter(prev => {
+                                                            const next = !prev.eligible;
+                                                            if (!next && !prev.notEligible) return prev;
+                                                            return { ...prev, eligible: next };
+                                                        })}
+                                                        className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter transition-all ${protocolarFilter.eligible ? 'bg-emerald-500 text-black' : 'bg-zinc-800 text-zinc-500 hover:text-zinc-300'}`}
+                                                    >
+                                                        Elegível
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setProtocolarFilter(prev => {
+                                                            const next = !prev.notEligible;
+                                                            if (!next && !prev.eligible) return prev;
+                                                            return { ...prev, notEligible: next };
+                                                        })}
+                                                        className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter transition-all ${protocolarFilter.notEligible ? 'bg-gold-500 text-black' : 'bg-zinc-800 text-zinc-500 hover:text-zinc-300'}`}
+                                                    >
+                                                        Restante
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                         <span className="text-[10px] font-bold text-slate-400 bg-[#18181b] border border-white/10 px-2.5 py-1 rounded-lg">
                                             {columnCases.length}
                                         </span>
                                     </div>
-                                    <div className="pl-4">
+                                    <div className="pl-4 text-left">
                                         <p className={`text-xs font-bold ${totalColumnValue > 0 ? 'text-emerald-400' : 'text-slate-600'}`}>
                                             {totalColumnValue > 0 ? formatCurrency(totalColumnValue) : 'R$ 0,00'}
                                             {totalColumnValue > 0 && <span className="text-[9px] text-slate-500 ml-1 font-normal uppercase tracking-wider">Potencial</span>}
@@ -253,6 +350,9 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
                                                         client={client}
                                                         onClick={onCardClick}
                                                         onArchiveClick={onArchiveClick}
+                                                        onProjectionClick={onProjectionClick}
+                                                        onUpdateClient={onUpdateClient}
+                                                        onUpdateCase={onUpdateCase}
                                                     />
                                                 );
                                             })}

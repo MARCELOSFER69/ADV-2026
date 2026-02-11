@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Briefcase, MapPin, Phone, MessageCircle } from 'lucide-react';
-import { RetirementCandidate } from './RetirementCard';
+import { RetirementCandidate } from '../../types';
 
 interface RetirementCandidateModalProps {
     selectedCandidate: RetirementCandidate;
@@ -15,6 +15,7 @@ export const RetirementCandidateModal: React.FC<RetirementCandidateModalProps> =
     onWhatsAppClick,
     onViewFullProfile
 }) => {
+    const [activeMode, setActiveMode] = React.useState<'Rural' | 'Urbana'>(selectedCandidate.bestChance);
 
     const formatTimeRemaining = (val: number) => {
         if (val <= 0) return "Já atingiu idade";
@@ -23,6 +24,12 @@ export const RetirementCandidateModal: React.FC<RetirementCandidateModalProps> =
         if (years === 0) return `${months} meses`;
         return `${years} anos e ${months} meses`;
     };
+
+    const currentRemaining = activeMode === 'Rural' ? selectedCandidate.ruralRemaining : selectedCandidate.urbanRemaining;
+    const isEligible = currentRemaining <= 0;
+
+    // Lógica para sugestão de Híbrida (Simplificada conforme padrão do sistema)
+    const isHybridCandidate = activeMode === 'Urbana' && currentRemaining > 0 && selectedCandidate.ruralRemaining < currentRemaining;
 
     return (
         <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-2 sm:p-6 backdrop-blur-sm animate-in fade-in duration-300">
@@ -35,7 +42,7 @@ export const RetirementCandidateModal: React.FC<RetirementCandidateModalProps> =
                         </button>
                     </div>
 
-                    <div className={`w-32 h-32 rounded-3xl flex items-center justify-center text-4xl font-black shadow-2xl mb-6 border-4 border-white/10 ${selectedCandidate.yearsRemaining <= 0
+                    <div className={`w-32 h-32 rounded-3xl flex items-center justify-center text-4xl font-black shadow-2xl mb-6 border-4 border-white/10 ${isEligible
                         ? 'bg-emerald-500 text-black shadow-emerald-500/20'
                         : (selectedCandidate.client.pendencias && selectedCandidate.client.pendencias.length > 0 ? 'bg-red-600 text-white animate-pulse' : 'bg-zinc-800 text-zinc-100')
                         }`}>
@@ -46,10 +53,10 @@ export const RetirementCandidateModal: React.FC<RetirementCandidateModalProps> =
                     <p className="text-zinc-400 font-mono text-xs tracking-widest bg-black/20 px-3 py-1 rounded-full border border-white/5">{selectedCandidate.client.cpf_cnpj}</p>
 
                     <div className="mt-8 pt-8 border-t border-white/5 w-full">
-                        <span className={`text-xs font-black px-4 py-1.5 rounded-full border tracking-[0.2em] uppercase ${selectedCandidate.yearsRemaining <= 0
+                        <span className={`text-xs font-black px-4 py-1.5 rounded-full border tracking-[0.2em] uppercase ${isEligible
                             ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
                             : 'bg-gold-500/10 text-gold-500 border-gold-500/20'}`}>
-                            {selectedCandidate.yearsRemaining <= 0 ? 'Elegível Agora' : 'Em Prospecção'}
+                            {isEligible ? 'Elegível Agora' : 'Em Prospecção'}
                         </span>
                     </div>
                 </div>
@@ -64,7 +71,24 @@ export const RetirementCandidateModal: React.FC<RetirementCandidateModalProps> =
 
                     <div className="flex-1 space-y-8">
                         <div>
-                            <h4 className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-4">Análise de Tempo</h4>
+                            <div className="flex justify-between items-center mb-6">
+                                <h4 className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em]">Análise de Tempo</h4>
+                                <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+                                    <button
+                                        onClick={() => setActiveMode('Rural')}
+                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${activeMode === 'Rural' ? 'bg-gold-500 text-black' : 'text-zinc-500 hover:text-white'}`}
+                                    >
+                                        RURAL
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveMode('Urbana')}
+                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${activeMode === 'Urbana' ? 'bg-gold-500 text-black' : 'text-zinc-500 hover:text-white'}`}
+                                    >
+                                        URBANA
+                                    </button>
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-1">
                                     <p className="text-sm text-zinc-500 font-medium">Idade Atual</p>
@@ -72,15 +96,25 @@ export const RetirementCandidateModal: React.FC<RetirementCandidateModalProps> =
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-sm text-zinc-500 font-medium">Tempo Restante</p>
-                                    <p className="text-2xl font-black text-emerald-400">{formatTimeRemaining(selectedCandidate.yearsRemaining)}</p>
+                                    <p className={`text-2xl font-black ${isEligible ? 'text-emerald-400' : 'text-gold-500'}`}>
+                                        {formatTimeRemaining(currentRemaining)}
+                                    </p>
                                 </div>
                             </div>
+
+                            {isHybridCandidate && (
+                                <div className="mt-4 p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl flex items-center gap-3 animate-pulse">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Sugestão: Aposentadoria Híbrida</span>
+                                </div>
+                            )}
+
                             <div className="mt-6 p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 rounded-lg bg-gold-500/10 text-gold-500">
                                         <Briefcase size={16} />
                                     </div>
-                                    <span className="text-sm font-bold text-zinc-300">Modalidade Proposta</span>
+                                    <span className="text-sm font-bold text-zinc-300">Sugestão do Sistema</span>
                                 </div>
                                 <span className="text-sm font-black text-white uppercase tracking-wider">{selectedCandidate.bestChance}</span>
                             </div>

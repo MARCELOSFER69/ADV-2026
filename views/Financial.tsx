@@ -178,7 +178,33 @@ const Financial: React.FC = () => {
         let calculatedIncome = 0;
         let calculatedExpense = 0;
 
+        const gpsAggregationGroup: any = {
+            type: 'group',
+            id: 'group-gps-aggregated',
+            title: 'PAGAMENTOS GPS (AGREGADO)',
+            clientName: 'Escritório',
+            totalEntradas: 0,
+            totalSaidas: 0,
+            children: [],
+            dataReferencia: '',
+            isGpsSummary: true
+        };
+
+        const dailyGps: Record<string, FinancialRecord[]> = {};
+
         filteredRecords.forEach(record => {
+            if (record.tipo_movimentacao === 'GPS' && record.status_pagamento) {
+                const date = record.data_vencimento;
+                if (!dailyGps[date]) dailyGps[date] = [];
+                dailyGps[date].push(record);
+
+                gpsAggregationGroup.totalSaidas += Number(record.valor) || 0;
+                if (!gpsAggregationGroup.dataReferencia || new Date(date) > new Date(gpsAggregationGroup.dataReferencia)) {
+                    gpsAggregationGroup.dataReferencia = date;
+                }
+                return; // Skip standard processing for GPS
+            }
+
             let effectiveClientId = record.client_id;
             if (!effectiveClientId && record.cases?.client_id) {
                 effectiveClientId = record.cases.client_id;
@@ -247,6 +273,29 @@ const Financial: React.FC = () => {
 
             return { ...g, saldo, status, valorColorClass, children: g.children.sort((a: any, b: any) => new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime()) } as FinancialViewItem;
         });
+
+        // Finalize GPS Aggregation
+        if (gpsAggregationGroup.totalSaidas > 0) {
+            gpsAggregationGroup.saldo = -gpsAggregationGroup.totalSaidas;
+            gpsAggregationGroup.status = 'DESPESA';
+            gpsAggregationGroup.valorColorClass = 'text-red-400';
+
+            // Transform dailyGps into children objects
+            gpsAggregationGroup.children = Object.entries(dailyGps)
+                .map(([date, records]) => ({
+                    id: `gps-day-${date}`,
+                    data_vencimento: date,
+                    titulo: `${records.length} ${records.length === 1 ? 'Guia Paga' : 'Guias Pagas'}`,
+                    valor: records.reduce((sum, r) => sum + r.valor, 0),
+                    tipo: FinancialType.DESPESA,
+                    records: records, // For the modal
+                    isGpsDaySummary: true
+                }))
+                .sort((a, b) => new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime());
+
+            standaloneItems.push(gpsAggregationGroup);
+            calculatedExpense += gpsAggregationGroup.totalSaidas;
+        }
 
         const sortedData = [...processedGroups, ...standaloneItems].flat().sort((a, b) => {
             const dateA = a.type === 'group' ? a.dataReferencia : a.data.data_vencimento;

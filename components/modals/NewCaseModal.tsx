@@ -58,7 +58,7 @@ const BENEFIT_FIELDS: Record<string, { label: string, key: string, placeholder: 
 
 const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType, forcedCategory }) => {
     useLockBodyScroll(isOpen);
-    const { addCase, showToast, newCaseParams, user, saveUserPreferences } = useApp();
+    const { addCase, showToast, newCaseParams, user, saveUserPreferences, confirmCustom } = useApp();
 
     // Async Search State
     const [clientsList, setClientsList] = useState<Partial<import('../../types').Client>[]>([]);
@@ -428,13 +428,19 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
     }, [newCase.client_id, newCase.tipo]);
 
     const hasDuplicate = existingCasesForClient.length > 0;
-    const handleCreateCase = (e: React.FormEvent) => {
+    const handleCreateCase = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newCase.client_id) { showToast('error', 'Selecione um cliente.'); return; }
 
-        if (hasDuplicate) {
-            const confirm = window.confirm(`O cliente já possui ${existingCasesForClient.length} processo(s) ativo(s) nesta categoria (${newCase.tipo}). Deseja criar mesmo assim?`);
-            if (!confirm) return;
+        if (existingCasesForClient.length > 0) {
+            const confirmed = await confirmCustom({
+                title: 'Processo Existente',
+                message: `O cliente já possui ${existingCasesForClient.length} processo(s) ativo(s) nesta categoria (${newCase.tipo}). Deseja criar mesmo assim?`,
+                variant: 'warning',
+                confirmLabel: 'Sim, Criar',
+                cancelLabel: 'Cancelar'
+            });
+            if (!confirmed) return;
         }
 
         const modalidadeStr = newCase.modalidade ? ` (${newCase.modalidade})` : '';

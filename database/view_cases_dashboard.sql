@@ -13,6 +13,7 @@ SELECT
     unaccent(cs.titulo) AS titulo_unaccent,
     c.filial AS filial,
     c.data_nascimento AS client_birth_date,
+    c.sexo AS client_sexo,
     c.cidade AS client_city,
     c.captador AS captador
 FROM cases cs

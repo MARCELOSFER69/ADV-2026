@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAppContext as useApp } from '../context/AppContext';
-import { CaseStatus, Case, CaseType, ColumnConfig, ProjectFilters, Branch } from '../types';
+import { CaseStatus, Case, CaseType, ColumnConfig, ProjectFilters, Branch, RetirementCandidate } from '../types';
 import {
     Plus, Gavel, FileText, Shield, Inbox, Archive, Trash2, X, Loader2, RefreshCw, AlertTriangle, LayoutGrid, LayoutList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BranchSelector from '../components/Layout/BranchSelector';
 import { useCases, useKanbanCases, useCase } from '../hooks/useCases';
+import { useRetirementProjections } from '../hooks/useRetirementProjections';
 import CaseDetailsModal from '../components/modals/CaseDetailsModal';
 import NewCaseModal from '../components/modals/NewCaseModal';
 import CaseFilters from '../components/cases/CaseFilters';
@@ -14,6 +15,7 @@ import CaseKanbanBoard from '../components/cases/CaseKanbanBoard';
 import CaseList from '../components/cases/CaseList';
 import ExportCasesModal from '../components/modals/ExportCasesModal';
 import { RetirementProjectionsView } from '../components/retirement/RetirementProjectionsView';
+import { RetirementCandidateModal } from '../components/retirement/RetirementCandidateModal';
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
     { id: 'titulo', label: 'Prazos/Alertas', visible: true, order: 0 },
@@ -29,7 +31,7 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
 
 const Cases: React.FC = () => {
     const {
-        updateCase, deleteCase, deleteFinancialRecord,
+        updateCase, updateClient, deleteCase, deleteFinancialRecord,
         showToast, user, saveUserPreferences, isNewCaseModalOpen, setIsNewCaseModalOpen,
         caseToView, setCaseToView, currentView, mergedPreferences, setClientToView,
         financial, setCurrentView, caseTypeFilter, globalBranchFilter
@@ -86,7 +88,20 @@ const Cases: React.FC = () => {
     const [showColumnConfig, setShowColumnConfig] = useState(false);
     const [kanbanColumnWidth, setKanbanColumnWidth] = useState(320);
     const [kanbanCardScale, setKanbanCardScale] = useState(1);
+    const [situationFilters, setSituationFilters] = useState<string[]>([]);
 
+    // Retirement Modal State (Shared)
+    const [retirementCandidateToView, setRetirementCandidateToView] = useState<RetirementCandidate | null>(null);
+
+    const handleWhatsAppClick = (phone: string | undefined) => {
+        if (!phone) return;
+        const cleanPhone = phone.replace(/\D/g, '');
+        window.open(`https://wa.me/55${cleanPhone}`, '_blank');
+    };
+
+    const handleOpenRetirementDetails = useCallback((candidate: RetirementCandidate) => {
+        setRetirementCandidateToView(candidate);
+    }, []);
     // Bulk Selection
     const [selectedCaseIds, setSelectedCaseIds] = useState<string[]>([]);
     const [isBulkArchiving, setIsBulkArchiving] = useState(false);
@@ -134,6 +149,7 @@ const Cases: React.FC = () => {
         ITEMS_PER_PAGE,
         queryFilters
     );
+    const { candidates: retirementCandidates } = useRetirementProjections(projectionFilters);
 
     const { data: kanbanData, isLoading: isFetchingKanban, refetch: refetchKanban } = useKanbanCases(
         debouncedSearch,
@@ -505,6 +521,8 @@ const Cases: React.FC = () => {
                     setQuickFilter={setQuickFilter}
                     projectionFilters={projectionFilters}
                     setProjectionFilters={setProjectionFilters}
+                    situationFilters={situationFilters}
+                    setSituationFilters={setSituationFilters}
                 />
             </div>
 
@@ -517,9 +535,13 @@ const Cases: React.FC = () => {
                     onCaseDrop={onCaseDrop}
                     onCardClick={setSelectedCase}
                     onArchiveClick={setCaseToArchive}
+                    onProjectionClick={handleOpenRetirementDetails}
                     columnWidth={kanbanColumnWidth}
                     setColumnWidth={(w) => { setKanbanColumnWidth(w); saveUserPreferences({ kanbanColumnWidth: w }); }}
                     cardScale={kanbanCardScale}
+                    onUpdateClient={updateClient}
+                    onUpdateCase={updateCase}
+                    situationFilters={situationFilters}
                 />
             ) : (
                 <CaseList
@@ -576,6 +598,7 @@ const Cases: React.FC = () => {
                         currentFilters={queryFilters}
                         searchTerm={debouncedSearch}
                         showToast={showToast}
+                        retirementCandidates={quickFilter === 'projections' ? retirementCandidates : undefined}
                     />
                 )}
             </AnimatePresence>
@@ -649,6 +672,19 @@ const Cases: React.FC = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {retirementCandidateToView && (
+                <RetirementCandidateModal
+                    selectedCandidate={retirementCandidateToView}
+                    onClose={() => setRetirementCandidateToView(null)}
+                    onWhatsAppClick={handleWhatsAppClick}
+                    onViewFullProfile={(clientId) => {
+                        setClientToView(clientId, 'info');
+                        setCurrentView('clients');
+                        setRetirementCandidateToView(null);
+                    }}
+                />
+            )}
 
         </div>
     );

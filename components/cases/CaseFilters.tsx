@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, SortAsc, ChevronDown, Filter, Settings, LayoutGrid, LayoutList, ArrowDown, ArrowUp, User, AlertTriangle, Clock, ChevronLeft, ChevronRight, Hourglass } from 'lucide-react';
+import { Search, X, SortAsc, ChevronDown, Filter, Settings, LayoutGrid, LayoutList, ArrowDown, ArrowUp, User, AlertTriangle, Clock, ChevronLeft, ChevronRight, Hourglass, FileText } from 'lucide-react';
 import { Branch, ColumnConfig, Case, CaseType, CaseStatus, ProjectFilters } from '../../types';
 import SizeScaler from '../ui/SizeScaler';
 
@@ -25,6 +25,8 @@ interface CaseFiltersProps {
     saveUserPreferences: (prefs: any) => void;
     filters: any;
     setFilters: (filters: any) => void;
+    situationFilters: string[];
+    setSituationFilters: (filters: string[]) => void;
     clearFilters: () => void;
     quickFilter: 'all' | 'mine' | 'deadlines' | 'stale' | 'projections';
     setQuickFilter: (filter: 'all' | 'mine' | 'deadlines' | 'stale' | 'projections') => void;
@@ -52,6 +54,8 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
     saveUserPreferences,
     filters,
     setFilters,
+    situationFilters,
+    setSituationFilters,
     clearFilters,
     quickFilter,
     setQuickFilter,
@@ -119,6 +123,7 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
                                     <option value="Todas" className="bg-navy-900">Todas Modalidades</option>
                                     <option value="Urbana" className="bg-navy-900">Urbana</option>
                                     <option value="Rural" className="bg-navy-900">Rural</option>
+                                    <option value="Híbrida" className="bg-navy-900">Híbrida</option>
                                 </select>
 
                                 <select
@@ -336,6 +341,32 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
                                     </select>
                                 </div>
 
+                                {filters.tipo === 'Aposentadoria' && (
+                                    <div className="md:col-span-4 border-t border-white/5 pt-4 mt-2">
+                                        <label className="block text-xs font-medium text-slate-500 mb-2">Situação (A Protocolar)</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {['Já elegível', 'Menos de 1 ano', 'Menos de 2 anos', 'Menos de 3 anos', 'Menos de 4 anos', 'Menos de 5 anos'].map((option) => (
+                                                <button
+                                                    key={option}
+                                                    onClick={() => {
+                                                        if (situationFilters.includes(option)) {
+                                                            setSituationFilters(situationFilters.filter(f => f !== option));
+                                                        } else {
+                                                            setSituationFilters([...situationFilters, option]);
+                                                        }
+                                                    }}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${situationFilters.includes(option)
+                                                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
+                                                            : 'bg-navy-900 text-slate-400 border-white/10 hover:border-white/20 hover:text-white'
+                                                        }`}
+                                                >
+                                                    {option}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="md:col-span-2">
                                     <label className="block text-xs font-medium text-slate-500 mb-1">Valor da Causa</label>
                                     <div className="flex gap-2">
@@ -376,7 +407,10 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({
 
                                 <div className="flex items-end md:col-span-2">
                                     <button
-                                        onClick={clearFilters}
+                                        onClick={() => {
+                                            clearFilters();
+                                            setSituationFilters([]);
+                                        }}
                                         className="w-full px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-slate-600"
                                     >
                                         Limpar Filtros

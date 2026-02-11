@@ -68,7 +68,7 @@ interface AppContextType {
     deleteTask: (taskId: string) => Promise<void>;
 
     addFinancialRecord: (record: FinancialRecord) => Promise<void>;
-    deleteFinancialRecord: (id: string) => Promise<void>;
+    deleteFinancialRecord: (id: string, caseId?: string, clientId?: string) => Promise<void>;
     addRetirementCalculation: (calc: any) => Promise<any>;
     promoteCalculationToCase: (calcId: string, caseId: string) => Promise<void>;
 
@@ -142,6 +142,23 @@ interface AppContextType {
     // --- PERFORMANCE MODE ---
     isLowPerformance: boolean;
     togglePerformanceMode: () => void;
+
+    // --- CUSTOM DIALOGS ---
+    confirmCustom: (options: CustomConfirmOptions) => Promise<boolean>;
+    confirmState: CustomConfirmState | null;
+}
+
+interface CustomConfirmOptions {
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    variant?: 'danger' | 'warning' | 'info' | 'success';
+    isAlert?: boolean;
+}
+
+interface CustomConfirmState extends CustomConfirmOptions {
+    resolve: (val: boolean) => void;
 }
 
 interface ToastMessage {
@@ -330,6 +347,21 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const [isNewCaseModalOpen, setIsNewCaseModalOpenInternal] = useState(false);
     const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
     const [newCaseParams, setNewCaseParams] = useState<{ clientId?: string; type?: CaseType; clientName?: string } | null>(null);
+
+    // Custom Modal State
+    const [confirmState, setConfirmState] = useState<CustomConfirmState | null>(null);
+
+    const confirmCustom = useCallback((options: CustomConfirmOptions): Promise<boolean> => {
+        return new Promise((resolve) => {
+            setConfirmState({
+                ...options,
+                resolve: (val: boolean) => {
+                    setConfirmState(null);
+                    resolve(val);
+                }
+            });
+        });
+    }, []);
 
     const setIsNewCaseModalOpen = useCallback((isOpen: boolean) => {
         setIsNewCaseModalOpenInternal(isOpen);
@@ -1435,12 +1467,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         isNewCaseModalOpen, setIsNewCaseModalOpen, isNewClientModalOpen, setIsNewClientModalOpen, newCaseParams, openNewCaseWithParams, caseToView, setCaseToView,
         chats, chatMessages, fetchChatMessages, assumeChat, sendMessage, markChatAsRead, deleteChat, finishChat, waitingChatsCount,
         triggerRgpSync, triggerReapSync, isAssistantOpen, setIsAssistantOpen, isStatusBlinking,
-        isLowPerformance, togglePerformanceMode
+        isLowPerformance, togglePerformanceMode,
+        confirmCustom, confirmState
     }), [
         user, globalPreferences, mergedPreferences, reloadData,
         financial, officeExpenses, officeBalances, personalCredentials, events, tasks, captadores, commissionReceipts, reminders, notifications,
         currentView, caseTypeFilter, globalBranchFilter, clientToView, clientDetailTab, toasts, isLoading, isNewCaseModalOpen, isNewClientModalOpen, newCaseParams, caseToView,
-        chats, chatMessages, waitingChatsCount, isAssistantOpen, isStatusBlinking, isLowPerformance, togglePerformanceMode
+        chats, chatMessages, waitingChatsCount, isAssistantOpen, isStatusBlinking, isLowPerformance, togglePerformanceMode,
+        confirmCustom, confirmState
     ]);
 
     return <AppContext.Provider value={contextValue as any}>{children}</AppContext.Provider>;

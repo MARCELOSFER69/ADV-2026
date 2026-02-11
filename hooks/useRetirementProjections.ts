@@ -69,7 +69,13 @@ export const useRetirementProjections = (filters: ProjectFilters) => {
                 // Modality
                 const modalidadeAtual = c.client.aposentadoria_modalidade || c.bestChance;
                 if (filters.modality !== 'Todas') {
-                    if (modalidadeAtual !== filters.modality) return false;
+                    if (filters.modality === 'Híbrida') {
+                        // Lógica para sugestão de Híbrida: Urbana mas Rural é melhor/próxima
+                        const isHybridSuggested = modalidadeAtual === 'Urbana' && c.urbanRemaining > 0 && c.ruralRemaining < c.urbanRemaining;
+                        if (!isHybridSuggested && c.client.aposentadoria_modalidade !== 'Híbrida') return false;
+                    } else if (modalidadeAtual !== filters.modality) {
+                        return false;
+                    }
                 }
 
                 // Status (Eligible / Pending)

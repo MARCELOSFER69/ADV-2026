@@ -1,5 +1,5 @@
 import React, { memo, useState, useEffect } from 'react';
-import { Case, CaseStatus, CaseType } from '../types';
+import { Case, CaseStatus, CaseType, RetirementCandidate } from '../types';
 import { Archive, Scale, Shield, Users, Briefcase, Building2, AlertTriangle, Eye } from 'lucide-react';
 import { formatDateDisplay } from '../utils/dateUtils';
 import { Client } from '../types';
@@ -7,12 +7,16 @@ import PendencyIndicator from './ui/PendencyIndicator';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
+import { calculateRetirementProjection } from '../utils/retirementUtils';
 
 interface CaseKanbanCardProps {
     caseItem: Case;
     client?: Client;
     onClick: (caseItem: Case) => void;
     onArchiveClick: (caseItem: Case) => void;
+    onProjectionClick?: (candidate: RetirementCandidate) => void;
+    onUpdateClient?: (updatedClient: Client) => Promise<void>;
+    onUpdateCase?: (updatedCase: Case) => Promise<void>;
 }
 
 const getStatusProgress = (status: CaseStatus): number => {
@@ -60,7 +64,7 @@ const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 };
 
-const CaseKanbanCard: React.FC<CaseKanbanCardProps> = ({ caseItem, client, onClick, onArchiveClick }) => {
+const CaseKanbanCard: React.FC<CaseKanbanCardProps> = ({ caseItem, client, onClick, onArchiveClick, onProjectionClick, onUpdateClient, onUpdateCase }) => {
     const {
         attributes,
         listeners,
@@ -165,6 +169,74 @@ const CaseKanbanCard: React.FC<CaseKanbanCardProps> = ({ caseItem, client, onCli
                     </div>
                 </div>
             </PendencyIndicator>
+
+            {caseItem.status === CaseStatus.PROTOCOLAR &&
+                (String(caseItem.tipo).toLowerCase().includes('aposentadoria') || caseItem.tipo === CaseType.APOSENTADORIA) && (
+                    <div
+                        onClick={(e) => {
+                            if (!onProjectionClick) return;
+                            e.stopPropagation();
+                            const proj = calculateRetirementProjection(caseItem.client_birth_date, caseItem.client_sexo, (caseItem.modalidade || (caseItem as any).aposentadoria_modalidade) as any);
+                            if (proj) {
+                                onProjectionClick({
+                                    client: {
+                                        ...client,
+                                        id: caseItem.client_id,
+                                        nome_completo: caseItem.client_name || 'Desconhecido',
+                                        cpf_cnpj: caseItem.client_cpf,
+                                        sexo: caseItem.client_sexo as any,
+                                        data_nascimento: caseItem.client_birth_date,
+                                        modalidade: caseItem.modalidade as any
+                                    } as any,
+                                    age: proj.age,
+                                    ruralRemaining: proj.ruralRemaining,
+                                    urbanRemaining: proj.urbanRemaining,
+                                    bestChance: proj.bestChance,
+                                    yearsRemaining: proj.yearsRemaining
+                                });
+                            }
+                        }}
+                        className="mt-2 mb-3 px-3 py-2 rounded-lg bg-zinc-900/50 border border-white/5 relative z-10 hover:bg-zinc-800/80 hover:border-gold-500/30 transition-all cursor-pointer group/proj"
+                    >
+                        {(() => {
+                            const proj = calculateRetirementProjection(caseItem.client_birth_date, caseItem.client_sexo, (caseItem.modalidade || (caseItem as any).aposentadoria_modalidade) as any);
+                            if (!proj) return <p className="text-[10px] text-zinc-600 italic text-center">Dados insuficientes p/ projeção</p>;
+
+                            return (
+                                <div className="space-y-1.5">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[9px] uppercase font-bold text-zinc-500 tracking-wider">Tempo Restante:</span>
+                                        <span className={`text-[11px] font-black ${proj.yearsRemaining <= 0 ? 'text-emerald-400' : 'text-gold-500'}`}>
+                                            {proj.yearsRemaining <= 0 ? 'JÁ ELEGÍVEL' : `${proj.yearsRemaining.toFixed(1)} anos`}
+                                        </span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (onUpdateCase) onUpdateCase({ ...caseItem, modalidade: 'Rural' });
+                                                if (onUpdateClient) onUpdateClient({ id: caseItem.client_id, aposentadoria_modalidade: 'Rural' } as any);
+                                            }}
+                                            className={`flex-1 text-center py-0.5 rounded text-[8px] font-bold border transition-all ${proj.bestChance === 'Rural' && !caseItem.modalidade ? 'border-gold-500/50' : ''} ${((caseItem.modalidade || (caseItem as any).aposentadoria_modalidade) === 'Rural') ? 'bg-emerald-500 text-black border-emerald-500' : 'bg-black/20 text-zinc-500 border-white/5 hover:border-white/20'}`}
+                                        >
+                                            RURAL: {proj.ruralRemaining.toFixed(1)}a
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (onUpdateCase) onUpdateCase({ ...caseItem, modalidade: 'Urbana' });
+                                                if (onUpdateClient) onUpdateClient({ id: caseItem.client_id, aposentadoria_modalidade: 'Urbana' } as any);
+                                            }}
+                                            className={`flex-1 text-center py-0.5 rounded text-[8px] font-bold border transition-all ${proj.bestChance === 'Urbana' && !caseItem.modalidade ? 'border-gold-500/50' : ''} ${((caseItem.modalidade || (caseItem as any).aposentadoria_modalidade) === 'Urbana') ? 'bg-emerald-500 text-black border-emerald-500' : 'bg-black/20 text-zinc-500 border-white/5 hover:border-white/20'}`}
+                                        >
+                                            URBANA: {proj.urbanRemaining.toFixed(1)}a
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                )}
 
             <hr className="border-zinc-800 mb-3 relative z-10" />
 

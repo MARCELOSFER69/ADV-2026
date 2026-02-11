@@ -6,6 +6,7 @@ import PublicConsultation from './views/PublicConsultation';
 import { Loader2 } from 'lucide-react';
 import NewCaseModal from './components/modals/NewCaseModal';
 import CommandPalette from './components/ui/CommandPalette';
+import ConfirmModal from './components/ui/ConfirmModal';
 // Removed Enum import to prevent crash
 // import { CaseType } from './types'; 
 import { supabase } from './services/supabaseClient';
@@ -91,7 +92,7 @@ const View = React.memo<{
 import TitleBar from './components/Layout/TitleBar';
 
 const AppContent: React.FC = () => {
-  const { currentView, user, isLoading, events, isNewCaseModalOpen, setIsNewCaseModalOpen, logout, showToast, isLowPerformance } = useApp();
+  const { currentView, user, isLoading, events, isNewCaseModalOpen, setIsNewCaseModalOpen, logout, showToast, isLowPerformance, confirmState } = useApp();
   const [isPublicRoute, setIsPublicRoute] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
@@ -305,6 +306,21 @@ const AppContent: React.FC = () => {
 
           <NewCaseModal isOpen={isNewCaseModalOpen} onClose={() => setIsNewCaseModalOpen(false)} forcedType={getForcedType()} />
           <CommandPalette isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+
+          {/* Custom Global Confirm/Alert Modal */}
+          {confirmState && (
+            <ConfirmModal
+              isOpen={true}
+              onClose={() => confirmState.resolve(false)}
+              onConfirm={() => confirmState.resolve(true)}
+              title={confirmState.title || ''}
+              message={confirmState.message || ''}
+              confirmLabel={confirmState.confirmLabel}
+              cancelLabel={confirmState.cancelLabel}
+              variant={confirmState.variant}
+              isAlert={confirmState.isAlert}
+            />
+          )}
         </Layout>
       </div>
     </div>

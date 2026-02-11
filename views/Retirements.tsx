@@ -4,14 +4,15 @@ import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import { useAllCases } from '../hooks/useCases';
 import { useAllClients } from '../hooks/useClients';
-import { CaseType, CaseStatus, Client, Case, Branch } from '../types';
-import { Hourglass, ChevronRight, Briefcase, MapPin, AlertCircle, X, Search, Filter, Clock } from 'lucide-react';
-import CaseDetailsModal from '../components/modals/CaseDetailsModal';
-import PendencyIndicator from '../components/ui/PendencyIndicator';
-import { RetirementCard, RetirementCandidate, DetailedCalculation } from '../components/retirement/RetirementCard';
+import { RetirementCard, DetailedCalculation } from '../components/retirement/RetirementCard';
 import { RetirementCandidateModal } from '../components/retirement/RetirementCandidateModal';
 import { RetirementCalculationDetails } from '../components/retirement/RetirementCalculationDetails';
 import BranchSelector from '../components/Layout/BranchSelector';
+import { calculateRetirementProjection } from '../utils/retirementUtils';
+import { CaseType, CaseStatus, Client, Case, Branch, RetirementCandidate } from '../types';
+import { Hourglass, ChevronRight, Briefcase, MapPin, AlertCircle, X, Search, Filter, Clock } from 'lucide-react';
+import CaseDetailsModal from '../components/modals/CaseDetailsModal';
+import PendencyIndicator from '../components/ui/PendencyIndicator';
 
 
 const Retirements: React.FC = () => {
@@ -86,39 +87,16 @@ const Retirements: React.FC = () => {
             .map(client => {
                 if (!client.data_nascimento || !client.sexo) return null;
 
-                const birth = new Date(client.data_nascimento);
-                const today = new Date();
-                let years = today.getFullYear() - birth.getFullYear();
-                let months = today.getMonth() - birth.getMonth();
-                if (months < 0) {
-                    years--;
-                    months += 12;
-                }
-
-                const isMale = client.sexo === 'Masculino';
-
-                // Usamos a modalidade preferida do cliente se existir, senão calculamos a melhor chance
-                const preferredMode = client.aposentadoria_modalidade;
-
-                const ruralTarget = isMale ? 60 : 55;
-                const urbanTarget = isMale ? 65 : 62;
-
-                const ruralRemaining = Math.max(0, ruralTarget - years - (months / 12));
-                const urbanRemaining = Math.max(0, urbanTarget - years - (months / 12));
-
-                const bestChance = ruralRemaining <= urbanRemaining ? 'Rural' : 'Urbana';
-
-                // Se o cliente já tem uma modalidade definida no banco, usamos ela para o filtro de tempo
-                const activeMode = preferredMode || bestChance;
-                const yearsRemaining = activeMode === 'Rural' ? ruralRemaining : urbanRemaining;
+                const proj = calculateRetirementProjection(client.data_nascimento, client.sexo, client.aposentadoria_modalidade);
+                if (!proj) return null;
 
                 return {
                     client,
-                    age: { years, months },
-                    ruralRemaining,
-                    urbanRemaining,
-                    bestChance,
-                    yearsRemaining
+                    age: proj.age,
+                    ruralRemaining: proj.ruralRemaining,
+                    urbanRemaining: proj.urbanRemaining,
+                    bestChance: proj.bestChance,
+                    yearsRemaining: proj.yearsRemaining
                 };
             })
             .filter((c): c is RetirementCandidate => c !== null)

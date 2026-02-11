@@ -96,7 +96,7 @@ export const fetchKanbanCases = async (search?: string, filters?: any) => {
     try {
         let query = supabase
             .from('view_cases_dashboard')
-            .select('id, titulo, numero_processo, status, valor_causa, client_id, data_abertura, client_name, client_cpf, filial');
+            .select('id, tipo, modalidade, titulo, numero_processo, status, valor_causa, client_id, data_abertura, client_name, client_cpf, filial, client_birth_date, client_sexo');
 
         query = applyCaseFilters(query, search, filters);
 

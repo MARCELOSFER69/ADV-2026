@@ -11,6 +11,7 @@ interface ConfirmModalProps {
     confirmLabel?: string;
     cancelLabel?: string;
     variant?: 'danger' | 'warning' | 'info' | 'success';
+    isAlert?: boolean;
 }
 
 const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -21,7 +22,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     message,
     confirmLabel = 'Confirmar',
     cancelLabel = 'Cancelar',
-    variant = 'danger'
+    variant = 'danger',
+    isAlert = false
 }) => {
     if (!isOpen) return null;
 
@@ -45,7 +47,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-[20000] flex items-center justify-center p-4 pointer-events-auto">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -74,12 +76,14 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                         </div>
 
                         <div className="flex items-center gap-3 mt-8">
-                            <button
-                                onClick={onClose}
-                                className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium transition-all text-sm border border-white/5"
-                            >
-                                {cancelLabel}
-                            </button>
+                            {!isAlert && (
+                                <button
+                                    onClick={onClose}
+                                    className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium transition-all text-sm border border-white/5"
+                                >
+                                    {cancelLabel}
+                                </button>
+                            )}
                             <button
                                 onClick={() => {
                                     onConfirm();

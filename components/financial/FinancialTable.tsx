@@ -1,11 +1,11 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Calendar, ChevronDown, ChevronRight, Eye, Trash2, Wallet, CreditCard, User, Building2, Building, DollarSign } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Calendar, ChevronDown, ChevronRight, Eye, Trash2, Wallet, CreditCard, User, Building2, Building, DollarSign, X } from 'lucide-react';
 import { FinancialRecord, FinancialType } from '../../types';
 import { formatDateDisplay } from '../../utils/dateUtils';
 
 export type FinancialViewItem =
-    | { type: 'group'; id: string; caseId?: string; clientId: string; title: string; clientName: string; totalEntradas: number; totalSaidas: number; saldo: number; children: FinancialRecord[]; dataReferencia: string; status: 'PAGO' | 'PARCIAL' | 'PENDENTE' | 'DESPESA'; valorColorClass: string }
+    | { type: 'group'; id: string; caseId?: string; clientId: string; title: string; clientName: string; totalEntradas: number; totalSaidas: number; saldo: number; children: any[]; dataReferencia: string; status: 'PAGO' | 'PARCIAL' | 'PENDENTE' | 'DESPESA'; valorColorClass: string; isGpsSummary?: boolean }
     | { type: 'single'; data: FinancialRecord };
 
 interface FinancialTableProps {
@@ -51,6 +51,8 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
     navigateToCase,
     deleteFinancialRecord
 }) => {
+    const [selectedGpsDay, setSelectedGpsDay] = React.useState<{ date: string; records: FinancialRecord[] } | null>(null);
+
     return (
         <div className="bg-[#0f1014] rounded-xl border border-white/10 overflow-hidden flex flex-col shadow-2xl">
             <div className="overflow-x-auto">
@@ -95,17 +97,30 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                                                         <table className="w-full">
                                                             <tbody>
                                                                 {item.children.map(child => (
-                                                                    <tr key={child.id} className="border-b border-zinc-800/50 last:border-0 hover:bg-white/5 transition-colors">
+                                                                    <tr
+                                                                        key={child.id}
+                                                                        className={`border-b border-zinc-800/50 last:border-0 hover:bg-white/5 transition-colors ${child.isGpsDaySummary ? 'cursor-pointer' : ''}`}
+                                                                        onClick={(e) => {
+                                                                            if (child.isGpsDaySummary) {
+                                                                                e.stopPropagation();
+                                                                                setSelectedGpsDay({ date: child.data_vencimento, records: child.records });
+                                                                            }
+                                                                        }}
+                                                                    >
                                                                         <td className="py-2 px-4 text-xs text-zinc-400 w-32 font-mono">{formatDateDisplay(child.data_vencimento)}</td>
                                                                         <td className="py-2 px-4 text-xs text-zinc-300">
                                                                             {child.tipo === FinancialType.COMISSAO && <span className="mr-2 text-[9px] font-bold bg-purple-500/20 text-purple-300 px-1 py-0.5 rounded uppercase">COMISSÃO</span>}
+                                                                            {child.isGpsDaySummary && <span className="mr-2 text-[9px] font-bold bg-blue-500/20 text-blue-300 px-1 py-0.5 rounded uppercase">RESUMO GPS</span>}
                                                                             {child.titulo}
                                                                         </td>
                                                                         <td className="py-2 px-4">
-                                                                            {renderPaymentDetails(child)}
+                                                                            {child.isGpsDaySummary ? <span className="text-[10px] text-zinc-500 italic">Clique para ver clientes</span> : renderPaymentDetails(child)}
                                                                         </td>
                                                                         <td className={`py-2 px-4 text-xs font-bold text-right w-32 ${child.tipo === FinancialType.RECEITA ? 'text-emerald-500' : 'text-red-500'}`}>{child.tipo === FinancialType.RECEITA ? '+' : '-'} {child.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                                                                        <td className="py-2 px-4 w-16 text-right"><button onClick={() => deleteFinancialRecord(child.id)} className="text-zinc-600 hover:text-red-500 p-1 rounded"><Trash2 size={12} /></button></td>
+                                                                        <td className="py-2 px-4 w-16 text-right">
+                                                                            {!child.isGpsDaySummary && <button onClick={() => deleteFinancialRecord(child.id)} className="text-zinc-600 hover:text-red-500 p-1 rounded"><Trash2 size={12} /></button>}
+                                                                            {child.isGpsDaySummary && <ChevronRight size={14} className="text-zinc-700 ml-auto" />}
+                                                                        </td>
                                                                     </tr>
                                                                 ))}
                                                             </tbody>
@@ -150,6 +165,85 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                     </tbody>
                 </table>
             </div>
+
+            {/* GPS Detail Modal */}
+            <AnimatePresence>
+                {selectedGpsDay && (
+                    <div className="fixed inset-0 z-[30000] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/80 backdrop-blur-md pointer-events-auto"
+                            onClick={() => setSelectedGpsDay(null)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-[#0f1014] w-full max-w-2xl rounded-3xl border border-white/10 shadow-3xl relative z-10 overflow-hidden pointer-events-auto"
+                        >
+                            <div className="p-6 border-b border-white/5 bg-white/[0.02]">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3 bg-gold-500/10 rounded-2xl text-gold-500">
+                                            <Calendar size={24} />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-bold text-white font-serif">GPS Pagas em {formatDateDisplay(selectedGpsDay.date)}</h3>
+                                            <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mt-1">
+                                                Detalhamento por Cliente
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setSelectedGpsDay(null)}
+                                        className="p-2 text-zinc-500 hover:text-white transition-colors"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="max-h-[60vh] overflow-y-auto p-4 custom-scrollbar">
+                                <div className="space-y-3">
+                                    {selectedGpsDay.records.map((record) => (
+                                        <div key={record.id} className="p-4 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between group hover:border-gold-500/30 transition-all">
+                                            <div className="flex items-center gap-4">
+                                                <div className="p-2.5 bg-zinc-800 rounded-xl text-zinc-400 group-hover:text-gold-500 transition-colors">
+                                                    <User size={18} />
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-white group-hover:text-gold-500 transition-colors text-sm">
+                                                        {record.clients?.nome_completo || 'Cliente Não Identificado'}
+                                                    </div>
+                                                    <div className="text-[10px] text-zinc-500 mt-0.5 italic">
+                                                        {record.titulo}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-sm font-mono font-bold text-emerald-400">
+                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(record.valor)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="p-6 bg-white/[0.02] border-t border-white/5 flex justify-end">
+                                <button
+                                    onClick={() => setSelectedGpsDay(null)}
+                                    className="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-xl transition-all text-sm border border-white/5"
+                                >
+                                    Fechar
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

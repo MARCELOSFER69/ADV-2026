@@ -17,6 +17,7 @@ import CaseInfoTab from '../tabs/case/CaseInfoTab';
 import CaseFinancialTab from '../tabs/case/CaseFinancialTab';
 import CaseEventsTab from '../tabs/case/CaseEventsTab';
 import CaseTasksTab from '../tabs/case/CaseTasksTab';
+import PaymentDateModal from './PaymentDateModal';
 
 interface CaseDetailsModalProps {
     caseItem: Case;
@@ -41,7 +42,8 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
         addTask, toggleTask, deleteTask,
         showToast,
         officeExpenses,
-        user, saveUserPreferences
+        user, saveUserPreferences,
+        confirmCustom
     } = useApp();
 
     useLockBodyScroll(true);
@@ -70,6 +72,9 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
     // Restore Modal
     const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
     const [restoreReason, setRestoreReason] = useState('');
+
+    // GPS Payment Modal
+    const [gpsToPay, setGpsToPay] = useState<GPS | null>(null);
 
     // --- CONFIGURATION ---
     const availableStatuses = useMemo(() => Object.values(CaseStatus), []);
@@ -129,24 +134,38 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
         if (currentStatus === 'Pendente') {
             // Logic to edit value moved to onSaveGpsValue
         } else if (currentStatus === 'Puxada') {
-            // Payment Logic - Direct for now or alert
-            if (window.confirm("Confirmar pagamento via PIX?")) {
-                const updatedList = liveCase.gps_lista?.map(g => g.id === gpsId ? { ...g, status: 'Paga' as 'Paga', data_pagamento: new Date().toISOString() } : g);
-                await updateCase({ ...liveCase, gps_lista: updatedList }, 'Pagamento de GPS');
+            const gps = liveCase.gps_lista?.find(g => g.id === gpsId);
+            if (gps) setGpsToPay(gps);
+        }
+    };
 
-                await addFinancialRecord({
-                    id: crypto.randomUUID(),
-                    case_id: liveCase.id,
-                    titulo: `GPS ${gps.competencia}`,
-                    tipo: FinancialType.DESPESA,
-                    valor: gps.valor,
-                    data_vencimento: getTodayBrasilia(),
-                    status_pagamento: true,
-                    tipo_movimentacao: 'GPS'
-                });
-                refetchFinancials();
-                showToast('success', 'GPS Paga');
-            }
+    const handleConfirmGpsPayment = async (paymentDate: string) => {
+        if (!gpsToPay) return;
+
+        try {
+            const updatedList = liveCase.gps_lista?.map(g =>
+                g.id === gpsToPay.id ? { ...g, status: 'Paga' as 'Paga', data_pagamento: paymentDate } : g
+            );
+
+            await updateCase({ ...liveCase, gps_lista: updatedList }, 'Pagamento de GPS');
+
+            await addFinancialRecord({
+                id: crypto.randomUUID(),
+                case_id: liveCase.id,
+                titulo: `GPS ${gpsToPay.competencia}`,
+                tipo: FinancialType.DESPESA,
+                valor: gpsToPay.valor,
+                data_vencimento: paymentDate,
+                status_pagamento: true,
+                tipo_movimentacao: 'GPS'
+            });
+
+            refetchFinancials();
+            showToast('success', 'GPS Paga');
+            setGpsToPay(null);
+        } catch (error) {
+            console.error("Payment registration failed:", error);
+            showToast('error', 'Erro ao registrar pagamento.');
         }
     };
 
@@ -160,9 +179,36 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
     }
 
     const handleDeleteGps = async (gps: GPS) => {
-        if (!window.confirm("Excluir GPS?")) return;
-        const updatedList = (liveCase.gps_lista || []).filter(g => g.id !== gps.id);
-        await updateCase({ ...liveCase, gps_lista: updatedList }, 'Exclusão de GPS');
+        const confirmed = await confirmCustom({
+            title: 'Excluir GPS',
+            message: 'Tem certeza que deseja excluir esta GPS?',
+            variant: 'danger',
+            confirmLabel: 'Sim, Excluir',
+            cancelLabel: 'Cancelar'
+        });
+
+        if (!confirmed) return;
+
+        try {
+            // Se a GPS já estava paga, removemos o lançamento financeiro correspondente
+            if (gps.status === 'Paga') {
+                const targetTitulo = `GPS ${gps.competencia}`;
+                const financialToDelete = (caseFinancials || []).find(f =>
+                    f.tipo_movimentacao === 'GPS' &&
+                    f.titulo === targetTitulo
+                );
+
+                if (financialToDelete) {
+                    await deleteFinancialRecord(financialToDelete.id, liveCase.id);
+                }
+            }
+
+            const updatedList = (liveCase.gps_lista || []).filter(g => g.id !== gps.id);
+            await updateCase({ ...liveCase, gps_lista: updatedList }, 'Exclusão de GPS');
+            showToast('success', 'GPS excluída com sucesso');
+        } catch (error: any) {
+            showToast('error', 'Erro ao excluir GPS: ' + error.message);
+        }
     };
 
     return createPortal(
@@ -406,6 +452,16 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                         </div>
                     </div>
                 </div>
+            )}
+
+            {gpsToPay && (
+                <PaymentDateModal
+                    isOpen={true}
+                    onClose={() => setGpsToPay(null)}
+                    onConfirm={handleConfirmGpsPayment}
+                    title="Confirmar Pagamento de GPS"
+                    message={`Deseja confirmar o pagamento da GPS referente a ${gpsToPay.competencia} no valor de ${gpsToPay.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}?`}
+                />
             )}
 
         </div>,

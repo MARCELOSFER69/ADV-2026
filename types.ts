@@ -110,7 +110,7 @@ export interface Client {
   foto?: string;
   documentos?: ClientDocument[];
   pendencias?: string[];
-  aposentadoria_modalidade?: 'Rural' | 'Urbana';
+  aposentadoria_modalidade?: 'Rural' | 'Urbana' | 'Híbrida';
 
   interviewStatus?: 'Pendente' | 'Agendada' | 'Concluída';
   interviewDate?: string;
@@ -188,7 +188,7 @@ export interface RetirementCalculation {
 export interface ProjectFilters {
   searchTerm: string;
   gender: 'Todos' | 'Masculino' | 'Feminino';
-  modality: 'Todas' | 'Rural' | 'Urbana';
+  modality: 'Todas' | 'Rural' | 'Urbana' | 'Híbrida';
   status: 'Todos' | 'Elegíveis' | 'Pendentes';
   period: number;
   branch: Branch | 'Todas';
@@ -199,7 +199,7 @@ export interface RetirementCandidate {
   age: { years: number; months: number };
   ruralRemaining: number;
   urbanRemaining: number;
-  bestChance: string;
+  bestChance: 'Rural' | 'Urbana';
   yearsRemaining: number;
 }
 
@@ -251,6 +251,7 @@ export interface Case {
   captador?: string; // Para filtro "Meus Processos"
   filial?: string;
   client_birth_date?: string;
+  client_sexo?: 'Masculino' | 'Feminino';
   client_city?: string;
 
   registered_by?: string;

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, FileText, Check, Download, Loader2, History, Trash2, Calendar, User as UserIcon, ChevronDown, ChevronRight, MessageSquare, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { Case, GeneratedReport, CaseNote } from '../../types';
+import { Case, CaseStatus, CaseType, GeneratedReport, CaseNote, RetirementCandidate } from '../../types';
+import { calculateRetirementProjection } from '../../utils/retirementUtils';
 import { fetchAllFilteredCasesData, fetchCaseNotes } from '../../services/casesService';
 import { uploadReportToCloud, fetchUserReports, deleteReport as deleteReportService } from '../../services/reportsService';
 import { formatDateDisplay } from '../../utils/dateUtils';
@@ -15,6 +16,7 @@ interface ExportCasesModalProps {
     currentFilters: any;
     searchTerm: string;
     showToast: (type: 'success' | 'error', message: string) => void;
+    retirementCandidates?: RetirementCandidate[];
 }
 
 interface CaseWithNotes extends Case {
@@ -31,6 +33,9 @@ const REPORT_COLUMNS = [
     { id: 'cidade', label: 'Cidade', default: true },
     { id: 'filial', label: 'Filial', default: true },
     { id: 'captador', label: 'Captador', default: true },
+    // Retirement specific
+    { id: 'proj_tempo', label: 'Projeção (Tempo)', default: false },
+    { id: 'proj_modalidade', label: 'Modalidade (Incluso no Card)', default: false },
 ];
 
 const calculateAge = (birthDate: string | undefined): string => {
@@ -53,7 +58,14 @@ const calculateAge = (birthDate: string | undefined): string => {
     }
 };
 
-const ExportCasesModal: React.FC<ExportCasesModalProps> = ({ isOpen, onClose, currentFilters, searchTerm, showToast }) => {
+const ExportCasesModal: React.FC<ExportCasesModalProps> = ({
+    isOpen,
+    onClose,
+    currentFilters,
+    searchTerm,
+    showToast,
+    retirementCandidates
+}) => {
     const { user } = useApp();
     const [activeTab, setActiveTab] = useState<'generate' | 'history'>('generate');
     const [selectedCols, setSelectedCols] = useState<string[]>(REPORT_COLUMNS.filter(c => c.default).map(c => c.id));
@@ -230,7 +242,23 @@ const ExportCasesModal: React.FC<ExportCasesModalProps> = ({ isOpen, onClose, cu
         try {
             let dataToExport: CaseWithNotes[];
 
-            if (step === 2) {
+            if (retirementCandidates && retirementCandidates.length > 0) {
+                // Exportando candidatos a aposentadoria (projeções)
+                dataToExport = retirementCandidates.map(rc => ({
+                    ...rc.client,
+                    id: rc.client.id,
+                    client_id: rc.client.id,
+                    client_name: rc.client.nome_completo,
+                    client_cpf: rc.client.cpf_cnpj,
+                    client_birth_date: rc.client.data_nascimento,
+                    client_sexo: rc.client.sexo,
+                    filial: rc.client.filial,
+                    captador: rc.client.captador,
+                    // Garante que a modalidade usada no card seja exportada
+                    aposentadoria_modalidade: rc.client.aposentadoria_modalidade || rc.bestChance,
+                    notes: []
+                })) as any;
+            } else if (step === 2) {
                 // Usa os dados já carregados
                 dataToExport = casesWithNotes;
             } else {
@@ -268,6 +296,42 @@ const ExportCasesModal: React.FC<ExportCasesModalProps> = ({ isOpen, onClose, cu
                         case 'cidade': value = c.client_city || 'N/A'; break;
                         case 'filial': value = c.filial || 'N/A'; break;
                         case 'captador': value = c.captador || 'N/A'; break;
+                        // Simplified Retirement Specific
+                        case 'proj_tempo': {
+                            const birthDate = c.client_birth_date || (c as any).data_nascimento;
+                            const sexo = c.client_sexo || (c as any).sexo;
+                            const mod = (c as any).modalidade || (c as any).aposentadoria_modalidade;
+                            if (!birthDate || !sexo) { value = 'N/A'; break; }
+                            const proj = calculateRetirementProjection(birthDate, sexo as any, mod);
+                            if (!proj) { value = 'N/A'; break; }
+
+                            const remaining = proj.yearsRemaining;
+                            if (remaining <= 0) {
+                                value = 'Elegível';
+                            } else {
+                                const y = Math.floor(remaining);
+                                const m = Math.floor((remaining - y) * 12);
+                                value = y > 0 ? `${y}a ${m}m` : `${m}m`;
+                            }
+                            break;
+                        }
+                        case 'proj_modalidade': {
+                            const mod = (c as any).modalidade || (c as any).aposentadoria_modalidade;
+                            if (mod) {
+                                value = mod;
+                            } else {
+                                // Se não tem modalidade fixa, tenta pegar a best chance do cálculo
+                                const birthDate = c.client_birth_date || (c as any).data_nascimento;
+                                const sexo = c.client_sexo || (c as any).sexo;
+                                if (birthDate && sexo) {
+                                    const proj = calculateRetirementProjection(birthDate, sexo as any);
+                                    value = proj?.bestChance || 'N/A';
+                                } else {
+                                    value = 'N/A';
+                                }
+                            }
+                            break;
+                        }
                         default: value = (c as any)[colId] || '';
                     }
                     row[colLabel] = value;
@@ -417,26 +481,36 @@ const ExportCasesModal: React.FC<ExportCasesModalProps> = ({ isOpen, onClose, cu
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-2">
-                                    {REPORT_COLUMNS.map(col => (
-                                        <button
-                                            key={col.id}
-                                            onClick={() => handleToggleCol(col.id)}
-                                            className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-300 ${selectedCols.includes(col.id)
-                                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                                                : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/10'
-                                                }`}
-                                        >
-                                            <span className={`text-sm font-medium ${selectedCols.includes(col.id) ? 'text-white' : ''}`}>
-                                                {col.label}
-                                            </span>
-                                            <div className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-all ${selectedCols.includes(col.id)
-                                                ? 'bg-emerald-500 border-emerald-500 text-white'
-                                                : 'bg-transparent border-white/10'
-                                                }`}>
-                                                {selectedCols.includes(col.id) && <Check size={12} strokeWidth={4} />}
-                                            </div>
-                                        </button>
-                                    ))}
+                                    {REPORT_COLUMNS.map(col => {
+                                        // Conditional visibility for retirement columns
+                                        const isRetirementCol = col.id === 'proj_tempo' || col.id === 'proj_modalidade';
+                                        if (isRetirementCol) {
+                                            const isRetirementType = currentFilters?.tipo === 'Aposentadoria';
+                                            const isExportingProjections = retirementCandidates && retirementCandidates.length > 0;
+                                            if (!isRetirementType && !isExportingProjections) return null;
+                                        }
+
+                                        return (
+                                            <button
+                                                key={col.id}
+                                                onClick={() => handleToggleCol(col.id)}
+                                                className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-300 ${selectedCols.includes(col.id)
+                                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                                    : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/10'
+                                                    }`}
+                                            >
+                                                <span className={`text-sm font-medium ${selectedCols.includes(col.id) ? 'text-white' : ''}`}>
+                                                    {col.label}
+                                                </span>
+                                                <div className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-all ${selectedCols.includes(col.id)
+                                                    ? 'bg-emerald-500 border-emerald-500 text-white'
+                                                    : 'bg-transparent border-white/10'
+                                                    }`}>
+                                                    {selectedCols.includes(col.id) && <Check size={12} strokeWidth={4} />}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </motion.div>
                         )}
