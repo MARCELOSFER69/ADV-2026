@@ -95,6 +95,27 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
     const [showNewTypeInput, setShowNewTypeInput] = useState(false);
     const [newTypeValue, setNewTypeValue] = useState('');
 
+    // --- NOVA LÓGICA DE ESTADO LOCAL PARA EVITAR AUTO-SAVE AO DIGITAR ---
+    const [localCaseData, setLocalCaseData] = useState<Case>(caseItem);
+    const [hasChanges, setHasChanges] = useState(false);
+
+    // Sincroniza estado local quando o caseID muda ou quando editMode é ativado
+    useEffect(() => {
+        setLocalCaseData(caseItem);
+        setHasChanges(false);
+    }, [caseItem.id, isEditMode]);
+
+    const handleLocalChange = (updates: Partial<Case>) => {
+        setLocalCaseData(prev => ({ ...prev, ...updates }));
+        setHasChanges(true);
+    };
+
+    const handleSaveClick = () => {
+        onUpdateCase(localCaseData);
+        setHasChanges(false);
+    };
+    // ------------------------------------------------------------------
+
     // Load notes on mount
     useEffect(() => {
         const loadNotes = async () => {
@@ -196,6 +217,20 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* COLUNA 1: DADOS DO PROCESSO */}
             <div className="lg:col-span-2 space-y-6">
+                {isEditMode && hasChanges && (
+                    <div className="bg-gold-500/10 border border-gold-500/20 p-4 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-2 h-2 rounded-full bg-gold-500 animate-pulse" />
+                            <span className="text-gold-500 text-sm font-bold uppercase tracking-wider">Alterações Pendentes</span>
+                        </div>
+                        <button
+                            onClick={handleSaveClick}
+                            className="bg-gold-500 hover:bg-gold-400 text-black px-6 py-2 rounded-lg font-bold text-sm shadow-lg shadow-gold-500/20 transition-all flex items-center gap-2"
+                        >
+                            <Check size={18} /> Salvar Agora
+                        </button>
+                    </div>
+                )}
                 {/* 1. VINCULO CLIENTE */}
                 <div className="bg-[#18181b] p-6 rounded-xl border border-white/5 relative group hover:border-gold-500/20 transition-all">
                     <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -252,10 +287,10 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
                                     <CustomSelect
                                         label="Tipo de Ação"
                                         options={[...caseTypes.map(t => ({ label: t, value: t })), { label: 'Novo Tipo...', value: 'Novo Tipo...' }]}
-                                        value={caseItem.tipo}
+                                        value={localCaseData.tipo}
                                         onChange={(val) => {
                                             if (val === 'Novo Tipo...') setShowNewTypeInput(true);
-                                            else onUpdateCase({ ...caseItem, tipo: val as any, modalidade: undefined });
+                                            else handleLocalChange({ tipo: val as any, modalidade: undefined });
                                         }}
                                     />
                                     {showNewTypeInput && (
@@ -282,10 +317,10 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
                                     <CustomSelect
                                         label="Modalidade"
                                         options={[...modalities.map(m => ({ label: m, value: m })), { label: 'Nova Modalidade...', value: 'Nova Modalidade...' }]}
-                                        value={caseItem.modalidade || ''}
+                                        value={localCaseData.modalidade || ''}
                                         onChange={(val) => {
                                             if (val === 'Nova Modalidade...') setShowNewModalityInput(true);
-                                            else onUpdateCase({ ...caseItem, modalidade: val });
+                                            else handleLocalChange({ modalidade: val });
                                         }}
                                         placeholder="Selecione..."
                                     />
@@ -311,8 +346,8 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
                             {isEditMode ? (
                                 <input
                                     className="w-full bg-[#131418] border border-white/10 rounded px-3 py-2 text-white font-mono"
-                                    value={caseItem.numero_processo || ''}
-                                    onChange={e => onUpdateCase({ ...caseItem, numero_processo: e.target.value })} // TODO: Add mask
+                                    value={localCaseData.numero_processo || ''}
+                                    onChange={e => handleLocalChange({ numero_processo: e.target.value })} // TODO: Add mask
                                     placeholder="0000000-00.0000.0.00.0000"
                                 />
                             ) : (
@@ -333,8 +368,8 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
                                 <CustomSelect
                                     label="Status do Processo"
                                     options={Object.values(CaseStatus).map(s => ({ label: s, value: s }))}
-                                    value={caseItem.status}
-                                    onChange={val => onUpdateCase({ ...caseItem, status: val as any })}
+                                    value={localCaseData.status}
+                                    onChange={val => handleLocalChange({ status: val as any })}
                                 />
                             ) : (
                                 <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase ${caseItem.status === CaseStatus.CONCLUIDO_CONCEDIDO ? 'bg-green-500/10 text-green-500' :
@@ -351,8 +386,8 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
                             {isEditMode ? (
                                 <input
                                     className="w-full bg-[#131418] border border-white/10 rounded px-3 py-2 text-white"
-                                    value={formatCurrencyInput((caseItem.valor_causa || 0).toFixed(2))}
-                                    onChange={e => onUpdateCase({ ...caseItem, valor_causa: parseCurrencyToNumber(e.target.value) })}
+                                    value={formatCurrencyInput((localCaseData.valor_causa || 0).toFixed(2))}
+                                    onChange={e => handleLocalChange({ valor_causa: parseCurrencyToNumber(e.target.value) })}
                                 />
                             ) : (
                                 <div className="text-white font-medium">{(caseItem.valor_causa || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>

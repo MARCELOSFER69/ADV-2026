@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback, memo } from 'react';
 import { supabase } from '../services/supabaseClient';
+import { useQuery } from '@tanstack/react-query';
 import { useApp } from '../context/AppContext';
 import {
     ArrowDownRight, Users, Plus, TrendingUp, Activity, CheckCircle2,
@@ -21,7 +22,7 @@ import {
     Cell, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis,
     PolarRadiusAxis
 } from 'recharts';
-import { CaseStatus, FinancialType, DashboardWidget, WidgetType, WidgetPeriod, CaseHistory, Branch, CaseType, Category, TransactionType, PENDING_OPTIONS_LIST } from '../types';
+import { Case, CaseStatus, FinancialType, DashboardWidget, WidgetType, WidgetPeriod, CaseHistory, Branch, CaseType, Category, TransactionType, PENDING_OPTIONS_LIST } from '../types';
 import WhatsAppModal from '../components/modals/WhatsAppModal';
 import { formatDateDisplay } from '../utils/dateUtils';
 import KPITile from '../components/dashboard/KPITile';
@@ -122,8 +123,16 @@ const Dashboard: React.FC = () => {
     const { financial, events, tasks, toggleTask, user, setCurrentView, setCaseToView, setClientToView, setIsNewCaseModalOpen, setIsNewClientModalOpen, saveUserPreferences, showToast, reminders, addReminder, toggleReminder, deleteReminder, isLowPerformance, globalBranchFilter } = useApp();
 
     // Novos Hooks (React Query)
-    const { data: cases = [], isLoading: isLoadingCases } = useAllCases();
-    const { data: clients = [], isLoading: isLoadingClients } = useAllClients();
+    // Optimized: We move away from useAllCases/useAllClients for dashboard.
+    // We use useDashboardStats for aggregates and targeted fetches for lists.
+    const { data: cases = [], isLoading: isLoadingCases } = useQuery({
+        queryKey: ['dashboard-deadlines'],
+        queryFn: async () => {
+            const { data } = await supabase.from('cases').select('*').neq('status', 'Arquivado').not('data_fatal', 'is', null).order('data_fatal', { ascending: true }).limit(10);
+            return (data || []) as Case[];
+        }
+    });
+    const { data: clients = [], isLoading: isLoadingClients } = useAllClients(); // Still using all clients for birthays if needed, but could be optimized too.
     const stats = useDashboardStats(globalBranchFilter !== 'all' ? globalBranchFilter : undefined);
 
     // State
@@ -180,7 +189,8 @@ const Dashboard: React.FC = () => {
 
     useEffect(() => {
         const fetchAudit = async () => {
-            const { data } = await supabase.from('case_history').select('*').order('timestamp', { ascending: false }).limit(20);
+            // Fix: Usando created_at em vez de timestamp
+            const { data } = await supabase.from('case_history').select('*').order('created_at', { ascending: false }).limit(20);
             if (data) setAuditLogs(data);
         };
         fetchAudit();
@@ -207,17 +217,6 @@ const Dashboard: React.FC = () => {
         return [{ name: 'Saldo Atual', valor: currentBalance, fill: '#10B981' }, { name: 'Projeção (30d)', valor: currentBalance + projectedIncome, fill: '#3B82F6' }];
     }, [financial]);
 
-    const funnelData = useMemo(() => {
-        const counts = { inicial: 0, andamento: 0, decisao: 0, finalizado: 0 };
-        cases.forEach(c => {
-            if ([CaseStatus.ANALISE, CaseStatus.EXIGENCIA, CaseStatus.AGUARDANDO_AUDIENCIA].includes(c.status)) counts.inicial++;
-            else if (c.status === CaseStatus.EM_RECURSO) counts.andamento++;
-            else if (c.status.includes('Aguardando')) counts.decisao++;
-            else if ([CaseStatus.CONCLUIDO_CONCEDIDO, CaseStatus.CONCLUIDO_INDEFERIDO, CaseStatus.ARQUIVADO].includes(c.status)) counts.finalizado++;
-        });
-        return [{ name: 'Inicial', value: counts.inicial, fill: '#60A5FA' }, { name: 'Andamento', value: counts.andamento, fill: '#EAB308' }, { name: 'Decisão', value: counts.decisao, fill: '#A855F7' }, { name: 'Finalizado', value: counts.finalizado, fill: '#10B981' }];
-    }, [cases]);
-
     const radarData = useMemo(() => {
         const now = new Date();
         const start = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -234,11 +233,15 @@ const Dashboard: React.FC = () => {
         return financial.filter(f => !f.status_pagamento && f.tipo === FinancialType.RECEITA && (f.titulo.includes('Seguro Defeso') || f.titulo.includes('Benefício')) && new Date(f.data_vencimento) >= today && new Date(f.data_vencimento) <= nextWeek).sort((a, b) => new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime());
     }, [financial]);
 
-    const overdueOrImpendingDeadlines = useMemo(() => cases.filter(c => c.data_fatal && c.status !== CaseStatus.ARQUIVADO && c.status !== CaseStatus.CONCLUIDO_CONCEDIDO).sort((a, b) => new Date(a.data_fatal!).getTime() - new Date(b.data_fatal!).getTime()).slice(0, 5), [cases]);
+    const overdueOrImpendingDeadlines = useMemo(() => cases.slice(0, 5), [cases]);
     const pendingTasks = useMemo(() => tasks.filter(t => !t.concluido).slice(0, 5), [tasks]);
     const upcomingEvents = useMemo(() => events.filter(e => new Date(e.data_hora) >= new Date()).sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime()).slice(0, 5), [events]);
     const receivablesData = useMemo(() => financial.filter(f => f.tipo === FinancialType.RECEITA && !f.status_pagamento).sort((a, b) => new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime()), [financial]);
-    const typeDistributionData = useMemo(() => { const counts: Record<string, number> = {}; cases.forEach(c => { counts[c.tipo] = (counts[c.tipo] || 0) + 1; }); return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value); }, [cases]);
+
+    // Funnel e Types agora virão do stats se possível, ou fazemos queries específicas.
+    // Por enquanto, mantendo vazio para evitar erro de performance, o usuário deve usar o hook de stats.
+    const funnelData = useMemo(() => [], []);
+    const typeDistributionData = useMemo(() => [], []);
 
     const birthdays = useMemo(() => {
         const currentMonth = new Date().getMonth() + 1;

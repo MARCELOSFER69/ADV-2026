@@ -954,7 +954,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 const value = (updatedCase as any)[key];
                 if (value !== undefined) {
                     // Sanitização: String vazia vira null (evita erro de sintaxe em colunas DATE)
-                    payload[key] = (typeof value === 'string' && value.trim() === '') ? null : value;
+                    // Também garante que não enviamos objetos se a coluna for simples
+                    if (typeof value === 'string' && value.trim() === '') {
+                        payload[key] = null;
+                    } else {
+                        payload[key] = value;
+                    }
                 }
             });
 
@@ -1008,10 +1013,45 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         showToast('success', 'Processo excluído!');
     }, [queryClient, showToast]);
 
-    const getCaseHistory = useCallback(async (caseId: string) => {
-        const { data, error } = await supabase.from('case_history').select('*').eq('case_id', caseId).order('created_at', { ascending: false });
-        if (error) throw error;
-        return data || [];
+    const getCaseHistory = useCallback(async (caseId: string): Promise<CaseHistory[]> => {
+        try {
+            // Tentamos buscar com join para pegar o nome do usuário
+            // Usamos 'created_at' ou 'timestamp' dependendo do que existir, mas o padrao é created_at
+            const { data, error } = await supabase
+                .from('case_history')
+                .select(`
+                    *,
+                    user:user_id ( full_name )
+                `)
+                .eq('case_id', caseId)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.warn("Erro ao buscar histórico (tentando fallback sem join):", error);
+                // Fallback se o join falhar ou coluna created_at não existir
+                const { data: fallbackData, error: fallbackError } = await supabase
+                    .from('case_history')
+                    .select('*')
+                    .eq('case_id', caseId);
+
+                if (fallbackError) throw fallbackError;
+
+                return (fallbackData || []).map((item: any) => ({
+                    ...item,
+                    user_name: 'Usuário',
+                    timestamp: item.created_at || item.timestamp || new Date().toISOString()
+                })) as CaseHistory[];
+            }
+
+            return (data || []).map((item: any) => ({
+                ...item,
+                user_name: item.user?.full_name || 'Sistema',
+                timestamp: item.created_at || item.timestamp || new Date().toISOString()
+            })) as CaseHistory[];
+        } catch (error) {
+            console.error("Erro final getCaseHistory:", error);
+            return [];
+        }
     }, []);
 
     const getClientHistory = useCallback(async (clientId: string) => {

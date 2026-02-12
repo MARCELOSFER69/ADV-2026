@@ -1,20 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, User, FileText, ChevronRight, Calculator, Archive, Briefcase, Calendar } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { useAllCases } from '../../hooks/useCases';
+import { supabase } from '../../services/supabaseClient';
 import { Case, Client } from '../../types';
 
 interface GlobalSearchModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
-
-import { useAllClients } from '../../hooks/useClients';
 // ...
 const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, onClose }) => {
     const { setCurrentView, openNewCaseWithParams } = useApp();
-    const { data: allClients = [] } = useAllClients();
-    const { data: cases = [] } = useAllCases();
+    // Optimized: We don't fetch all clients/cases anymore. 
+    // We will use the search_global RPC or a dynamic filter.
+    // For now, let's use the AppContext or a direct supabase call.
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -40,59 +39,60 @@ const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, onClose }
     }, [isOpen]);
 
     useEffect(() => {
-        if (!searchTerm.trim()) {
-            setResults([]);
-            return;
-        }
+        const performSearch = async () => {
+            if (!searchTerm.trim()) {
+                setResults([]);
+                return;
+            }
 
-        const lowerTerm = searchTerm.toLowerCase();
-        const newResults: SearchResult[] = [];
+            const lowerTerm = searchTerm.toLowerCase();
+            const newResults: SearchResult[] = [];
 
-        // 1. Clients
-        const matchedClients = allClients
-            .filter(c => c.nome_completo.toLowerCase().includes(lowerTerm) || c.cpf_cnpj?.includes(lowerTerm))
-            .slice(0, 5)
-            .map(c => ({
-                type: 'client' as const,
-                id: c.id,
-                title: c.nome_completo,
-                subtitle: `CPF: ${c.cpf_cnpj || 'N/A'}`,
-                icon: User,
-                action: () => {
-                    // Logic to open client details would ideally open the modal directly
-                    // For now, switch to clients view. A more robust solution would be global triggers.
-                    setCurrentView('clients');
-                    // We might need a way to auto-select the client. 
-                    // This is a constraint. For simplicity first version: Go to Clients and COPY name to clipboard?
-                    // Better: The user expects to Open the Detail. 
-                    // Constraint: ClientDetailsModal is local to Clients.tsx.
-                    // Solution: We will inject a 'search_open_client_id' into AppContext or just navigate for now.
-                    // Let's assume navigating to Clients is step 1.
-                    onClose();
+            try {
+                // Usando a função RPC search_global para performance
+                const { data, error } = await supabase.rpc('search_global', { query_text: searchTerm });
+
+                if (error) {
+                    console.error('Erro na busca global:', error);
+                    // Fallback para busca local simplificada se o RPC falhar ou não estiver disponível
+                    return;
                 }
-            }));
 
-        // 2. Cases
-        const matchedCases = cases
-            .filter(c => c.titulo.toLowerCase().includes(lowerTerm) || c.numero_processo?.includes(lowerTerm))
-            .slice(0, 5)
-            .map(c => ({
-                type: 'case' as const,
-                id: c.id,
-                title: c.titulo,
-                subtitle: `Proc: ${c.numero_processo || 'S/N'} • ${c.status}`,
-                icon: Briefcase,
-                action: () => {
-                    setCurrentView('cases');
-                    onClose();
-                }
-            }));
+                const matchedClients = (data.clients || []).map((c: any) => ({
+                    type: 'client' as const,
+                    id: c.id,
+                    title: c.nome_completo,
+                    subtitle: `CPF: ${c.cpf_cnpj || 'N/A'}`,
+                    icon: User,
+                    action: () => {
+                        setCurrentView('clients');
+                        onClose();
+                    }
+                }));
 
-        newResults.push(...matchedClients, ...matchedCases);
-        setResults(newResults);
-        setSelectedIndex(0);
+                const matchedCases = (data.cases || []).map((c: any) => ({
+                    type: 'case' as const,
+                    id: c.id,
+                    title: c.titulo,
+                    subtitle: `Proc: ${c.numero_processo || 'S/N'} • ${c.tipo || ''}`,
+                    icon: Briefcase,
+                    action: () => {
+                        setCurrentView('cases');
+                        onClose();
+                    }
+                }));
 
-    }, [searchTerm, allClients, cases]);
+                newResults.push(...matchedClients, ...matchedCases);
+                setResults(newResults);
+                setSelectedIndex(0);
+            } catch (err) {
+                console.error('Erro ao pesquisar:', err);
+            }
+        };
+
+        const timer = setTimeout(performSearch, 300); // Debounce
+        return () => clearTimeout(timer);
+    }, [searchTerm, setCurrentView, onClose]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'ArrowDown') {
