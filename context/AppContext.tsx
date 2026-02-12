@@ -943,7 +943,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 'tipo', 'modalidade', 'valor_causa', 'status_pagamento', 'forma_recebimento',
                 'valor_honorarios_pagos', 'anotacoes', 'metadata', 'drive_folder_id',
                 'motivo_arquivamento', 'nit', 'der', 'nis', 'renda_familiar',
-                'data_parto', 'cid', 'data_incapacidade', 'gps_lista'
+                'data_parto', 'cid', 'data_incapacidade', 'gps_lista',
+                'honorarios_forma_pagamento', 'honorarios_recebedor', 'honorarios_tipo_conta', 'honorarios_conta'
             ];
 
             const payload: any = {
