@@ -7,8 +7,7 @@ import {
     ChevronDown, ChevronRight, Eye, Scale, ArrowRight, Bell
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { useAllCases } from '../../hooks/useCases';
-import { useAllClients } from '../../hooks/useClients';
+import { supabase } from '../../services/supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NotificationsPanelProps {
@@ -18,9 +17,9 @@ interface NotificationsPanelProps {
 }
 
 const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose, notifications }) => {
-    const { setCurrentView, setClientToView, setCaseToView } = useApp();
-    const { data: cases = [] } = useAllCases();
-    const { data: clients = [] } = useAllClients();
+    const { setCurrentView, setClientToView, setCaseToView, showToast } = useApp();
+    // Optimized: No longer fetching all cases/clients for the whole panel.
+    // handleNavigate will try to fetch specific items if ID is present.
     const [collapsedSections, setCollapsedSections] = useState<string[]>(['tomorrow', 'upcoming']);
     const [selectedNotification, setSelectedNotification] = useState<AppNotification | null>(null);
 
@@ -85,29 +84,41 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
         return new Date(dateStr).toLocaleDateString('pt-BR');
     };
 
-    const handleNavigate = (type: 'client' | 'case', name?: string, id?: string) => {
+    const handleNavigate = async (type: 'client' | 'case', name?: string, id?: string) => {
         if (!id && !name) return;
 
         if (type === 'client') {
-            const finalId = id || clients.find(c => c.nome_completo === name)?.id;
+            const finalId = id; // Ideally notifications always have ID
             if (finalId) {
                 setCurrentView('clients');
                 setClientToView(finalId);
                 onClose();
                 setSelectedNotification(null);
+            } else {
+                showToast('error', 'ID do cliente não encontrado.');
             }
         } else {
-            const kase = id ? cases.find(c => c.id === id) : cases.find(c => name && (name.includes(c.titulo) || name.includes(c.numero_processo)));
-            if (kase) {
-                let targetView: any = 'cases';
-                if (kase.tipo === 'Seguro Defeso') targetView = 'cases-insurance';
-                else if (kase.tribunal && kase.tribunal.toUpperCase() !== 'INSS') targetView = 'cases-judicial';
-                else targetView = 'cases-administrative';
+            if (id) {
+                // Fetch minimum data needed for navigation
+                const { data: kase } = await supabase
+                    .from('cases')
+                    .select('id, tipo, tribunal')
+                    .eq('id', id)
+                    .single();
 
-                setCurrentView(targetView);
-                setCaseToView(kase.id);
-                onClose();
-                setSelectedNotification(null);
+                if (kase) {
+                    let targetView: any = 'cases';
+                    if (kase.tipo === 'Seguro Defeso') targetView = 'cases-insurance';
+                    else if (kase.tribunal && kase.tribunal.toUpperCase() !== 'INSS') targetView = 'cases-judicial';
+                    else targetView = 'cases-administrative';
+
+                    setCurrentView(targetView);
+                    setCaseToView(kase.id);
+                    onClose();
+                    setSelectedNotification(null);
+                }
+            } else {
+                showToast('error', 'ID do processo não encontrado.');
             }
         }
     };

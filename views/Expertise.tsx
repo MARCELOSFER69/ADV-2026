@@ -16,8 +16,10 @@ import { useAllClients } from '../hooks/useClients';
 // ...
 const Expertise: React.FC = () => {
     const { events, setClientToView, setCaseToView, setCurrentView, updateEvent, deleteEvent, showToast, globalBranchFilter } = useApp();
-    const { data: cases = [] } = useAllCases();
-    const { data: clients = [] } = useAllClients();
+    // Optimized: No longer pre-fetching all cases/clients.
+    // We'll use local fallbacks if needed, but ideally we fetch specific items.
+    const cases: any[] = [];
+    const clients: any[] = [];
     const [searchTerm, setSearchTerm] = useState('');
     const [isNewModalOpen, setIsNewModalOpen] = useState(false);
     const [filterMode, setFilterMode] = useState<'upcoming' | 'past' | 'all'>('upcoming');

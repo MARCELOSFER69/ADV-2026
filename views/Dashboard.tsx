@@ -37,8 +37,6 @@ import TasksList from '../components/dashboard/TasksList';
 import AgendaWidget from '../components/dashboard/AgendaWidget';
 import BirthdayList from '../components/dashboard/BirthdayList';
 import { useDashboardStats } from '../hooks/useDashboardStats';
-import { useAllCases } from '../hooks/useCases';
-import { useAllClients } from '../hooks/useClients';
 import CaptadoresDetailedWidget from '../components/dashboard/CaptadoresDetailedWidget';
 import PendenciasOverviewWidget from '../components/dashboard/PendenciasOverviewWidget';
 import DashboardCalendarWidget from '../components/dashboard/DashboardCalendarWidget';
@@ -132,7 +130,20 @@ const Dashboard: React.FC = () => {
             return (data || []) as Case[];
         }
     });
-    const { data: clients = [], isLoading: isLoadingClients } = useAllClients(); // Still using all clients for birthays if needed, but could be optimized too.
+    const { data: queryBirthdays = [], isLoading: isLoadingBirthdays } = useQuery({
+        queryKey: ['dashboard-birthdays'],
+        queryFn: async () => {
+            const currentMonth = new Date().getMonth() + 1;
+            const { data } = await supabase.from('clients').select('id, nome_completo, data_nascimento, telefone').neq('status', 'arquivado').not('data_nascimento', 'is', null);
+
+            return (data || []).filter(c => {
+                const date = new Date(c.data_nascimento);
+                return !isNaN(date.getTime()) && (date.getMonth() + 1) === currentMonth;
+            }) as any[];
+        }
+    });
+    const clients = queryBirthdays;
+    const isLoadingClients = isLoadingBirthdays;
     const stats = useDashboardStats(globalBranchFilter !== 'all' ? globalBranchFilter : undefined);
 
     // State

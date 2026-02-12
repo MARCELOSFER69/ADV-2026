@@ -1138,7 +1138,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             }
         });
 
-        const { error } = await supabase.from('financial_records').insert([payload]);
+        const { error } = await supabase.from('financial_records').upsert([payload]);
         if (error) {
             console.error("Erro Supabase (addFinancialRecord):", error);
             throw error;

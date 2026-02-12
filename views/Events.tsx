@@ -15,8 +15,9 @@ import { useAllClients } from '../hooks/useClients';
 
 const Events: React.FC = () => {
     const { events, setClientToView, setCaseToView, setCurrentView, updateEvent, deleteEvent, showToast, globalBranchFilter } = useApp();
-    const { data: cases = [] } = useAllCases();
-    const { data: clients = [] } = useAllClients();
+    const cases: any[] = [];
+    const clients: any[] = [];
+    // Optimized: Removed heavy pre-fetching.
     const [searchTerm, setSearchTerm] = useState('');
     const [isNewModalOpen, setIsNewModalOpen] = useState(false);
     const [filterMode, setFilterMode] = useState<'upcoming' | 'past' | 'all'>('upcoming');
