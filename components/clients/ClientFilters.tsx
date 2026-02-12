@@ -295,6 +295,42 @@ const ClientFilters: React.FC<ClientFiltersProps> = ({
                                     />
                                 </div>
 
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">REAP Anual (21-24)</label>
+                                    <select
+                                        className="w-full bg-navy-900 text-white px-3 py-2 border border-white/10 rounded-lg text-sm outline-none focus:border-gold-500"
+                                        value={activeFilters.reap_anual}
+                                        onChange={(e) => setActiveFilters({ ...activeFilters, reap_anual: e.target.value })}
+                                    >
+                                        <option value="all">Todas</option>
+                                        <option value="regular">Regular</option>
+                                        <option value="pendente">Pendente</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">REAP 2025 (Mensal)</label>
+                                    <select
+                                        className="w-full bg-navy-900 text-white px-3 py-2 border border-white/10 rounded-lg text-sm outline-none focus:border-gold-500"
+                                        value={activeFilters.reap_2025}
+                                        onChange={(e) => setActiveFilters({ ...activeFilters, reap_2025: e.target.value })}
+                                    >
+                                        <option value="all">Todas</option>
+                                        <option value="regular">Regular</option>
+                                        <option value="pendente">Pendente</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Profissão</label>
+                                    <input
+                                        className="w-full bg-navy-900 text-white px-3 py-2 border border-white/10 rounded-lg text-sm outline-none focus:border-gold-500"
+                                        placeholder="Buscar profissão"
+                                        value={activeFilters.profissao}
+                                        onChange={(e) => setActiveFilters({ ...activeFilters, profissao: e.target.value })}
+                                    />
+                                </div>
+
                                 <div className="md:col-span-2">
                                     <label className="block text-xs font-medium text-slate-500 mb-1">Data Cadastro</label>
                                     <div className="flex gap-2">

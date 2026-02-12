@@ -8,7 +8,7 @@ import {
 } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getTodayBrasilia } from '../utils/dateUtils';
-import { listClientFilesFromR2 } from '../services/storageService';
+import { listClientFilesFromR2, uploadFileToR2 } from '../services/storageService';
 import { whatsappService } from '../services/whatsappService';
 import { deleteClient as deleteClientService } from '../services/clientsService';
 import { encryptData, decryptData } from '../utils/cryptoUtils';
@@ -1246,7 +1246,14 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const createCommissionReceipt = useCallback(async (receipt: CommissionReceipt, recordIds: string[]) => {
         const { error } = await supabase.from('commission_receipts').insert([receipt]);
         if (error) throw error;
-        await supabase.from('financial').update({ receipt_id: receipt.id }).in('id', recordIds);
+        await supabase.from('financial_records').update({ receipt_id: receipt.id }).in('id', recordIds);
+
+        // Update local state to ensure they disappear from the "active" commissions list
+        setFinancial(prev => prev.map(f => recordIds.includes(f.id) ? { ...f, receipt_id: receipt.id } : f));
+
+        queryClient.invalidateQueries({ queryKey: ['financial'] });
+        queryClient.invalidateQueries({ queryKey: ['financial_summary'] });
+
         setCommissionReceipts(prev => [receipt, ...prev]);
         showToast('success', 'Recibo gerado!');
     }, [showToast]);
@@ -1264,11 +1271,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }, []);
 
     const uploadReceiptFile = useCallback(async (id: string, file: File) => {
-        const path = `receipts/${id}_${file.name}`;
-        await supabase.storage.from('receipts').upload(path, file);
-        const { data } = supabase.storage.from('receipts').getPublicUrl(path);
-        await supabase.from('commission_receipts').update({ arquivo_url: data.publicUrl }).eq('id', id);
-        setCommissionReceipts(prev => prev.map(r => r.id === id ? { ...r, arquivo_url: data.publicUrl } : r));
+        const { url } = await uploadFileToR2(file, 'receipts');
+        await supabase.from('commission_receipts').update({
+            arquivo_url: url,
+            status: 'signed',
+            status_assinatura: 'assinado'
+        }).eq('id', id);
+        setCommissionReceipts(prev => prev.map(r => r.id === id ? { ...r, arquivo_url: url, status_assinatura: 'assinado' } : r));
     }, []);
 
     const getInstallments = useCallback(async (caseId: string) => {

@@ -373,7 +373,7 @@ const Financial: React.FC = () => {
     }, [financial, officeExpenses, searchTerm, periodMode, selectedDate, sortConfig]);
 
     const commissionsData = useMemo(() => {
-        return (financial || []).filter(f => f.tipo === FinancialType.COMISSAO || f.tipo_movimentacao === 'Comissao')
+        return (financial || []).filter(f => (f.tipo === FinancialType.COMISSAO || f.tipo_movimentacao === 'Comissao') && !f.receipt_id)
             .sort((a, b) => new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime());
     }, [financial]);
 
@@ -496,6 +496,7 @@ const Financial: React.FC = () => {
                     setSubTab={setSubTab}
                     selectedCommissionIds={selectedCommissionIds}
                     commissionsData={commissionsData}
+                    allFinancial={financial}
                     commissionReceipts={commissionReceipts}
                     handleSelectCommission={handleSelectCommission}
                     deleteFinancialRecord={deleteFinancialRecord}

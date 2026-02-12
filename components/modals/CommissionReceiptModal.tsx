@@ -15,7 +15,7 @@ interface CommissionReceiptModalProps {
 }
 
 const CommissionReceiptModal: React.FC<CommissionReceiptModalProps> = ({ isOpen, onClose, selectedRecords, captadorName, existingReceipt }) => {
-    const { createCommissionReceipt, showToast, confirmReceiptSignature } = useApp();
+    const { createCommissionReceipt, showToast, confirmReceiptSignature, uploadReceiptFile } = useApp();
     const [cpf, setCpf] = useState('');
     const [editableName, setEditableName] = useState('');
     const [isPrinting, setIsPrinting] = useState(false);
@@ -69,24 +69,18 @@ const CommissionReceiptModal: React.FC<CommissionReceiptModalProps> = ({ isOpen,
 
         setIsUploading(true);
         try {
-            // 1. Envia para o R2 (Nuvem)
-            const { url } = await uploadFileToR2(file, 'recibos');
+            await uploadReceiptFile(existingReceipt.id, file);
 
-            // 2. Salva APENAS O LINK no Banco de Dados (Supabase)
-            const { error } = await supabase
-                .from('commission_receipts')
-                .update({
-                    arquivo_url: url,
-                    status: 'signed',             // Atualiza status legado
-                    status_assinatura: 'assinado' // Atualiza status novo
-                })
-                .eq('id', existingReceipt.id);
+            // Re-fetch or rely on context? 
+            // In AppContext.tsx, uploadReceiptFile updates the URL in commissionReceipts state.
+            // But we need to update the local modal state too for immediate feedback.
+            // We can wait for the context to update or just set it manually if we know it succeeded.
 
-            if (error) throw error;
+            // Since uploadReceiptFile in AppContext returns void but updates state, 
+            // the modal will re-render if it depends on context, but here it has a local state.
 
-            setReceiptFileUrl(url); // Atualiza a tela na hora
             showToast('success', 'Recibo anexado e salvo com sucesso!');
-
+            onClose(); // Better to close or let them see? User said "enforcement flow"
         } catch (error) {
             console.error(error);
             showToast('error', 'Erro ao salvar o arquivo.');

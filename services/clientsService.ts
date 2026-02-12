@@ -49,6 +49,31 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
                 query = query.eq('gps_status_calculado', filters.gps);
             }
 
+            if (filters.reap_anual && filters.reap_anual !== 'all') {
+                if (filters.reap_anual === 'regular') {
+                    // Todos os anos de 2021 a 2024 marcados como true usando o operador de inclusão (@> no SQL, contains no JS)
+                    query = query.contains('reap_history', { "2021": true, "2022": true, "2023": true, "2024": true });
+                } else if (filters.reap_anual === 'pendente') {
+                    // Negativo do 'regular': pelo menos um não é true
+                    query = query.not('reap_history', 'cs', '{"2021": true, "2022": true, "2023": true, "2024": true}');
+                }
+            }
+
+            if (filters.reap_2025 && filters.reap_2025 !== 'all') {
+                const REAP_2025_MONTHS = [4, 5, 6, 7, 8, 9, 10, 11];
+                if (filters.reap_2025 === 'regular') {
+                    // 2025 Regular: Contém todos os meses da temporada (Abr-Nov)
+                    query = query.contains('reap_history', { "2025": REAP_2025_MONTHS });
+                } else if (filters.reap_2025 === 'pendente') {
+                    // 2025 Pendente: Não contém todos os meses da temporada
+                    query = query.not('reap_history', 'cs', JSON.stringify({ "2025": REAP_2025_MONTHS }));
+                }
+            }
+
+            if (filters.profissao && filters.profissao !== '') {
+                query = query.ilike('profissao', `%${filters.profissao}%`);
+            }
+
             // Filtro de Datas (Cadastro)
             if (filters.dateStart) {
                 query = query.gte('data_cadastro', filters.dateStart);
@@ -144,6 +169,27 @@ export const fetchAllFilteredClientsData = async (search?: string, filters?: any
 
             if (filters.gps && filters.gps !== 'all') {
                 query = query.eq('gps_status_calculado', filters.gps);
+            }
+
+            if (filters.reap_anual && filters.reap_anual !== 'all') {
+                if (filters.reap_anual === 'regular') {
+                    query = query.contains('reap_history', { "2021": true, "2022": true, "2023": true, "2024": true });
+                } else if (filters.reap_anual === 'pendente') {
+                    query = query.not('reap_history', 'cs', '{"2021": true, "2022": true, "2023": true, "2024": true}');
+                }
+            }
+
+            if (filters.reap_2025 && filters.reap_2025 !== 'all') {
+                const REAP_2025_MONTHS = [4, 5, 6, 7, 8, 9, 10, 11];
+                if (filters.reap_2025 === 'regular') {
+                    query = query.contains('reap_history', { "2025": REAP_2025_MONTHS });
+                } else if (filters.reap_2025 === 'pendente') {
+                    query = query.not('reap_history', 'cs', JSON.stringify({ "2025": REAP_2025_MONTHS }));
+                }
+            }
+
+            if (filters.profissao && filters.profissao !== '') {
+                query = query.ilike('profissao', `%${filters.profissao}%`);
             }
 
             if (filters.dateStart) {

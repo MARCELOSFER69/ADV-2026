@@ -10,6 +10,7 @@ interface CommissionsTabProps {
     setSubTab: (tab: 'list' | 'receipts') => void;
     selectedCommissionIds: Set<string>;
     commissionsData: FinancialRecord[];
+    allFinancial: FinancialRecord[];
     commissionReceipts: CommissionReceipt[];
     handleSelectCommission: (record: FinancialRecord) => void;
     deleteFinancialRecord: (id: string) => void;
@@ -34,6 +35,7 @@ const CommissionsTab: React.FC<CommissionsTabProps> = ({
     setSubTab,
     selectedCommissionIds,
     commissionsData,
+    allFinancial,
     commissionReceipts,
     handleSelectCommission,
     deleteFinancialRecord,
@@ -114,7 +116,7 @@ const CommissionsTab: React.FC<CommissionsTabProps> = ({
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4">
                     {commissionReceipts.length > 0 ? commissionReceipts.map(receipt => {
-                        const countItems = commissionsData.filter(f => f.receipt_id === receipt.id).length;
+                        const countItems = allFinancial.filter(f => f.receipt_id === receipt.id).length;
                         const isSigned = receipt.status_assinatura === 'assinado' || receipt.status === 'signed';
                         let borderClass = isSigned ? 'border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.1)]';
                         let badge = isSigned ? <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1 font-bold"><CheckCircle size={10} /> Assinado</span> : <span className="text-[10px] bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded border border-yellow-500/20 flex items-center gap-1 font-bold"><Clock size={10} /> Pendente</span>;
@@ -130,15 +132,34 @@ const CommissionsTab: React.FC<CommissionsTabProps> = ({
                                 </div>
                                 <div className="mb-4 flex-1"><div className="flex justify-between items-end"><span className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Total</span><p className="text-xl font-bold text-purple-400">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(receipt.valor_total)}</p></div><div className="w-full h-px bg-zinc-800 my-2"></div><p className="text-xs text-zinc-400 flex items-center gap-1"><FileText size={12} /> Referente a <strong>{countItems}</strong> comissões</p></div>
                                 <div className="pt-3 border-t border-zinc-800 flex flex-col gap-2">
-                                    {!isSigned && (<button onClick={() => confirmReceiptSignature(receipt.id)} className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-yellow-600/20">Confirmar Assinatura</button>)}
-                                    <div className="flex gap-2">
+                                    {!isSigned ? (
                                         <button
-                                            onClick={() => { setActiveUploadId(receipt.id); fileInputRef.current?.click(); }}
-                                            className={`flex-1 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${!isSigned ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/20 animate-pulse' : 'bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-600'}`}
+                                            onClick={() => confirmReceiptSignature(receipt.id)}
+                                            className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-yellow-600/20"
                                         >
-                                            {!isSigned ? <><Paperclip size={14} /> Anexar Arquivo</> : <><ExternalLink size={14} /> Ver Comprovante</>}
+                                            Confirmar Assinatura
                                         </button>
-                                    </div>
+                                    ) : (
+                                        <div className="flex gap-2">
+                                            {receipt.arquivo_url ? (
+                                                <a
+                                                    href={receipt.arquivo_url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="flex-1 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-600 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all"
+                                                >
+                                                    <ExternalLink size={14} /> Ver Comprovante
+                                                </a>
+                                            ) : (
+                                                <button
+                                                    onClick={() => { setActiveUploadId(receipt.id); fileInputRef.current?.click(); }}
+                                                    className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/20 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all animate-pulse"
+                                                >
+                                                    <Paperclip size={14} /> Anexar Arquivo
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );

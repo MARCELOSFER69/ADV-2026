@@ -22,6 +22,7 @@ import ClientGridView from '../components/clients/ClientGridView';
 import ClientTableView from '../components/clients/ClientTableView';
 import { motion, AnimatePresence } from 'framer-motion';
 import BranchSelector from '../components/Layout/BranchSelector';
+import ExportClientsModal from '../components/modals/ExportClientsModal';
 
 const DEFAULT_CLIENT_COLUMNS: ColumnConfig[] = [
     { id: 'nome_completo', label: 'Nome', visible: true, order: 0 },
@@ -89,7 +90,8 @@ const Clients: React.FC = () => {
 
     const [activeFilters, setActiveFilters] = useState({
         city: '', captador: '', status: 'all', filial: 'all', sexo: 'all',
-        dateStart: '', dateEnd: '', pendencia: 'all', gps: 'all'
+        dateStart: '', dateEnd: '', pendencia: 'all', gps: 'all',
+        reap_anual: 'all', reap_2025: 'all', profissao: ''
     });
 
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
@@ -120,6 +122,7 @@ const Clients: React.FC = () => {
     const [isExporting, setIsExporting] = useState(false);
     const [duplicateClient, setDuplicateClient] = useState<Client | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
     // Hook useClients (React Query)
     const { data: paginatedClients, isLoading: isFetching, totalCount: totalClients, refetch } = useClients({
@@ -455,108 +458,15 @@ const Clients: React.FC = () => {
         showToast('success', 'Colunas restauradas.');
     }, [saveUserPreferences, showToast]);
 
-    const handleExportExcel = useCallback(async () => {
-        setIsExporting(true);
-        try {
-            const allFilteredClients = await fetchAllFilteredClientsData(debouncedSearch, {
-                ...activeFilters,
-                status: showArchived ? 'arquivado' : activeFilters.status,
-                sortKey: sortConfig.key,
-                sortDirection: sortConfig.direction
-            });
+    const handleExportExcel = useCallback(() => {
+        setIsExportModalOpen(true);
+    }, []);
 
-            if (allFilteredClients.length === 0) {
-                showToast('error', 'Nenhum dado para exportar.');
-                return;
-            }
-
-            const visibleColumns = columns.filter(col => col.visible).sort((a, b) => a.order - b.order);
-
-            const exportData = allFilteredClients.map(client => {
-                const row: any = {};
-                visibleColumns.forEach(col => {
-                    let value = '';
-                    switch (col.id) {
-                        case 'nome_completo':
-                            value = client.nome_completo || 'N/A';
-                            break;
-                        case 'cpf_cnpj':
-                            value = client.cpf_cnpj ? formatCPFOrCNPJ(client.cpf_cnpj) : 'N/A';
-                            break;
-                        case 'contato':
-                            value = client.telefone ? formatPhone(client.telefone) : 'N/A';
-                            break;
-                        case 'filial':
-                            value = client.filial || 'N/A';
-                            break;
-                        case 'status':
-                            value = getClientStatus(client.id).label;
-                            break;
-                        case 'gps':
-                            if (client.gps_status_calculado) {
-                                value = client.gps_status_calculado === 'puxada' ? 'Puxada' :
-                                    client.gps_status_calculado === 'pendente' ? 'Pendente' : 'Regular';
-                            } else {
-                                value = 'N/A';
-                            }
-                            break;
-                        case 'endereco':
-                            value = `${client.endereco || ''}, ${client.bairro || ''}, ${client.cidade || ''} - ${client.uf || ''}`;
-                            break;
-                        case 'nascimento':
-                            value = client.data_nascimento ? formatDateDisplay(client.data_nascimento) : 'N/A';
-                            break;
-                        case 'captador':
-                            value = client.captador || 'N/A';
-                            break;
-                        case 'email':
-                            value = client.email || 'N/A';
-                            break;
-                        case 'profissao':
-                            value = client.profissao || 'N/A';
-                            break;
-                        case 'reap_21':
-                        case 'reap_22':
-                        case 'reap_23':
-                        case 'reap_24': {
-                            const year = col.id.replace('reap_', '20');
-                            const done = client.reap_history?.[year];
-                            value = done === true ? 'Sim' : 'Não';
-                            break;
-                        }
-                        case 'reap_25': {
-                            const months = client.reap_history?.['2025'];
-                            if (Array.isArray(months)) {
-                                const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-                                value = months.map(m => monthNames[m - 1]).join(', ');
-                            } else {
-                                value = months === true ? 'Sim' : 'Não';
-                            }
-                            break;
-                        }
-                    }
-                    row[col.label] = value;
-                });
-                return row;
-            });
-
-            const worksheet = XLSX.utils.json_to_sheet(exportData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Clientes');
-
-            const fileName = `Relatorio_Clientes_${new Date().toISOString().split('T')[0]}.xlsx`;
-            XLSX.writeFile(workbook, fileName);
-
-            showToast('success', 'Relatório Excel gerado com sucesso!');
-        } catch (error) {
-            console.error('Erro ao exportar Excel:', error);
-            showToast('error', 'Erro ao gerar relatório Excel.');
-        } finally {
-            setIsExporting(false);
-        }
-    }, [debouncedSearch, activeFilters, showArchived, sortConfig, columns, getClientStatus, showToast]);
-
-    const clearFilters = useCallback(() => setActiveFilters({ city: '', captador: '', status: 'all', filial: 'all', sexo: 'all', dateStart: '', dateEnd: '', pendencia: 'all', gps: 'all' }), []);
+    const clearFilters = useCallback(() => setActiveFilters({
+        city: '', captador: '', status: 'all', filial: 'all', sexo: 'all',
+        dateStart: '', dateEnd: '', pendencia: 'all', gps: 'all',
+        reap_anual: 'all', reap_2025: 'all', profissao: ''
+    }), []);
 
     // const duplicateClient = null; // Removido useMemo de filtro local. Recomenda-se query JIT se necessário.
 
@@ -794,6 +704,19 @@ const Clients: React.FC = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <ExportClientsModal
+                isOpen={isExportModalOpen}
+                onClose={() => setIsExportModalOpen(false)}
+                currentFilters={{
+                    ...activeFilters,
+                    status: showArchived ? 'arquivado' : activeFilters.status,
+                    sortKey: sortConfig.key,
+                    sortDirection: sortConfig.direction
+                }}
+                searchTerm={debouncedSearch}
+                showToast={showToast}
+            />
 
             <ClientFormModal
                 isOpen={isNewClientModalOpen}

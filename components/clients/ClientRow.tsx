@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Phone, Building2, AlertTriangle, MessageCircle, Edit2, Archive, RefreshCw, Trash2, Copy, Check } from 'lucide-react';
+import { Phone, Building2, AlertTriangle, MessageCircle, Edit2, Archive, RefreshCw, Trash2, Copy, Check, CheckCircle2 } from 'lucide-react';
 import { Client, ColumnConfig } from '../../types';
 import { formatDateDisplay } from '../../utils/dateUtils';
 import { formatCPFOrCNPJ } from '../../services/formatters';
@@ -129,24 +129,10 @@ const ClientRow: React.FC<ClientRowProps> = ({
                     )}
                     {col.id === 'gps' && (() => {
                         const { isStatusBlinking } = useApp();
-                        const clientCases = client.cases || [];
-                        const activeCases = clientCases.filter(c => c.status?.toLowerCase() !== 'arquivado');
-                        if (activeCases.length === 0) return <span className="text-zinc-600">-</span>;
+                        // @ts-ignore - gps_status_calculado comes from the database view
+                        const gpsStatus = client.gps_status_calculado || 'pendente';
 
-                        let hasPuxada = false;
-                        let hasPendente = false;
-
-                        activeCases.forEach(c => {
-                            const list = c.gps_lista || [];
-                            if (!list || list.length === 0) {
-                                hasPendente = true;
-                            } else {
-                                const hasUnpaid = list.some((g: any) => g.status !== 'Paga');
-                                if (hasUnpaid) hasPuxada = true;
-                            }
-                        });
-
-                        if (hasPuxada) return (
+                        if (gpsStatus === 'puxada') return (
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all duration-500 ${isStatusBlinking
                                 ? 'bg-blue-500/20 text-blue-400 border-blue-500/40 shadow-[0_0_10px_rgba(59,130,246,0.3)]'
                                 : 'bg-white/5 text-slate-500 border-white/10'
@@ -154,7 +140,7 @@ const ClientRow: React.FC<ClientRowProps> = ({
                                 Puxada
                             </span>
                         );
-                        if (hasPendente) return (
+                        if (gpsStatus === 'pendente') return (
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all duration-500 ${isStatusBlinking
                                 ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
                                 : 'bg-white/5 text-slate-500 border-white/10'
@@ -168,6 +154,30 @@ const ClientRow: React.FC<ClientRowProps> = ({
                     {col.id === 'nascimento' && <span className="text-xs text-slate-400">{formatDateDisplay(client.data_nascimento)}</span>}
                     {col.id === 'captador' && <span className="text-xs text-slate-400">{client.captador || '-'}</span>}
                     {col.id === 'email' && <span className="text-xs text-slate-400 truncate max-w-[150px] block" title={client.email}>{client.email || '-'}</span>}
+                    {col.id === 'profissao' && <span className="text-xs text-slate-400 truncate max-w-[120px] block" title={client.profissao}>{client.profissao || '-'}</span>}
+                    {col.id.startsWith('reap_') && (() => {
+                        const year = col.id.replace('reap_', '20');
+                        const history = client.reap_history || {};
+                        const value = history[year];
+
+                        if (year === '2025') {
+                            if (Array.isArray(value)) {
+                                const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                                return (
+                                    <div className="flex flex-wrap gap-1 max-w-[100px]">
+                                        {value.map(m => (
+                                            <span key={m} className="text-[9px] px-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded">
+                                                {monthNames[m - 1]}
+                                            </span>
+                                        ))}
+                                    </div>
+                                );
+                            }
+                        }
+
+                        if (value === true) return <CheckCircle2 size={16} className="text-emerald-500" />;
+                        return <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full">Pendente</span>;
+                    })()}
                 </td>
             ))}
             <td className="px-6 py-4 text-right">

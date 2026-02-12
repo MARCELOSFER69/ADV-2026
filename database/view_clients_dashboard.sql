@@ -66,7 +66,7 @@ SELECT
                     AND cs.status NOT IN ('Concluído (Concedido)', 'Arquivado')
                 ) THEN 'regular'
                 
-                ELSE NULL
+                ELSE 'pendente'
             END
     ) AS gps_status_calculado
 FROM clients c;

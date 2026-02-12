@@ -641,7 +641,7 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                             </div>
                             <div className="lg:col-span-4 flex gap-4 pt-2">
                                 {Object.values(FinancialType).map(t => (
-                                    <label key={t} className="flex items-center gap-2 cursor-pointer group">
+                                    <label key={t} className="flex items-center gap-2 cursor-pointer group" onClick={() => setNewFinancial({ ...newFinancial, type: t })}>
                                         <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${newFinancial.type === t ? 'border-gold-500 bg-gold-500' : 'border-zinc-600 group-hover:border-gold-500'}`}>
                                             {newFinancial.type === t && <div className="w-1.5 h-1.5 bg-black rounded-full" />}
                                         </div>
@@ -650,14 +650,14 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                 ))}
                                 {/* Checkbox "É Honorário?" que aparece se for RECEITA */}
                                 {newFinancial.type === FinancialType.RECEITA && (
-                                    <label className="flex items-center gap-2 cursor-pointer group ml-4 border-l border-white/10 pl-4">
+                                    <label className="flex items-center gap-2 cursor-pointer group ml-4 border-l border-white/10 pl-4" onClick={() => setNewFinancial({ ...newFinancial, isHonorary: !newFinancial.isHonorary })}>
                                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${newFinancial.isHonorary ? 'bg-gold-500 border-gold-500 text-black' : 'border-zinc-600 group-hover:border-gold-500'}`}>
                                             {newFinancial.isHonorary && <Check size={10} strokeWidth={4} />}
                                         </div>
                                         <span className={`text-sm ${newFinancial.isHonorary ? 'text-gold-500 font-bold' : 'text-zinc-400'}`}>É Honorário?</span>
                                     </label>
                                 )}
-                                <label className="flex items-center gap-2 cursor-pointer group ml-4 border-l border-white/10 pl-4">
+                                <label className="flex items-center gap-2 cursor-pointer group ml-4 border-l border-white/10 pl-4" onClick={() => setNewFinancial({ ...newFinancial, isPaidNow: !newFinancial.isPaidNow })}>
                                     <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${newFinancial.isPaidNow ? 'bg-green-500 border-green-500 text-black' : 'border-zinc-600 group-hover:border-green-500'}`}>
                                         {newFinancial.isPaidNow && <Check size={10} strokeWidth={4} />}
                                     </div>
