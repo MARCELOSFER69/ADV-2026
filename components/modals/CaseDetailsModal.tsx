@@ -92,6 +92,10 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
         return Array.from(new Set(officeExpenses.map(e => e.conta).filter(Boolean)));
     }, [officeExpenses]);
 
+    const caseDocsCount = useMemo(() => {
+        return (client?.documentos || []).filter(d => d.case_id === liveCase.id).length;
+    }, [client?.documentos, liveCase.id]);
+
 
     // --- HANDLERS: UPDATES ---
     const handleUpdateCase = async (updated: Case) => {
@@ -356,7 +360,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                         { id: 'financial', label: 'Financeiro', icon: FileText, count: caseFinancials.length },
                         { id: 'events', label: 'Eventos', icon: Calendar, count: caseEvents.length },
                         { id: 'checklist', label: 'Tarefas', icon: CheckCircle, count: caseTasks.filter(t => !t.concluido).length },
-                        { id: 'docs', label: 'Documentos', icon: UploadCloud },
+                        { id: 'docs', label: 'Documentos', icon: UploadCloud, count: caseDocsCount },
                         { id: 'access', label: 'Acessos', icon: Lock },
                         { id: 'history', label: 'Histórico', icon: History },
                     ].map(tab => (
