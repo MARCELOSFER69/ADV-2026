@@ -297,7 +297,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
         }
     };
 
-    const handleDocumentUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleDocumentUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>, caseId?: string) => {
         const file = e.target.files?.[0];
         if (!file) return;
         setIsUploading(true);
@@ -311,7 +311,8 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                 tipo: file.type.includes('pdf') ? 'PDF' : 'IMG',
                 data_upload: new Date().toISOString(),
                 url,
-                path
+                path,
+                case_id: caseId
             };
             const updatedDocs = [...(client.documentos || []), newDoc];
             const updatedClient = { ...client, documentos: updatedDocs };

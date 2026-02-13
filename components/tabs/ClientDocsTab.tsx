@@ -17,6 +17,30 @@ const ClientDocsTab: React.FC<ClientDocsTabProps> = ({
     const { syncClientDocuments } = useApp();
     const [isSyncing, setIsSyncing] = useState(false);
 
+    const groupedDocuments = React.useMemo(() => {
+        const docs = client.documentos || [];
+        const groups: Record<string, { title: string; documents: ClientDocument[] }> = {
+            'general': { title: 'Documentos Gerais', documents: [] }
+        };
+
+        // Initialize groups with client cases
+        (client.cases || []).forEach(c => {
+            groups[c.id] = { title: `Processo: ${c.titulo}`, documents: [] };
+        });
+
+        docs.forEach(doc => {
+            if (doc.case_id && groups[doc.case_id]) {
+                groups[doc.case_id].documents.push(doc);
+            } else {
+                groups['general'].documents.push(doc);
+            }
+        });
+
+        return Object.entries(groups)
+            .filter(([_, group]) => group.documents.length > 0 || _ === 'general')
+            .sort((a, b) => (a[0] === 'general' ? -1 : 1));
+    }, [client.documentos, client.cases]);
+
     if (activeTab !== 'docs') return null;
 
     const handleSync = async () => {
@@ -45,58 +69,73 @@ const ClientDocsTab: React.FC<ClientDocsTabProps> = ({
                 )}
             </div>
 
-            <div className="space-y-3">
-                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2"><FileText size={14} className="text-gold-500" /> Arquivos Salvos</span>
-                    <button
-                        onClick={handleSync}
-                        disabled={isSyncing}
-                        className="flex items-center gap-1.5 px-2 py-1 rounded bg-gold-600/10 hover:bg-gold-600/20 text-gold-500 transition-colors disabled:opacity-50"
-                        title="Procurar arquivos antigos no armazenamento"
-                    >
-                        <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
-                        <span className="text-[10px] uppercase font-bold">{isSyncing ? 'Sincronizando...' : 'Sincronizar'}</span>
-                    </button>
+            <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                    <FileText size={14} className="text-gold-500" /> Arquivos Salvos
                 </h4>
+                <button
+                    onClick={handleSync}
+                    disabled={isSyncing}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded bg-gold-600/10 hover:bg-gold-600/20 text-gold-500 transition-colors disabled:opacity-50"
+                    title="Procurar arquivos antigos no armazenamento"
+                >
+                    <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
+                    <span className="text-[10px] uppercase font-bold">{isSyncing ? 'Sincronizando...' : 'Sincronizar'}</span>
+                </button>
+            </div>
 
-                {client.documentos && client.documentos.length > 0 ? (
-                    client.documentos.map(doc => (
-                        <div key={doc.id} className="flex items-center justify-between p-3 bg-[#18181b] border border-white/5 rounded-lg hover:border-gold-500/20 transition-all group">
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${doc.tipo === 'PDF' ? 'bg-red-500/10 text-red-400' : 'bg-blue-500/10 text-blue-400'}`}>
-                                    <FileText size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-slate-200 hover:text-gold-500 transition-colors cursor-pointer" onClick={() => window.open(doc.url, '_blank')}>
-                                        {doc.nome}
-                                    </p>
-                                    <p className="text-[10px] text-slate-500">
-                                        Enviado em {new Date(doc.data_upload).toLocaleDateString()}
-                                    </p>
-                                </div>
-                            </div>
+            <div className="space-y-8">
+                {groupedDocuments.map(([key, group]) => (
+                    <div key={key} className="space-y-3">
+                        {group.documents.length > 0 && (
+                            <>
+                                <h5 className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded w-fit ${key === 'general' ? 'bg-zinc-800 text-zinc-400' : 'bg-gold-500/10 text-gold-500'}`}>
+                                    {group.title}
+                                </h5>
+                                <div className="grid gap-3">
+                                    {group.documents.map(doc => (
+                                        <div key={doc.id} className="flex items-center justify-between p-3 bg-[#18181b] border border-white/5 rounded-lg hover:border-gold-500/20 transition-all group">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`p-2 rounded-lg ${doc.tipo === 'PDF' ? 'bg-red-500/10 text-red-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                                                    <FileText size={20} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-slate-200 hover:text-gold-500 transition-colors cursor-pointer" onClick={() => window.open(doc.url, '_blank')}>
+                                                        {doc.nome}
+                                                    </p>
+                                                    <p className="text-[10px] text-slate-500">
+                                                        Enviado em {new Date(doc.data_upload).toLocaleDateString()}
+                                                    </p>
+                                                </div>
+                                            </div>
 
-                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <a
-                                    href={doc.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors"
-                                    title="Visualizar/Baixar"
-                                >
-                                    {doc.tipo === 'PDF' ? <Eye size={16} /> : <Download size={16} />}
-                                </a>
-                                <button
-                                    onClick={() => handleDeleteDocument(doc)}
-                                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                                    title="Excluir"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                            </div>
-                        </div>
-                    ))
-                ) : (
+                                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <a
+                                                    href={doc.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                                                    title="Visualizar/Baixar"
+                                                >
+                                                    {doc.tipo === 'PDF' ? <Eye size={16} /> : <Download size={16} />}
+                                                </a>
+                                                <button
+                                                    onClick={() => handleDeleteDocument(doc)}
+                                                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                    title="Excluir"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </div>
+                ))}
+
+                {client.documentos && client.documentos.length === 0 && (
                     <div className="text-center py-8 bg-navy-900/30 rounded-xl border border-dashed border-zinc-800">
                         <p className="text-xs text-zinc-500 italic">Nenhum documento anexado a este cliente.</p>
                     </div>

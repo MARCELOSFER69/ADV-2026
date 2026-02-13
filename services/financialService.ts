@@ -181,8 +181,18 @@ export const fetchFinancialRecords = async (
                     });
                 });
 
+                // Filter out GPS records that already have a physical entry
+                const normalize = (s: string) => s.replace(/\s|-/g, '').toLowerCase();
+                const physicalGpsTitles = new Set(
+                    records
+                        .filter(r => r.tipo_movimentacao === 'GPS')
+                        .map(r => normalize(r.titulo))
+                );
+
+                const uniqueGpsRecords = gpsRecords.filter(r => !physicalGpsTitles.has(normalize(r.titulo)));
+
                 // Merge
-                records = [...records, ...gpsRecords];
+                records = [...records, ...uniqueGpsRecords];
             }
         } catch (err) {
             console.error('Erro ao buscar GPS para financeiro:', err);
@@ -275,8 +285,18 @@ export const fetchFinancialsByCaseId = async (caseId: string): Promise<Financial
             } as FinancialRecord;
         }).filter(r => r.data_vencimento);
 
+        // Filter out GPS records that already have a physical entry
+        const normalize = (s: string) => s.replace(/\s|-/g, '').toLowerCase();
+        const physicalGpsTitles = new Set(
+            (physicalRecords || [])
+                .filter(r => r.tipo_movimentacao === 'GPS')
+                .map(r => normalize(r.titulo))
+        );
+
+        const uniqueGpsRecords = gpsRecords.filter(r => !physicalGpsTitles.has(normalize(r.titulo)));
+
         // 3. Merge e Ordenação
-        const merged = [...(physicalRecords || []), ...gpsRecords];
+        const merged = [...(physicalRecords || []), ...uniqueGpsRecords];
         return merged.sort((a, b) => {
             return new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime();
         });

@@ -70,6 +70,7 @@ export interface ClientDocument {
   data_upload: string;
   url: string;
   path: string;
+  case_id?: UUID;
 }
 
 export interface Captador {

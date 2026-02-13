@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LayoutDashboard, FileText, Calendar, CheckCircle, Lock, MessageCircle, ArchiveRestore, Info, Shield, Clock, History } from 'lucide-react';
+import { X, LayoutDashboard, FileText, Calendar, CheckCircle, Lock, MessageCircle, ArchiveRestore, Info, Shield, Clock, History, UploadCloud } from 'lucide-react';
 
 import { useApp } from '../../context/AppContext';
 import { useCase } from '../../hooks/useCases';
@@ -17,7 +17,9 @@ import CaseInfoTab from '../tabs/case/CaseInfoTab';
 import CaseFinancialTab from '../tabs/case/CaseFinancialTab';
 import CaseEventsTab from '../tabs/case/CaseEventsTab';
 import CaseTasksTab from '../tabs/case/CaseTasksTab';
+import CaseDocsTab from '../tabs/case/CaseDocsTab';
 import PaymentDateModal from './PaymentDateModal';
+import { uploadFileToR2, deleteFileFromR2 } from '../../services/storageService';
 
 interface CaseDetailsModalProps {
     caseItem: Case;
@@ -36,7 +38,7 @@ const MODALITY_OPTIONS: Record<string, string[]> = {
 
 const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, onSelectCase, onViewClient, initialEditMode = false }) => {
     const {
-        updateCase,
+        updateCase, updateClient,
         addFinancialRecord, deleteFinancialRecord,
         addEvent, updateEvent, deleteEvent,
         addTask, toggleTask, deleteTask,
@@ -65,9 +67,10 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
     } = useCaseRelatedData(liveCase.id);
 
     // 2. Local State
-    const [activeTab, setActiveTab] = useState<'details' | 'checklist' | 'financial' | 'events' | 'access' | 'history'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'checklist' | 'financial' | 'events' | 'docs' | 'access' | 'history'>('details');
     const [isEditMode, setIsEditMode] = useState(initialEditMode);
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
 
     // Restore Modal
     const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
@@ -152,7 +155,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
             await addFinancialRecord({
                 id: crypto.randomUUID(),
                 case_id: liveCase.id,
-                titulo: `GPS ${gpsToPay.competencia}`,
+                titulo: `GPS - ${gpsToPay.competencia}`,
                 tipo: FinancialType.DESPESA,
                 valor: gpsToPay.valor,
                 data_vencimento: paymentDate,
@@ -208,6 +211,58 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
             showToast('success', 'GPS excluída com sucesso');
         } catch (error: any) {
             showToast('error', 'Erro ao excluir GPS: ' + error.message);
+        }
+    };
+
+    // Documents
+    const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>, caseId?: string) => {
+        const file = e.target.files?.[0];
+        if (!file || !client) return;
+        setIsUploading(true);
+        try {
+            const cleanClientName = client.nome_completo.replace(/[^a-zA-Z0-9]/g, '-');
+            const folderName = `${client.id}_${cleanClientName}`;
+            const { url, path } = await uploadFileToR2(file, folderName);
+            const newDoc = {
+                id: crypto.randomUUID(),
+                nome: file.name,
+                tipo: file.type.includes('pdf') ? 'PDF' : 'IMG',
+                data_upload: new Date().toISOString(),
+                url,
+                path,
+                case_id: caseId
+            };
+            const updatedDocs = [...(client.documentos || []), newDoc];
+            await updateClient({ ...client, documentos: updatedDocs });
+            showToast('success', 'Documento anexado ao processo!');
+        } catch (error) {
+            console.error(error);
+            showToast('error', 'Erro ao fazer upload.');
+        } finally {
+            setIsUploading(false);
+            e.target.value = '';
+        }
+    };
+
+    const handleDeleteDocument = async (doc: any) => {
+        if (!client) return;
+        const confirmed = await confirmCustom({
+            title: 'Excluir Documento',
+            message: `Deseja realmente excluir o documento "${doc.nome}"?`,
+            variant: 'danger',
+            confirmLabel: 'Excluir'
+        });
+
+        if (!confirmed) return;
+
+        try {
+            if (doc.path) await deleteFileFromR2(doc.path);
+            const updatedDocs = (client.documentos || []).filter((d: any) => d.id !== doc.id);
+            await updateClient({ ...client, documentos: updatedDocs });
+            showToast('success', 'Documento removido.');
+        } catch (error) {
+            console.error(error);
+            showToast('error', 'Erro ao excluir documento.');
         }
     };
 
@@ -301,6 +356,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                         { id: 'financial', label: 'Financeiro', icon: FileText, count: caseFinancials.length },
                         { id: 'events', label: 'Eventos', icon: Calendar, count: caseEvents.length },
                         { id: 'checklist', label: 'Tarefas', icon: CheckCircle, count: caseTasks.filter(t => !t.concluido).length },
+                        { id: 'docs', label: 'Documentos', icon: UploadCloud },
                         { id: 'access', label: 'Acessos', icon: Lock },
                         { id: 'history', label: 'Histórico', icon: History },
                     ].map(tab => (
@@ -406,6 +462,17 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                     }}
                                     onToggleTask={async (id) => { await toggleTask(id); refetchTasks(); }}
                                     onDeleteTask={async (id) => { await deleteTask(id); refetchTasks(); }}
+                                />
+                            )}
+
+                            {activeTab === 'docs' && client && (
+                                <CaseDocsTab
+                                    caseId={liveCase.id}
+                                    client={client}
+                                    activeTab={activeTab}
+                                    isUploading={isUploading}
+                                    handleDocumentUpload={handleDocumentUpload}
+                                    handleDeleteDocument={handleDeleteDocument}
                                 />
                             )}
 
