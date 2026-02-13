@@ -1,6 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Check, LucideIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Option {
   label: string;
@@ -30,6 +32,30 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const updatePosition = () => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setMenuRect({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      updatePosition();
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+    }
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [isOpen]);
 
   // Close when clicking outside
   useEffect(() => {
@@ -75,34 +101,52 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
         />
       </button>
 
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div className="absolute z-50 top-full mt-2 left-0 w-full bg-[#09090b] border border-zinc-800 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 flex flex-col">
-          <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
-            {options.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors text-left ${value === option.value
-                  ? 'bg-yellow-600/10 text-yellow-600 font-medium'
-                  : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
-                  }`}
-              >
-                <span>{option.label}</span>
-                {value === option.value && <Check size={14} />}
-              </button>
-            ))}
-            {options.length === 0 && (
-              <div className="px-3 py-4 text-center text-xs text-zinc-500">
-                Nenhuma opção disponível
+      {/* Dropdown Menu Portal */}
+      {createPortal(
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ duration: 0.1 }}
+              style={{
+                position: 'fixed', // Changed to fixed for easier positioning relative to viewport
+                top: menuRect?.top ? menuRect.top - window.scrollY + 8 : 0,
+                left: menuRect?.left ? menuRect.left - window.scrollX : 0,
+                width: menuRect?.width || 0,
+                zIndex: 9999,
+              }}
+              className="bg-[#09090b] border border-zinc-800 rounded-xl shadow-2xl overflow-hidden flex flex-col pointer-events-auto"
+            >
+              <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
+                {options.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => {
+                      onChange(option.value);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors text-left ${value === option.value
+                      ? 'bg-yellow-600/10 text-yellow-600 font-medium'
+                      : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                      }`}
+                  >
+                    <span>{option.label}</span>
+                    {value === option.value && <Check size={14} />}
+                  </button>
+                ))}
+                {options.length === 0 && (
+                  <div className="px-3 py-4 text-center text-xs text-zinc-500">
+                    Nenhuma opção disponível
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
       )}
     </div>
   );
