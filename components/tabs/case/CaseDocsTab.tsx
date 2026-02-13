@@ -1,6 +1,7 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { Client, ClientDocument } from '../../../types';
-import { Loader2, UploadCloud, FileText, Eye, Download, Trash2 } from 'lucide-react';
+import { useApp } from '../../../context/AppContext';
+import { Loader2, UploadCloud, FileText, Eye, Download, Trash2, RefreshCw } from 'lucide-react';
 
 interface CaseDocsTabProps {
     caseId: string;
@@ -14,7 +15,16 @@ interface CaseDocsTabProps {
 const CaseDocsTab: React.FC<CaseDocsTabProps> = ({
     caseId, client, activeTab, isUploading, handleDocumentUpload, handleDeleteDocument
 }) => {
+    const { syncClientDocuments } = useApp();
+    const [isSyncing, setIsSyncing] = useState(false);
+
     if (activeTab !== 'docs') return null;
+
+    const handleSync = async () => {
+        setIsSyncing(true);
+        await syncClientDocuments(client.id);
+        setIsSyncing(false);
+    };
 
     const caseDocuments = (client.documentos || []).filter(doc => doc.case_id === caseId);
 
@@ -43,11 +53,22 @@ const CaseDocsTab: React.FC<CaseDocsTabProps> = ({
                 )}
             </div>
 
-            <div className="space-y-3">
-                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+            <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
                     <FileText size={14} className="text-gold-500" /> Arquivos do Processo
                 </h4>
+                <button
+                    onClick={handleSync}
+                    disabled={isSyncing}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded bg-gold-600/10 hover:bg-gold-600/20 text-gold-500 transition-colors disabled:opacity-50"
+                    title="Procurar novos arquivos no armazenamento"
+                >
+                    <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
+                    <span className="text-[10px] uppercase font-bold">{isSyncing ? 'Sincronizando...' : 'Sincronizar'}</span>
+                </button>
+            </div>
 
+            <div className="space-y-3">
                 {caseDocuments.length > 0 ? (
                     caseDocuments.map(doc => (
                         <div key={doc.id} className="flex items-center justify-between p-3 bg-[#18181b] border border-white/5 rounded-lg hover:border-gold-500/20 transition-all group">
