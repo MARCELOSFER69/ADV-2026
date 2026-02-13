@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LayoutDashboard, FileText, Calendar, CheckCircle, Lock, MessageCircle, ArchiveRestore, Info, Shield, Clock, History, UploadCloud } from 'lucide-react';
+import { X, LayoutDashboard, FileText, Calendar, CheckCircle, Lock, MessageCircle, ArchiveRestore, Info, Shield, Clock, History, UploadCloud, Edit2, Check } from 'lucide-react';
 
 import { useApp } from '../../context/AppContext';
 import { useCase } from '../../hooks/useCases';
@@ -78,6 +78,27 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
 
     // GPS Payment Modal
     const [gpsToPay, setGpsToPay] = useState<GPS | null>(null);
+
+    // --- NOVA LÓGICA DE ESTADO LOCAL PARA EVENTOS DE EDIÇÃO ---
+    const [localCaseData, setLocalCaseData] = useState<Case>(liveCase);
+    const [hasChanges, setHasChanges] = useState(false);
+
+    // Sincroniza estado local quando o caseID muda ou quando editMode é ativado
+    React.useEffect(() => {
+        setLocalCaseData(liveCase);
+        setHasChanges(false);
+    }, [liveCase.id]);
+
+    const handleLocalChange = (updates: Partial<Case>) => {
+        setLocalCaseData(prev => ({ ...prev, ...updates }));
+        setHasChanges(true);
+    };
+
+    const handleSaveClick = async () => {
+        await updateCase(localCaseData, 'Atualização via Modal');
+        setHasChanges(false);
+    };
+    // ----------------------------------------------------------
 
     // --- CONFIGURATION ---
     const availableStatuses = useMemo(() => Object.values(CaseStatus), []);
@@ -320,6 +341,15 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                     </div>
 
                     <div className="flex items-center gap-3 relative z-10">
+                        {hasChanges && (
+                            <button
+                                onClick={handleSaveClick}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-gold-500 text-black rounded-lg hover:bg-gold-400 font-bold uppercase text-[10px] animate-in fade-in slide-in-from-right-2"
+                            >
+                                <Check size={14} /> Salvar Agora
+                            </button>
+                        )}
+
                         {liveCase.status === CaseStatus.ARQUIVADO ? (
                             <button
                                 onClick={() => setIsRestoreModalOpen(true)}
@@ -342,7 +372,7 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                             className={`p-2 rounded-lg transition-colors ${isEditMode ? 'bg-gold-500 text-black' : 'bg-white/5 text-zinc-400 hover:text-white'}`}
                             title="Editar Informações"
                         >
-                            <Info size={18} />
+                            <Edit2 size={18} />
                         </button>
 
                         <div className="h-6 w-px bg-white/10 mx-2" />
@@ -398,6 +428,10 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                                     client={client}
                                     isLoadingClient={isLoadingClient}
                                     isEditMode={isEditMode}
+                                    localCaseData={localCaseData}
+                                    hasChanges={hasChanges}
+                                    onLocalChange={handleLocalChange}
+                                    onSaveLocal={handleSaveClick}
                                     onUpdateCase={handleUpdateCase}
                                     onViewClient={onViewClient}
                                     onAddGps={handleAddGps}
