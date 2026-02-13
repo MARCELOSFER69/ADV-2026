@@ -32,15 +32,28 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const [direction, setDirection] = useState<'up' | 'down'>('down');
 
   const updatePosition = () => {
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const menuHeight = 250; // Max height of the dropdown plus some margin
+      const spaceBelow = viewportHeight - rect.bottom;
+      const spaceAbove = rect.top;
+
+      if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
+        setDirection('up');
+      } else {
+        setDirection('down');
+      }
+
       setMenuRect({
-        top: rect.bottom + window.scrollY,
+        top: rect.top + window.scrollY,
         left: rect.left + window.scrollX,
-        width: rect.width
+        width: rect.width,
+        height: rect.height
       });
     }
   };
@@ -106,13 +119,18 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
         <AnimatePresence>
           {isOpen && (
             <motion.div
-              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              initial={{ opacity: 0, y: direction === 'down' ? -10 : 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              exit={{ opacity: 0, y: direction === 'down' ? -10 : 10, scale: 0.95 }}
               transition={{ duration: 0.1 }}
               style={{
-                position: 'fixed', // Changed to fixed for easier positioning relative to viewport
-                top: menuRect?.top ? menuRect.top - window.scrollY + 8 : 0,
+                position: 'fixed',
+                top: direction === 'down' && menuRect
+                  ? menuRect.top - window.scrollY + menuRect.height + 8
+                  : 'auto',
+                bottom: direction === 'up' && menuRect
+                  ? window.innerHeight - (menuRect.top - window.scrollY) + 8
+                  : 'auto',
                 left: menuRect?.left ? menuRect.left - window.scrollX : 0,
                 width: menuRect?.width || 0,
                 zIndex: 9999,
