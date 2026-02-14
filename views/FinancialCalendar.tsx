@@ -75,6 +75,7 @@ const FinancialCalendar: React.FC = () => {
             const { data: instData, error: instError } = await supabase
                 .from('case_installments')
                 .select('*, cases!inner(tipo, clients!inner(*))')
+                .eq('destino', 'Escritório')
                 .gte('data_vencimento', startDate)
                 .lte('data_vencimento', endDate);
 

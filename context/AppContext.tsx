@@ -1311,7 +1311,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                     data_vencimento: date.toISOString().split('T')[0],
                     valor: valorParcela,
                     pago: false,
-                    destino: 'Cliente'
+                    destino: 'Escritório'
                 });
             }
 
