@@ -161,16 +161,21 @@ const Financial: React.FC = () => {
             if (searchTerm) {
                 const desc = record.titulo?.toLowerCase() || '';
                 const search = searchTerm.toLowerCase();
-                const clientName = record.clients?.nome_completo?.toLowerCase() || '';
-                const cpf = record.clients?.cpf_cnpj || '';
-                const rec = record.recebedor?.toLowerCase() || '';
-                const cap = record.captador_nome?.toLowerCase() || '';
+
+                const getClientText = (rec: any) => {
+                    const c = Array.isArray(rec.clients) ? rec.clients[0] : rec.clients;
+                    const cc = Array.isArray(rec.cases?.clients) ? rec.cases.clients[0] : rec.cases?.clients;
+                    return `${c?.nome_completo || ''} ${c?.cpf_cnpj || ''} ${cc?.nome_completo || ''} ${cc?.cpf_cnpj || ''}`.toLowerCase();
+                };
+
+                const clientText = getClientText(record);
+                const recText = (record.recebedor || '').toLowerCase();
+                const capText = (record.captador_nome || '').toLowerCase();
 
                 return desc.includes(search) ||
-                    clientName.includes(search) ||
-                    cpf.includes(search) ||
-                    rec.includes(search) ||
-                    cap.includes(search);
+                    clientText.includes(search) ||
+                    recText.includes(search) ||
+                    capText.includes(search);
             }
             return true;
         });
@@ -242,9 +247,20 @@ const Financial: React.FC = () => {
 
             if (effectiveClientId) {
                 const clientId = effectiveClientId;
-                if (!groups[clientId]) {
-                    const clientName = record.clients?.nome_completo || 'Cliente Desconhecido';
+                const getClientName = (rec: any) => {
+                    // 1. Tentar direto do registro (objeto ou primeiro do array)
+                    const directClient = Array.isArray(rec.clients) ? rec.clients[0] : rec.clients;
+                    if (directClient?.nome_completo) return directClient.nome_completo;
 
+                    // 2. Tentar via Caso (objeto ou primeiro do array)
+                    const caseClient = Array.isArray(rec.cases?.clients) ? rec.cases.clients[0] : rec.cases?.clients;
+                    if (caseClient?.nome_completo) return caseClient.nome_completo;
+
+                    return 'Cliente Desconhecido';
+                };
+
+                const clientName = getClientName(record);
+                if (!groups[clientId]) {
                     groups[clientId] = {
                         type: 'group',
                         id: `group-${clientId}`,
@@ -258,6 +274,7 @@ const Financial: React.FC = () => {
                         dataReferencia: record.data_vencimento
                     };
                 }
+
                 const g = groups[clientId];
                 g.children.push(record);
 

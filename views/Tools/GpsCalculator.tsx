@@ -31,35 +31,7 @@ interface GpsGuide {
     dbRecord?: any; // Record found in database
 }
 
-const MONTH_MAP: Record<string, string> = {
-    'janeiro': '01', 'fevereiro': '02', 'março': '03', 'marco': '03', 'abril': '04',
-    'maio': '05', 'junho': '06', 'julho': '07', 'agosto': '08',
-    'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12',
-    '01': '01', '02': '02', '03': '03', '04': '04', '05': '05', '06': '06',
-    '07': '07', '08': '08', '09': '09', '10': '10', '11': '11', '12': '12'
-};
-
-const normalizeCpf = (val: string) => {
-    if (!val) return '';
-    const digits = val.replace(/\D/g, '');
-    // Se for CPF (11 ou menos), pad com zeros até 11. Se for CNPJ (14), deixa como está.
-    if (digits.length <= 11) return digits.padStart(11, '0');
-    return digits;
-};
-
-const normalizeComp = (val: string) => {
-    if (!val) return '';
-    const parts = val.split('/');
-    if (parts.length !== 2) return val.toLowerCase().trim();
-    let month = parts[0].trim().toLowerCase();
-    let year = parts[1].trim();
-
-    const monthNum = MONTH_MAP[month] || month.padStart(2, '0');
-    const fullYear = year.length === 2 ? '20' + year : year;
-
-    return `${monthNum}/${fullYear}`;
-};
-
+import { normalizeCompetence, normalizeCpfOrCnpj, MONTH_MAP } from '../../services/formatters';
 import { useAllClients } from '../../hooks/useClients';
 import { useApp } from '../../context/AppContext';
 // ... imports
@@ -106,17 +78,17 @@ const GpsCalculator: React.FC = () => {
             }
 
             // 3. Encontrar nome do cliente e caso vinculado (Usando o mapa direto do banco)
-            const cleanGuideCpf = normalizeCpf(guide.cpf);
+            const cleanGuideCpf = normalizeCpfOrCnpj(guide.cpf);
             const clientMatch = matchedClientsMap[cleanGuideCpf];
 
             // 4. Verificação no Banco de Dados (Robustez Aumentada)
             const matchedCases = clientMatch ? guidesDatabaseStatus[clientMatch.id] || [] : [];
             let dbRecord = null;
-            const normalizedGuideComp = normalizeComp(guide.competenceRaw);
+            const normalizedGuideComp = normalizeCompetence(guide.competenceRaw);
 
             for (const mCase of matchedCases) {
                 if (mCase.gps_lista) {
-                    const found = mCase.gps_lista.find(g => normalizeComp(g.competencia) === normalizedGuideComp);
+                    const found = mCase.gps_lista.find(g => normalizeCompetence(g.competencia) === normalizedGuideComp);
                     if (found) {
                         dbRecord = found;
                         if (found.status === 'Paga') {
@@ -322,7 +294,7 @@ const GpsCalculator: React.FC = () => {
 
                 // --- BUSCA DIRETA E ROBUSTA DE CLIENTES POR CPF ---
                 const rawCpfs = [...new Set(extracted.map(g => g.cpf))];
-                const normalizedCpfs = rawCpfs.map(normalizeCpf);
+                const normalizedCpfs = rawCpfs.map(normalizeCpfOrCnpj);
 
                 // Busca por CPF exato ou normalizado (com/sem pontuação/zeros)
                 const { data: dbClients } = await supabase
@@ -335,7 +307,7 @@ const GpsCalculator: React.FC = () => {
 
                 if (dbClients) {
                     dbClients.forEach(c => {
-                        const normC = normalizeCpf(c.cpf_cnpj || '');
+                        const normC = normalizeCpfOrCnpj(c.cpf_cnpj || '');
                         clientMap[normC] = { id: c.id, name: c.nome_completo };
                         clientIds.push(c.id);
                     });
@@ -658,7 +630,7 @@ const GpsCalculator: React.FC = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                {guide.status === 'ok' && !guide.paidLocally && (
+                                                {(guide.status === 'ok' || guide.status === 'already_pulled') && !guide.paidLocally && (
                                                     <button
                                                         onClick={() => handlePayClick(guide)}
                                                         className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-bold bg-gold-500/10 text-gold-500 border border-gold-500/20 hover:bg-gold-500/20 transition-colors"
@@ -676,9 +648,9 @@ const GpsCalculator: React.FC = () => {
                                                         <CheckCircle2 size={12} /> JÁ PAGA NO SISTEMA
                                                     </span>
                                                 )}
-                                                {guide.status === 'already_pulled' && (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                                                        <FileText size={12} /> JÁ PUXADA
+                                                {guide.status === 'already_pulled' && !guide.paidLocally && (
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-black uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20 mr-2 opacity-50">
+                                                        <FileText size={10} /> JÁ PUXADA
                                                     </span>
                                                 )}
                                                 {guide.status === 'error_competence' && (

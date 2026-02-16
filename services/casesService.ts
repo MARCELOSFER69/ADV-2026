@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { Case, CaseNote } from '../types';
+import { normalizeCompetence } from './formatters';
 
 const applyCaseFilters = (query: any, search?: string, filters?: any) => {
     if (search) {
@@ -286,8 +287,9 @@ export const updateCaseGpsStatus = async (
 
         const gpsList = (data.gps_lista || []) as any[];
 
-        // 2. Procura se já existe a competência
-        const existingIndex = gpsList.findIndex(item => item.competencia === competence);
+        // 2. Procura se já existe a competência (normalizando para evitar duplicados)
+        const normalizedTarget = normalizeCompetence(competence);
+        const existingIndex = gpsList.findIndex(item => normalizeCompetence(item.competencia) === normalizedTarget);
 
         let updatedList;
         const today = new Date().toISOString().split('T')[0];
@@ -309,7 +311,7 @@ export const updateCaseGpsStatus = async (
             // Cria nova entrada
             const newItem = {
                 id: crypto.randomUUID(),
-                competencia: competence,
+                competencia: normalizedTarget || competence,
                 valor: value || 0,
                 status,
                 data_pagamento: paymentDate || today,

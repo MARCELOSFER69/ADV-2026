@@ -45,6 +45,8 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
         showToast,
         officeExpenses,
         user, saveUserPreferences,
+        personalCredentials,
+        receivers,
         confirmCustom
     } = useApp();
 
@@ -106,8 +108,8 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
     const existingReceivers = useMemo(() => {
         const fromFin = caseFinancials.map(f => f.captador_nome || f.recebedor).filter(Boolean);
         const fromExp = officeExpenses.map(e => e.pagador).filter(Boolean);
-        return Array.from(new Set([...fromFin, ...fromExp]));
-    }, [caseFinancials, officeExpenses]);
+        return Array.from(new Set([...fromFin, ...fromExp, ...(receivers || []).map(r => r.name)])).sort();
+    }, [caseFinancials, officeExpenses, receivers]);
 
     const existingAccounts = useMemo(() => {
         return Array.from(new Set(officeExpenses.map(e => e.conta).filter(Boolean)));

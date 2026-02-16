@@ -26,15 +26,22 @@ export const fetchFinancialRecords = async (
         .from('financial_records')
         .select(`
             *,
-            clients!inner (nome_completo, cpf_cnpj, filial),
-            cases (titulo, numero_processo, client_id)
+            clients (nome_completo, cpf_cnpj, filial),
+            cases (
+                titulo, 
+                numero_processo, 
+                client_id,
+                clients (nome_completo, cpf_cnpj, filial)
+            )
         `)
         .gte('data_vencimento', startDate) // Greater than or equal to startDate
         .lte('data_vencimento', endDate);  // Less than or equal to endDate
 
     // Apply Branch Filter
     if (filters.filial && filters.filial !== 'all') {
-        query = query.eq('clients.filial', filters.filial);
+        const branchTerm = filters.filial;
+        // PostgREST OR filter across multiple joins
+        query = query.or(`clients.filial.eq."${branchTerm}",cases.clients.filial.eq."${branchTerm}"`);
     }
 
     // Apply Filters
@@ -99,9 +106,7 @@ export const fetchFinancialRecords = async (
             let gpsQuery = supabase
                 .from('cases')
                 .select('id, gps_lista, client_id, titulo, numero_processo, clients(nome_completo, cpf_cnpj, filial)')
-                .not('gps_lista', 'is', null)
-                // O filtro de filial se aplica ao cliente do caso
-                .eq(filters.filial && filters.filial !== 'all' ? 'clients.filial' : '', filters.filial && filters.filial !== 'all' ? filters.filial : ''); // Supabase ignora chave vazia? Não. Precisa lógica condicional melhor.
+                .not('gps_lista', 'is', null);
 
             if (filters.filial && filters.filial !== 'all') {
                 gpsQuery = gpsQuery.eq('clients.filial', filters.filial);
@@ -144,10 +149,8 @@ export const fetchFinancialRecords = async (
                         // Filtro de Data
                         if (dueDate < startDate || dueDate > endDate) return;
 
-                        // Filtro de Status
-                        const isPaid = gps.status === 'Paga';
-                        if (filters.status === 'paid' && !isPaid) return;
-                        if (filters.status === 'pending' && isPaid) return;
+                        // Filter by Status: Only include 'Paga' (Paid) as requested by user
+                        if (gps.status !== 'Paga') return;
 
                         // Filtro Texto (Se busca explicita por GPS)
                         if (filters.search) {
@@ -170,8 +173,8 @@ export const fetchFinancialRecords = async (
                             tipo_movimentacao: 'GPS',
                             valor: gps.valor,
                             data_vencimento: dueDate,
-                            status_pagamento: isPaid,
-                            captador_nome: 'INSS', // Ou deixamos null
+                            status_pagamento: true, // Only 'Paga' items reach here
+                            captador_nome: 'INSS',
                             // recebedor: 'Previdência Social', // Removed as per user request
                             forma_pagamento: gps.forma_pagamento || 'Boleto',
                             // Dados relacionais flat
@@ -283,7 +286,7 @@ export const fetchFinancialsByCaseId = async (caseId: string): Promise<Financial
                     client_id: caseData.client_id
                 }
             } as FinancialRecord;
-        }).filter(r => r.data_vencimento);
+        }).filter(r => r.data_vencimento && r.status_pagamento);
 
         // Filter out GPS records that already have a physical entry
         const normalize = (s: string) => s.replace(/\s|-/g, '').toLowerCase();
