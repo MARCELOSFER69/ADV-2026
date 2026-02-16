@@ -4,7 +4,7 @@ import {
     Client, Case, CaseType, FinancialRecord, Event, ViewState, Task, FinancialType, CaseHistory,
     UserPreferences, User, OfficeExpense, Captador, CaseInstallment, CommissionReceipt,
     AppNotification, Reminder, UserPermission, GPS, PersonalCredential, OfficeBalance, CaseStatus,
-    ClientHistory, EventType, Chat, ChatMessage, ClientDocument, Branch
+    ClientHistory, EventType, Chat, ChatMessage, ClientDocument, Branch, FinancialReceiver
 } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getTodayBrasilia } from '../utils/dateUtils';
@@ -38,6 +38,7 @@ interface AppContextType {
     commissionReceipts: CommissionReceipt[];
     reminders: Reminder[];
     notifications: AppNotification[];
+    receivers: FinancialReceiver[];
 
     currentView: ViewState;
     setCurrentView: (view: ViewState) => void;
@@ -68,6 +69,8 @@ interface AppContextType {
     deleteTask: (taskId: string) => Promise<void>;
 
     addFinancialRecord: (record: FinancialRecord) => Promise<void>;
+    addReceiver: (receiver: Partial<FinancialReceiver>) => Promise<FinancialReceiver>;
+    deleteReceiver: (id: string) => Promise<void>;
     deleteFinancialRecord: (id: string, caseId?: string, clientId?: string) => Promise<void>;
     addRetirementCalculation: (calc: any) => Promise<any>;
     promoteCalculationToCase: (calcId: string, caseId: string) => Promise<void>;
@@ -276,6 +279,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const [commissionReceipts, setCommissionReceipts] = useState<CommissionReceipt[]>([]);
     const [reminders, setReminders] = useState<Reminder[]>([]);
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
+    const [receivers, setReceivers] = useState<FinancialReceiver[]>([]);
 
     // WhatsApp
     const [chats, setChats] = useState<Chat[]>([]);
@@ -522,6 +526,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 if (captadoresData) setCaptadores(captadoresData);
                 if (receiptsData) setCommissionReceipts(receiptsData);
                 if (credsData) setPersonalCredentials(credsData);
+
+                // Fetch Receivers
+                const { data: receiversData } = await supabase
+                    .from('financial_receivers')
+                    .select('*')
+                    .order('name', { ascending: true });
+                if (receiversData) setReceivers(receiversData as FinancialReceiver[]);
 
                 if (currentUserId) {
                     const { data: remindersData } = await supabase
@@ -1175,6 +1186,38 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         showToast('success', 'Registro excluído!');
     }, [showToast, queryClient]);
 
+    const addReceiver = useCallback(async (receiver: Partial<FinancialReceiver>) => {
+        try {
+            const { data, error } = await supabase.from('financial_receivers').insert([receiver]).select().single();
+            if (error) throw error;
+
+            if (data) {
+                setReceivers(prev => [...prev, data as FinancialReceiver].sort((a, b) => a.name.localeCompare(b.name)));
+                return data as FinancialReceiver;
+            }
+        } catch (error: any) {
+            console.error('Erro ao adicionar recebedor:', error);
+            if (error.code === '23505') {
+                showToast('error', 'Este recebedor já existe (mesmo nome e banco)');
+            } else {
+                showToast('error', 'Erro ao adicionar recebedor');
+            }
+            throw error;
+        }
+    }, [showToast]);
+
+    const deleteReceiver = useCallback(async (id: string) => {
+        try {
+            const { error } = await supabase.from('financial_receivers').delete().eq('id', id);
+            if (error) throw error;
+            setReceivers(prev => prev.filter(r => r.id !== id));
+            showToast('success', 'Recebedor removido!');
+        } catch (error) {
+            console.error('Erro ao excluir recebedor:', error);
+            showToast('error', 'Erro ao excluir recebedor');
+        }
+    }, [showToast]);
+
     const addOfficeExpense = useCallback(async (expense: OfficeExpense) => {
         const { error } = await supabase.from('office_expenses').insert([expense]);
         if (error) throw error;
@@ -1509,7 +1552,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         currentView, setCurrentView, caseTypeFilter, setCaseTypeFilter, globalBranchFilter, setGlobalBranchFilter, clientToView, setClientToView, clientDetailTab, setClientDetailTab,
         addClient, updateClient, deleteClient, syncClientDocuments, addCase, updateCase, deleteCase, getCaseHistory, getClientHistory, getUnifiedClientHistory,
         addEvent, updateEvent, deleteEvent, addTask, toggleTask, deleteTask,
-        addFinancialRecord, deleteFinancialRecord, addRetirementCalculation, promoteCalculationToCase, addOfficeExpense, updateOfficeExpense, deleteOfficeExpense, toggleOfficeExpenseStatus, addOfficeBalance,
+        addFinancialRecord, addReceiver, deleteReceiver, deleteFinancialRecord, addRetirementCalculation, promoteCalculationToCase, addOfficeExpense, updateOfficeExpense, deleteOfficeExpense, toggleOfficeExpenseStatus, addOfficeBalance,
         addPersonalCredential, deletePersonalCredential, addCaptador, deleteCaptador,
         createCommissionReceipt, deleteCommissionReceipt, confirmReceiptSignature, uploadReceiptFile,
         getInstallments, generateInstallments, updateInstallment, toggleInstallmentPaid, updateGPS,
@@ -1518,13 +1561,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         chats, chatMessages, fetchChatMessages, assumeChat, sendMessage, markChatAsRead, deleteChat, finishChat, waitingChatsCount,
         triggerRgpSync, triggerReapSync, isAssistantOpen, setIsAssistantOpen, isStatusBlinking,
         isLowPerformance, togglePerformanceMode,
-        confirmCustom, confirmState
+        confirmCustom, confirmState, receivers
     }), [
         user, globalPreferences, mergedPreferences, reloadData,
         financial, officeExpenses, officeBalances, personalCredentials, events, tasks, captadores, commissionReceipts, reminders, notifications,
         currentView, caseTypeFilter, globalBranchFilter, clientToView, clientDetailTab, toasts, isLoading, isNewCaseModalOpen, isNewClientModalOpen, newCaseParams, caseToView,
         chats, chatMessages, waitingChatsCount, isAssistantOpen, isStatusBlinking, isLowPerformance, togglePerformanceMode,
-        confirmCustom, confirmState
+        confirmCustom, confirmState, receivers, deleteReceiver
     ]);
 
     return <AppContext.Provider value={contextValue as any}>{children}</AppContext.Provider>;

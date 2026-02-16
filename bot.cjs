@@ -249,7 +249,7 @@ async function getSystemSummaryContext() {
             supabase.from('clients').select('*', { count: 'exact', head: true }),
             supabase.from('cases').select('*', { count: 'exact', head: true }),
             supabase.from('events').select('*, cases(titulo)').gte('data_hora', new Date().toISOString()).order('data_hora').limit(10),
-            supabase.from('financial').select('valor, tipo, status_pagamento').eq('status_pagamento', false)
+            supabase.from('financial_records').select('valor, tipo, status_pagamento').eq('status_pagamento', false)
         ]);
 
         if (clientsRes?.error) console.error('❌ Erro clients:', clientsRes.error);
@@ -323,7 +323,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // IA GEMINI CONFIG
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const aiModel = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
 let botConfig = {
     headless: true

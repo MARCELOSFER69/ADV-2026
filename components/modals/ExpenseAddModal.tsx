@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { Plus, X, Wallet, PiggyBank, TrendingDown } from 'lucide-react';
+import { Plus, X, Wallet, PiggyBank, TrendingDown, Check, UserPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { OfficeExpense } from '../../types';
 import { formatCurrencyInput, parseCurrencyToNumber } from '../../services/formatters';
 import { formatDateDisplay } from '../../utils/dateUtils';
+import { useApp } from '../../context/AppContext';
+import CustomSelect from '../ui/CustomSelect';
+import ReceiverFormModal from './ReceiverFormModal';
 
 interface ExpenseAddModalProps {
     isOpen: boolean;
@@ -38,8 +41,27 @@ const ExpenseAddModal: React.FC<ExpenseAddModalProps> = ({
     const [useBalance, setUseBalance] = useState(false);
     const [selectedBalanceId, setSelectedBalanceId] = useState('');
 
+    const { receivers, addReceiver } = useApp();
+    const [isReceiverModalOpen, setIsReceiverModalOpen] = useState(false);
+
     const [isAddingPayer, setIsAddingPayer] = useState(false);
     const [isAddingAccount, setIsAddingAccount] = useState(false);
+
+    const receiverOptions = React.useMemo(() => [
+        ...(receivers || []).map(r => ({
+            label: `${r.name} (${r.type || 'PF'}) - ${r.bank_name || 'S/ Banco'}`,
+            value: r.id
+        }))
+    ], [receivers]);
+
+    const handleReceiverChange = async (val: string) => {
+        const relatedReceiver = (receivers || []).find(r => r.id === val);
+        if (relatedReceiver) {
+            setReceiver(relatedReceiver.name);
+            if (relatedReceiver.bank_name) setAccount(relatedReceiver.bank_name);
+            if (relatedReceiver.type) setAccountType(relatedReceiver.type);
+        }
+    };
 
     const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setAmountStr(formatCurrencyInput(e.target.value));
@@ -295,34 +317,16 @@ const ExpenseAddModal: React.FC<ExpenseAddModalProps> = ({
                                                     </select>
                                                 </div>
                                                 <div className="col-span-2">
-                                                    <div className="flex justify-between items-center mb-1">
-                                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Conta</label>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => { setIsAddingAccount(!isAddingAccount); setAccount(''); }}
-                                                            className="text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase transition-colors"
-                                                        >
-                                                            {isAddingAccount ? 'Selecionar' : '+ Nova'}
-                                                        </button>
-                                                    </div>
-                                                    {isAddingAccount ? (
-                                                        <input
-                                                            autoComplete="off"
-                                                            className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 px-4 py-3 rounded-xl focus:border-emerald-500/50 transition-all outline-none"
-                                                            placeholder="Ex: Nubank..."
-                                                            value={account}
-                                                            onChange={(e) => setAccount(e.target.value)}
-                                                        />
-                                                    ) : (
-                                                        <select
-                                                            className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 px-4 py-3 rounded-xl focus:border-emerald-500/50 transition-all cursor-pointer outline-none"
-                                                            value={account}
-                                                            onChange={(e) => setAccount(e.target.value)}
-                                                        >
-                                                            <option value="">Selecione...</option>
-                                                            {existingAccounts.map(a => <option key={a} value={a}>{a}</option>)}
-                                                        </select>
-                                                    )}
+                                                    <CustomSelect
+                                                        label="Conta"
+                                                        options={[
+                                                            { label: 'Pessoal', value: 'Pessoal' },
+                                                            ...(receivers || []).filter(r => r.name === receiver).map(r => ({ label: r.bank_name || 'Conta', value: r.bank_name || 'Conta' }))
+                                                        ]}
+                                                        value={account}
+                                                        onChange={setAccount}
+                                                        placeholder="Selecione..."
+                                                    />
                                                 </div>
                                             </div>
 
@@ -342,21 +346,45 @@ const ExpenseAddModal: React.FC<ExpenseAddModalProps> = ({
                                                         <option value="Dinheiro">Dinheiro</option>
                                                     </select>
                                                 </div>
-                                                <div>
-                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Recebedor</label>
-                                                    <input
-                                                        autoComplete="off"
-                                                        className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 px-4 py-3 rounded-xl focus:border-gold-500/50 text-sm transition-all outline-none"
-                                                        placeholder="Ex: Receita Federal"
-                                                        value={receiver}
-                                                        onChange={(e) => setReceiver(e.target.value)}
-                                                    />
+                                                <div className="z-50 flex items-end gap-2">
+                                                    <div className="flex-1">
+                                                        <CustomSelect
+                                                            label="Recebedor"
+                                                            value={(receivers || []).find(r => r.name === receiver)?.id || ''}
+                                                            onChange={handleReceiverChange}
+                                                            options={receiverOptions}
+                                                            placeholder="Ex: Receita Federal"
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsReceiverModalOpen(true)}
+                                                        className="mb-[2px] p-3 bg-white/5 border border-white/10 rounded-xl text-gold-500 hover:bg-gold-500/10 hover:border-gold-500/30 transition-all shadow-lg"
+                                                        title="Cadastrar Novo Recebedor"
+                                                    >
+                                                        <UserPlus size={18} />
+                                                    </button>
                                                 </div>
                                             </div>
                                         </>
                                     )}
                                 </motion.div>
                             )}
+                            {/* Modal de Cadastro de Recebedor */}
+                            <ReceiverFormModal
+                                isOpen={isReceiverModalOpen}
+                                onClose={() => setIsReceiverModalOpen(false)}
+                                onAdd={async (newRec) => {
+                                    const result = await addReceiver(newRec);
+                                    if (result) {
+                                        const res = result as any;
+                                        setReceiver(res.name);
+                                        if (res.bank_name) setAccount(res.bank_name);
+                                        if (res.type) setAccountType(res.type);
+                                    }
+                                    setIsReceiverModalOpen(false);
+                                }}
+                            />
                         </AnimatePresence>
                     </form>
                 </div>

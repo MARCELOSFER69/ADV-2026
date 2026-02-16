@@ -344,8 +344,22 @@ export interface FinancialRecord {
   tipo_conta?: string;
   conta?: string;
   is_honorary?: boolean;
+  data_pagamento?: string;
   clients?: { nome_completo: string; cpf_cnpj: string };
   cases?: { titulo: string; numero_processo: string; client_id: UUID };
+}
+
+export interface FinancialReceiver {
+  id: UUID;
+  name: string;
+  type?: 'PF' | 'PJ';
+  document?: string;
+  bank_name?: string;
+  bank_agency?: string;
+  bank_account?: string;
+  account_type?: string;
+  pix_key?: string;
+  created_at?: string;
 }
 
 export interface OfficeExpense {

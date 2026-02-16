@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { FinancialRecord, FinancialType, GPS } from '../types';
+import { FinancialRecord, FinancialType, GPS, FinancialReceiver } from '../types';
 
 export interface FinancialFilters {
     type?: string;
@@ -302,6 +302,36 @@ export const fetchFinancialsByCaseId = async (caseId: string): Promise<Financial
         });
     } catch (error) {
         console.error(`Erro ao buscar financeiro do caso ${caseId}:`, error);
+        throw error;
+    }
+};
+
+export const fetchReceivers = async (): Promise<FinancialReceiver[]> => {
+    try {
+        const { data, error } = await supabase
+            .from('financial_receivers')
+            .select('*')
+            .order('name', { ascending: true });
+
+        if (error) throw error;
+        return (data || []) as FinancialReceiver[];
+    } catch (error) {
+        console.error('Erro ao buscar recebedores:', error);
+        return [];
+    }
+};
+
+export const addReceiver = async (receiver: Partial<FinancialReceiver>): Promise<void> => {
+    try {
+        const { error } = await supabase
+            .from('financial_receivers')
+            .insert([receiver]);
+
+        if (error && error.code !== '23505') { // Ignore duplicate key error
+            throw error;
+        }
+    } catch (error) {
+        console.error('Erro ao adicionar recebedor:', error);
         throw error;
     }
 };

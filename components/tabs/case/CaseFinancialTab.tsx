@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FinancialRecord, FinancialType, Case, CaseStatus, GPS, Client, OfficeExpense, CaseInstallment, CaseType } from '../../../types';
-import { BadgeDollarSign, Plus, Trash2, AlertTriangle, Check, DollarSign, Wallet, FileText, Calendar, User, Building, MessageCircle, Clock } from 'lucide-react';
+import { BadgeDollarSign, Plus, Trash2, AlertTriangle, Check, DollarSign, Wallet, FileText, Calendar, User, Building, MessageCircle, Clock, UserPlus, X } from 'lucide-react';
 import { formatCurrencyInput, parseCurrencyToNumber } from '../../../services/formatters';
 import { formatDateDisplay, getTodayBrasilia } from '../../../utils/dateUtils';
 import CustomSelect from '../../ui/CustomSelect';
 import { useApp } from '../../../context/AppContext';
+import ReceiverFormModal from '../../modals/ReceiverFormModal';
 
 interface CaseFinancialTabProps {
     financials: FinancialRecord[];
@@ -18,6 +20,175 @@ interface CaseFinancialTabProps {
     existingAccounts: string[];
 }
 
+interface PaymentConfirmationModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    title: string;
+    description: string;
+    onConfirm: (data: any) => Promise<void>;
+    receivers: any[];
+    initialData: {
+        method: 'Especie' | 'Conta';
+        receiver: string;
+        accType: 'PJ' | 'PF';
+        account: string;
+    };
+    onAddNewReceiver?: () => void;
+}
+
+const PaymentConfirmationModal: React.FC<PaymentConfirmationModalProps> = ({
+    isOpen, onClose, title, description, onConfirm, receivers, initialData, onAddNewReceiver
+}) => {
+    const [data, setData] = React.useState(initialData);
+
+    React.useEffect(() => {
+        setData(initialData);
+    }, [initialData, isOpen]);
+
+    const receiverOptions = React.useMemo(() => [
+        ...(receivers || []).map(r => ({
+            label: `${r.name} (${r.type || 'PF'}) - ${r.bank_name || 'S/ Banco'}`,
+            value: r.id
+        }))
+    ], [receivers]);
+
+    const handleReceiverChange = (val: string) => {
+        const relatedReceiver = receivers.find(r => r.id === val);
+        if (relatedReceiver) {
+            setData(prev => ({
+                ...prev,
+                receiver: relatedReceiver.name,
+                account: relatedReceiver.bank_name || prev.account,
+                accType: relatedReceiver.type || prev.accType
+            }));
+        }
+    };
+
+    const isLocked = !!data.receiver;
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                className="bg-[#16171d] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden"
+            >
+                <div className="p-6 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-emerald-500/10 to-transparent">
+                    <div>
+                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                            <BadgeDollarSign className="text-emerald-400" size={24} />
+                            {title}
+                        </h3>
+                        <p className="text-zinc-400 text-sm mt-1">{description}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors">
+                        <X size={20} className="text-zinc-400" />
+                    </button>
+                </div>
+
+                <div className="p-6 space-y-6">
+                    <div className="flex gap-2 p-1 bg-black/20 rounded-xl border border-white/5">
+                        {(['ESPECIE', 'CONTA'] as const).map((m) => (
+                            <button
+                                key={m}
+                                onClick={() => setData(prev => ({ ...prev, method: m === 'ESPECIE' ? 'Especie' : 'Conta' }))}
+                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${(m === 'ESPECIE' && data.method === 'Especie') || (m === 'CONTA' && data.method === 'Conta')
+                                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                                    : 'text-zinc-500 hover:text-zinc-300'
+                                    }`}
+                            >
+                                {m}
+                            </button>
+                        ))}
+                    </div>
+
+                    {data.method === 'Conta' && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="space-y-4"
+                        >
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2 tracking-widest">Recebedor</label>
+                                    <div className="flex items-end gap-2">
+                                        <div className="flex-1">
+                                            <CustomSelect
+                                                label="Recebedor"
+                                                options={receiverOptions}
+                                                value={receivers.find(r => r.name === data.receiver && r.bank_name === data.account)?.id || ''}
+                                                onChange={handleReceiverChange}
+                                                placeholder="Selecione o recebedor..."
+                                            />
+                                        </div>
+                                        {onAddNewReceiver && (
+                                            <button
+                                                type="button"
+                                                onClick={onAddNewReceiver}
+                                                className="p-3 bg-white/5 border border-white/10 rounded-xl text-gold-500 hover:bg-gold-500/10 transition-all shadow-lg mb-[2px]"
+                                                title="Cadastrar Novo Recebedor"
+                                            >
+                                                <UserPlus size={16} />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex-1">
+                                    <label className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Tipo de Conta</label>
+                                    <div className="flex gap-2">
+                                        {(['PF', 'PJ'] as const).map(t => (
+                                            <button
+                                                key={t}
+                                                type="button"
+                                                disabled={isLocked}
+                                                onClick={() => !isLocked && setData(prev => ({ ...prev, accType: t }))}
+                                                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold border transition-all ${data.accType === t
+                                                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
+                                                    : 'bg-black/20 border-white/5 text-zinc-500'
+                                                    } ${isLocked ? 'cursor-not-allowed opacity-70' : ''}`}
+                                            >
+                                                {t}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="flex-1">
+                                    <label className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Conta (Destino)</label>
+                                    <input
+                                        readOnly={isLocked}
+                                        className={`w-full bg-black/20 border border-white/5 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500/50 outline-none ${isLocked ? 'cursor-not-allowed opacity-70' : ''}`}
+                                        value={data.account}
+                                        onChange={e => !isLocked && setData(prev => ({ ...prev, account: e.target.value }))}
+                                        placeholder="Ex: Nubank..."
+                                    />
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </div>
+
+                <div className="p-6 bg-black/20 border-t border-white/5 flex gap-3">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 px-4 py-3 rounded-xl border border-white/10 text-zinc-400 font-bold hover:bg-white/5 transition-all"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={() => onConfirm(data)}
+                        className="flex-[2] px-4 py-3 rounded-xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                    >
+                        <Check size={18} />
+                        Confirmar Recebimento
+                    </button>
+                </div>
+            </motion.div>
+        </div>
+    );
+};
+
 const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
     financials,
     installments = [],
@@ -29,7 +200,9 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
     existingReceivers,
     existingAccounts
 }) => {
-    const { generateInstallments, updateInstallment, toggleInstallmentPaid, showToast } = useApp();
+    const { generateInstallments, updateInstallment, toggleInstallmentPaid, showToast, addReceiver, receivers } = useApp();
+    const [isReceiverModalOpen, setIsReceiverModalOpen] = useState(false);
+    const [receiverSetter, setReceiverSetter] = useState<((val: string) => void) | null>(null);
     // STATE: ADD FINANCIAL
     const [isAddingFinancial, setIsAddingFinancial] = useState(false);
     const [newFinancial, setNewFinancial] = useState<{ desc: string, type: FinancialType, val: string, date: string, isHonorary: boolean, isPaidNow: boolean }>({
@@ -73,10 +246,71 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
         account: existingAccounts[0] || '',
     });
 
+    const receiverOptions = React.useMemo(() => [
+        ...(receivers || []).map(r => ({
+            label: `${r.name} (${r.type || 'PF'}) - ${r.bank_name || 'S/ Banco'}`,
+            value: r.id
+        }))
+    ], [receivers]);
+
+    const handleReceiverChange = (val: string, setter: (val: string) => void, accountSetter?: (acc: string) => void, typeSetter?: (type: 'PF' | 'PJ') => void) => {
+        if (val === 'ADD_NEW') {
+            setReceiverSetter(() => setter);
+            setIsReceiverModalOpen(true);
+        } else {
+            const relatedReceiver = receivers.find(r => r.id === val);
+            if (relatedReceiver) {
+                setter(relatedReceiver.name);
+                if (accountSetter && relatedReceiver.bank_name) accountSetter(relatedReceiver.bank_name);
+                if (typeSetter && relatedReceiver.type) typeSetter(relatedReceiver.type);
+            }
+        }
+    };
+
     // --- CALCULATED VALUES ---
     const isHonoraryPaid = financials.some(f => f.is_honorary && f.tipo_movimentacao === 'Honorários');
     const totalFees = financials.filter(f => f.is_honorary).reduce((acc, curr) => acc + (curr.valor || 0), 0);
     const totalExpenses = financials.filter(f => !f.is_honorary && f.tipo === FinancialType.DESPESA).reduce((acc, curr) => acc + (curr.valor || 0), 0);
+
+    const finalizeHonorariosPayment = async (data: any) => {
+        const honorary = financials.find(f => f.is_honorary && !f.status_pagamento);
+        if (honorary) {
+            await onAddFinancial({
+                ...honorary,
+                status_pagamento: true,
+                data_pagamento: new Date().toISOString(),
+                forma_pagamento: data.method,
+                recebedor: data.receiver,
+                conta: data.account
+            });
+        }
+        setIsConfirmingHonorarios(false);
+    };
+
+    const finalizeInstallmentPayment = async (data: any) => {
+        if (isConfirmingInstallment) {
+            await toggleInstallmentPaid(isConfirmingInstallment, client?.nome_completo || 'Cliente', {
+                forma_pagamento: data.method,
+                recebedor: data.receiver,
+                conta: data.account
+            });
+        }
+        setIsConfirmingInstallment(null);
+    };
+
+    const finalizeRecordPayment = async (data: any) => {
+        if (isConfirmingRecord) {
+            await onAddFinancial({
+                ...isConfirmingRecord,
+                status_pagamento: true,
+                data_pagamento: new Date().toISOString(),
+                forma_pagamento: data.method,
+                recebedor: data.receiver,
+                conta: data.account
+            });
+        }
+        setIsConfirmingRecord(null);
+    };
 
     // --- HANDLERS ---
     const handleAdd = async () => {
@@ -325,75 +559,6 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                 </div>
                             </div>
                         </div>
-
-                        {/* MODAL DE CONFIRMAÇÃO DE RECEBIMENTO */}
-                        {isConfirmingHonorarios && (
-                            <div className="mt-6 pt-6 border-t border-white/5 animate-in fade-in slide-in-from-top-4">
-                                <div className="bg-[#131418] p-4 rounded-lg border border-gold-500/30">
-                                    <h4 className="text-sm font-bold text-gold-500 mb-4 flex items-center gap-2">
-                                        <DollarSign size={16} />
-                                        Detalhes do Recebimento
-                                    </h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Forma</label>
-                                            <div className="flex gap-2">
-                                                {['Especie', 'Conta'].map(m => (
-                                                    <button
-                                                        key={m}
-                                                        onClick={() => setHonorariosData(prev => ({ ...prev, method: m as any }))}
-                                                        className={`flex-1 py-1.5 px-3 rounded text-xs font-bold border transition-colors ${honorariosData.method === m
-                                                            ? 'bg-gold-500 text-black border-gold-500'
-                                                            : 'bg-transparent text-zinc-400 border-zinc-700 hover:border-zinc-500'
-                                                            }`}
-                                                    >
-                                                        {m}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        {honorariosData.method === 'Conta' && (
-                                            <>
-                                                <div>
-                                                    <label className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Recebedor</label>
-                                                    <CustomSelect
-                                                        label="Recebedor"
-                                                        options={existingReceivers.map(r => ({ label: r, value: r }))}
-                                                        value={honorariosData.receiver}
-                                                        onChange={val => setHonorariosData(prev => ({ ...prev, receiver: val }))}
-                                                        placeholder="Selecione..."
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Conta (Destino)</label>
-                                                    <CustomSelect
-                                                        label="Conta Destino"
-                                                        options={existingAccounts.map(a => ({ label: a, value: a }))}
-                                                        value={honorariosData.account}
-                                                        onChange={val => setHonorariosData(prev => ({ ...prev, account: val }))}
-                                                        placeholder="Selecione..."
-                                                    />
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                    <div className="flex justify-end gap-2 mt-4">
-                                        <button
-                                            onClick={() => setIsConfirmingHonorarios(false)}
-                                            className="px-3 py-1.5 text-xs text-zinc-400 hover:text-white"
-                                        >
-                                            Cancelar
-                                        </button>
-                                        <button
-                                            onClick={handleSaveHonorariosStatus}
-                                            className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-black font-bold rounded text-xs flex items-center gap-1"
-                                        >
-                                            <Check size={12} /> Confirmar Recebimento
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 )}
 
@@ -480,7 +645,7 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                                             <label className="text-[10px] text-zinc-500 uppercase block">Valor</label>
                                                             <input
                                                                 className="bg-transparent border-none p-0 text-sm text-white font-mono font-bold outline-none w-24"
-                                                                value={formatCurrencyInput(inst.valor.toFixed(2))}
+                                                                value={formatCurrencyInput((inst.valor || 0).toFixed(2))}
                                                                 onChange={e => updateInstallment({ ...inst, valor: parseCurrencyToNumber(e.target.value) }, client?.nome_completo || 'Cliente')}
                                                             />
                                                         </div>
@@ -508,84 +673,6 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                             </div>
                                         </div>
                                     ))}
-                                </div>
-                            )}
-
-                            {/* MODAL DE CONFIRMAÇÃO DE PARCELA */}
-                            {isConfirmingInstallment && (
-                                <div className="mt-6 pt-6 border-t border-white/5 animate-in fade-in slide-in-from-top-4">
-                                    <div className="bg-[#131418] p-4 rounded-xl border border-gold-500/30">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h4 className="text-sm font-bold text-gold-500 flex items-center gap-2 uppercase tracking-tight">
-                                                <DollarSign size={16} />
-                                                Detalhes do Recebimento (Parcela {isConfirmingInstallment.parcela_numero})
-                                            </h4>
-                                            <span className="text-xs text-zinc-500 font-mono">
-                                                Valor: {isConfirmingInstallment.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                            </span>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2 tracking-widest">Forma</label>
-                                                <div className="flex gap-2">
-                                                    {['Especie', 'Conta'].map(m => (
-                                                        <button
-                                                            key={m}
-                                                            onClick={() => setInstallmentData(prev => ({ ...prev, method: m as any }))}
-                                                            className={`flex-1 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-tighter border transition-all ${installmentData.method === m
-                                                                ? 'bg-gold-500 text-black border-gold-500 shadow-lg shadow-gold-500/10'
-                                                                : 'bg-transparent text-zinc-500 border-white/5 hover:border-white/20'
-                                                                }`}
-                                                        >
-                                                            {m}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {installmentData.method === 'Conta' && (
-                                                <>
-                                                    <div>
-                                                        <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2 tracking-widest">Recebedor</label>
-                                                        <CustomSelect
-                                                            label="Recebedor"
-                                                            options={existingReceivers.map(r => ({ label: r, value: r }))}
-                                                            value={installmentData.receiver}
-                                                            onChange={val => setInstallmentData(prev => ({ ...prev, receiver: val }))}
-                                                            placeholder="Selecione..."
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2 tracking-widest">Conta (Destino)</label>
-                                                        <CustomSelect
-                                                            label="Conta Destino"
-                                                            options={existingAccounts.map(a => ({ label: a, value: a }))}
-                                                            value={installmentData.account}
-                                                            onChange={val => setInstallmentData(prev => ({ ...prev, account: val }))}
-                                                            placeholder="Selecione..."
-                                                        />
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-
-                                        <div className="flex justify-end gap-3 mt-6">
-                                            <button
-                                                onClick={() => setIsConfirmingInstallment(null)}
-                                                className="px-4 py-2 text-xs font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-colors"
-                                            >
-                                                Cancelar
-                                            </button>
-                                            <button
-                                                onClick={confirmInstallmentPayment}
-                                                className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-black font-black rounded-lg text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all uppercase tracking-widest"
-                                            >
-                                                <Check size={16} strokeWidth={3} />
-                                                Confirmar Recebimento
-                                            </button>
-                                        </div>
-                                    </div>
                                 </div>
                             )}
                         </div>
@@ -718,7 +805,7 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                             <div className="flex items-center gap-4">
                                 <span className={`font-mono font-bold ${record.tipo === FinancialType.RECEITA ? 'text-green-500' : 'text-red-500'
                                     }`}>
-                                    {record.tipo === FinancialType.DESPESA ? '-' : '+'} {record.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    {record.tipo === FinancialType.DESPESA ? '-' : '+'} {(record.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                 </span>
                                 {record.tipo === FinancialType.RECEITA && !record.status_pagamento && (
                                     <button
@@ -739,82 +826,6 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                     ))}
                 </div>
 
-                {/* MODAL DE CONFIRMAÇÃO DE REGISTRO PENDENTE (SCHEDULED) */}
-                {isConfirmingRecord && (
-                    <div className="mt-4 p-4 bg-[#131418] rounded-xl border border-emerald-500/30 animate-in fade-in slide-in-from-top-2">
-                        <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-sm font-bold text-emerald-500 flex items-center gap-2 uppercase tracking-tight">
-                                <DollarSign size={16} />
-                                Detalhes do Recebimento (Agendamento)
-                            </h4>
-                            <span className="text-xs text-zinc-500 font-mono">
-                                {isConfirmingRecord.titulo}: {isConfirmingRecord.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2 tracking-widest">Forma</label>
-                                <div className="flex gap-2">
-                                    {['Especie', 'Conta'].map(m => (
-                                        <button
-                                            key={m}
-                                            onClick={() => setRecordConfirmationData(prev => ({ ...prev, method: m as any }))}
-                                            className={`flex-1 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-tighter border transition-all ${recordConfirmationData.method === m
-                                                ? 'bg-emerald-500 text-black border-emerald-500 shadow-lg shadow-emerald-500/10'
-                                                : 'bg-transparent text-zinc-500 border-white/5 hover:border-white/20'
-                                                }`}
-                                        >
-                                            {m}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {recordConfirmationData.method === 'Conta' && (
-                                <>
-                                    <div>
-                                        <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2 tracking-widest">Recebedor</label>
-                                        <CustomSelect
-                                            label="Recebedor"
-                                            options={existingReceivers.map(r => ({ label: r, value: r }))}
-                                            value={recordConfirmationData.receiver}
-                                            onChange={val => setRecordConfirmationData(prev => ({ ...prev, receiver: val }))}
-                                            placeholder="Selecione..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2 tracking-widest">Conta (Destino)</label>
-                                        <CustomSelect
-                                            label="Conta Destino"
-                                            options={existingAccounts.map(a => ({ label: a, value: a }))}
-                                            value={recordConfirmationData.account}
-                                            onChange={val => setRecordConfirmationData(prev => ({ ...prev, account: val }))}
-                                            placeholder="Selecione..."
-                                        />
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button
-                                onClick={() => setIsConfirmingRecord(null)}
-                                className="px-4 py-2 text-xs font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-colors"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={handleConfirmRecordPayment}
-                                className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-black font-black rounded-lg text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all uppercase tracking-widest"
-                            >
-                                <Check size={16} strokeWidth={3} />
-                                Confirmar Recebimento
-                            </button>
-                        </div>
-                    </div>
-                )}
-
                 {/* TOTAIS */}
                 <div className="mt-4 pt-4 border-t border-white/10 flex justify-end gap-6 text-sm">
                     <div className="text-green-500">
@@ -827,6 +838,55 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                     </div>
                 </div>
             </div>
+            {/* Modal de Cadastro de Recebedor */}
+            <ReceiverFormModal
+                isOpen={isReceiverModalOpen}
+                onClose={() => setIsReceiverModalOpen(false)}
+                onAdd={async (newRec) => {
+                    const result = await addReceiver(newRec);
+                    if (result && receiverSetter) {
+                        (receiverSetter as any)(result.name);
+                    }
+                    setIsReceiverModalOpen(false);
+                }}
+            />
+
+            {/* Modal de Confirmação de Recebimento */}
+            <PaymentConfirmationModal
+                isOpen={isConfirmingHonorarios || !!isConfirmingInstallment || !!isConfirmingRecord}
+                onClose={() => {
+                    setIsConfirmingHonorarios(false);
+                    setIsConfirmingInstallment(null);
+                    setIsConfirmingRecord(null);
+                }}
+                title={isConfirmingInstallment ? `Receber Parcela ${isConfirmingInstallment.parcela_numero}` : "Confirmar Recebimento"}
+                description={isConfirmingInstallment ? "Confirme os detalhes para baixar esta parcela." : "Selecione como os honorários foram recebidos."}
+                receivers={receivers}
+                initialData={
+                    isConfirmingInstallment ? installmentData :
+                        isConfirmingRecord ? recordConfirmationData :
+                            honorariosData
+                }
+                onConfirm={async (data) => {
+                    if (isConfirmingHonorarios) {
+                        await finalizeHonorariosPayment(data);
+                    } else if (isConfirmingInstallment) {
+                        await finalizeInstallmentPayment(data);
+                    } else if (isConfirmingRecord) {
+                        await finalizeRecordPayment(data);
+                    }
+                }}
+                onAddNewReceiver={() => {
+                    if (isConfirmingInstallment) {
+                        setReceiverSetter(() => (v: string) => setInstallmentData(prev => ({ ...prev, receiver: v })));
+                    } else if (isConfirmingRecord) {
+                        setReceiverSetter(() => (v: string) => setRecordConfirmationData(prev => ({ ...prev, receiver: v })));
+                    } else {
+                        setReceiverSetter(() => (v: string) => setHonorariosData(prev => ({ ...prev, receiver: v })));
+                    }
+                    setIsReceiverModalOpen(true);
+                }}
+            />
         </div>
     );
 };
