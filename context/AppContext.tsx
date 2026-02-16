@@ -928,6 +928,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 throw error;
             }
             queryClient.invalidateQueries({ queryKey: ['cases'] });
+            queryClient.invalidateQueries({ queryKey: ['clients'] });
             showToast('success', 'Processo adicionado!');
         } catch (err: any) {
             console.error("Falha ao adicionar processo:", err);
@@ -1007,6 +1008,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             }
 
             queryClient.invalidateQueries({ queryKey: ['cases'] });
+            queryClient.invalidateQueries({ queryKey: ['clients'] });
             queryClient.invalidateQueries({ queryKey: ['case'] }); // Invalida todos para garantir sync
 
             showToast('success', 'Processo atualizado!');
@@ -1021,6 +1023,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         const { error } = await supabase.from('cases').delete().eq('id', id);
         if (error) throw error;
         queryClient.invalidateQueries({ queryKey: ['cases'] });
+        queryClient.invalidateQueries({ queryKey: ['clients'] });
         queryClient.invalidateQueries({ queryKey: ['case', id] });
         showToast('success', 'Processo excluído!');
     }, [queryClient, showToast]);
@@ -1450,6 +1453,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const updateGPS = useCallback(async (caseId: string, list: GPS[]) => {
         await supabase.from('cases').update({ gps_lista: list }).eq('id', caseId);
         queryClient.invalidateQueries({ queryKey: ['cases'] });
+        queryClient.invalidateQueries({ queryKey: ['clients'] });
     }, [queryClient]);
 
     const addReminder = useCallback(async (r: Reminder) => {
