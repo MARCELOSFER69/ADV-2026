@@ -630,23 +630,38 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
                                                         <div>
                                                             <label className="text-[10px] text-zinc-500 uppercase block mb-1">Vencimento</label>
-                                                            <div className="flex items-center gap-2 group/date relative">
-                                                                <input
-                                                                    type="date"
-                                                                    className="bg-[#131418] border border-white/5 rounded px-2 py-1 text-sm text-white font-medium outline-none focus:border-gold-500/50 transition-colors cursor-pointer w-full appearance-none"
-                                                                    value={inst.data_vencimento}
-                                                                    onChange={e => updateInstallment({ ...inst, data_vencimento: e.target.value }, client?.nome_completo || 'Cliente')}
-                                                                    onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                                                                />
-                                                                <Calendar size={12} className="absolute right-2 text-zinc-500 pointer-events-none group-hover/date:text-gold-500 transition-colors" />
+                                                            <div className="flex flex-col gap-1 w-full">
+                                                                <div className="relative group/date">
+                                                                    <input
+                                                                        type="date"
+                                                                        className="bg-[#131418] border border-white/5 rounded px-2 py-1 text-sm text-white font-medium outline-none focus:border-gold-500/50 transition-colors cursor-pointer w-full appearance-none"
+                                                                        value={inst.data_vencimento}
+                                                                        onChange={e => updateInstallment({ ...inst, data_vencimento: e.target.value }, client?.nome_completo || 'Cliente')}
+                                                                        onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                                                                    />
+                                                                    <Calendar size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none group-hover/date:text-gold-500 transition-colors" />
+                                                                </div>
+                                                                {inst.pago && inst.data_pagamento && (
+                                                                    <span className="text-[9px] text-emerald-500 font-bold flex items-center gap-1">
+                                                                        <Check size={8} /> Pago: {formatDateDisplay(inst.data_pagamento)}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </div>
                                                         <div>
                                                             <label className="text-[10px] text-zinc-500 uppercase block">Valor</label>
                                                             <input
-                                                                className="bg-transparent border-none p-0 text-sm text-white font-mono font-bold outline-none w-24"
-                                                                value={formatCurrencyInput((inst.valor || 0).toFixed(2))}
-                                                                onChange={e => updateInstallment({ ...inst, valor: parseCurrencyToNumber(e.target.value) }, client?.nome_completo || 'Cliente')}
+                                                                className="bg-transparent border-none p-0 text-sm text-white font-mono font-bold outline-none w-24 hover:bg-white/5 focus:bg-white/10 rounded px-1 transition-colors"
+                                                                defaultValue={formatCurrencyInput((inst.valor || 0).toFixed(2))}
+                                                                onChange={e => {
+                                                                    e.target.value = formatCurrencyInput(e.target.value);
+                                                                }}
+                                                                onBlur={e => {
+                                                                    const newVal = parseCurrencyToNumber(e.target.value);
+                                                                    if (newVal !== inst.valor) {
+                                                                        updateInstallment({ ...inst, valor: newVal }, client?.nome_completo || 'Cliente');
+                                                                    }
+                                                                }}
                                                             />
                                                         </div>
                                                         <div>
@@ -776,6 +791,11 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                         <span>{formatDateDisplay(record.data_vencimento)}</span>
                                         {record.is_honorary && <span className="bg-gold-500/10 text-gold-500 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">Honorário</span>}
                                         {record.tipo_movimentacao === 'Comissao' && <span className="bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">Comissão</span>}
+                                        {record.status_pagamento && record.data_pagamento && (
+                                            <span className="text-emerald-500 font-bold ml-1">
+                                                (Pago: {formatDateDisplay(record.data_pagamento)})
+                                            </span>
+                                        )}
                                     </div>
 
                                     {(record.forma_pagamento || record.recebedor) && (

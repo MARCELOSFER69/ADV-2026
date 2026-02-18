@@ -1,5 +1,7 @@
-import React from 'react';
-import { HandCoins, Infinity, ChevronLeft, CalendarRange, ChevronRight, Search, X, Filter, Download } from 'lucide-react';
+import { HandCoins, Infinity, ChevronLeft, CalendarRange, ChevronRight, Search, X, Filter, Download, MapPin } from 'lucide-react';
+import BranchSelector from '../Layout/BranchSelector';
+import { useApp } from '../../context/AppContext';
+import { Branch } from '../../types';
 
 export type PeriodMode = 'month' | 'year' | 'all';
 
@@ -106,12 +108,17 @@ const FinancialHeader: React.FC<FinancialHeaderProps> = ({
                             </button>
                         )}
                     </div>
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className={`p-3 rounded-xl border transition-all ${showFilters ? 'bg-gold-500/10 border-gold-500/50 text-gold-500' : 'bg-[#18181b] border-white/10 text-slate-400 hover:text-white hover:bg-white/5'}`}
-                    >
-                        <Filter size={18} />
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <BranchSelector />
+
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`p-2 rounded-xl border transition-all duration-300 flex items-center gap-2 px-3 ${showFilters ? 'bg-gold-500/10 border-gold-500 text-gold-500 shadow-lg shadow-gold-500/10 font-bold' : 'bg-[#131418] border-white/10 text-slate-500 hover:text-white hover:border-white/20'}`}
+                        >
+                            <Filter size={18} />
+                            <span className="text-[10px] uppercase font-black tracking-widest hidden sm:inline">Filtros</span>
+                        </button>
+                    </div>
                     <button
                         onClick={handleExportCSV}
                         className="p-3 rounded-xl border border-white/10 bg-[#18181b] text-slate-400 hover:text-white hover:bg-white/5 transition-all"

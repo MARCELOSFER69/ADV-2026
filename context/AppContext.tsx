@@ -1152,6 +1152,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             }
         });
 
+        // Garantir data_pagamento se estiver sendo marcado como pago agora
+        if (payload.status_pagamento === true && !payload.data_pagamento) {
+            payload.data_pagamento = new Date().toISOString();
+        } else if (payload.status_pagamento === false) {
+            payload.data_pagamento = null;
+        }
+
         const { error } = await supabase.from('financial_records').upsert([payload]);
         if (error) {
             console.error("Erro Supabase (addFinancialRecord):", error);
@@ -1410,6 +1417,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                     valor: inst.valor,
                     data_vencimento: inst.data_vencimento,
                     status_pagamento: true,
+                    data_pagamento: new Date().toISOString(),
                     is_honorary: true,
                     forma_pagamento: paymentDetails?.forma_pagamento,
                     recebedor: paymentDetails?.recebedor,

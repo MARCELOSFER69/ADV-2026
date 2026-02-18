@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Plus, X, Wallet, PiggyBank, TrendingDown, Check, UserPlus } from 'lucide-react';
+import { Plus, X, Wallet, PiggyBank, TrendingDown, Check, UserPlus, MapPin, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { OfficeExpense } from '../../types';
+import { OfficeExpense, Branch } from '../../types';
 import { formatCurrencyInput, parseCurrencyToNumber } from '../../services/formatters';
 import { formatDateDisplay } from '../../utils/dateUtils';
 import { useApp } from '../../context/AppContext';
@@ -40,6 +40,7 @@ const ExpenseAddModal: React.FC<ExpenseAddModalProps> = ({
     const [receiver, setReceiver] = useState('');
     const [useBalance, setUseBalance] = useState(false);
     const [selectedBalanceId, setSelectedBalanceId] = useState('');
+    const [filial, setFilial] = useState<string>('');
 
     const { receivers, addReceiver } = useApp();
     const [isReceiverModalOpen, setIsReceiverModalOpen] = useState(false);
@@ -80,6 +81,7 @@ const ExpenseAddModal: React.FC<ExpenseAddModalProps> = ({
         setSelectedBalanceId('');
         setIsAddingPayer(false);
         setIsAddingAccount(false);
+        setFilial('');
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -99,6 +101,7 @@ const ExpenseAddModal: React.FC<ExpenseAddModalProps> = ({
             forma_pagamento: status === 'Pago' ? paymentMethod : undefined,
             recebedor: status === 'Pago' ? receiver : undefined,
             paid_with_balance_id: (status === 'Pago' && useBalance && selectedBalanceId) ? selectedBalanceId : undefined,
+            filial: filial || undefined,
             created_at: new Date().toISOString()
         };
 
@@ -194,6 +197,28 @@ const ExpenseAddModal: React.FC<ExpenseAddModalProps> = ({
                             </div>
                         </div>
 
+                        {/* Filial */}
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1 flex items-center gap-1">
+                                <MapPin size={10} className="text-gold-500" /> Filial
+                            </label>
+                            <div className="relative">
+                                <select
+                                    className="w-full bg-[#0f1014] border border-zinc-800 text-zinc-200 px-4 py-3 rounded-xl focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/20 appearance-none transition-all cursor-pointer outline-none"
+                                    value={filial}
+                                    onChange={(e) => setFilial(e.target.value)}
+                                >
+                                    <option value="">Selecione a Filial...</option>
+                                    {Object.values(Branch).map(b => (
+                                        <option key={b} value={b}>{b}</option>
+                                    ))}
+                                </select>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                    <ChevronDown size={14} />
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Observação */}
                         <div>
                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Observação</label>
@@ -209,6 +234,7 @@ const ExpenseAddModal: React.FC<ExpenseAddModalProps> = ({
                         <AnimatePresence>
                             {status === 'Pago' && (
                                 <motion.div
+                                    key="payment-details"
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: 'auto' }}
                                     exit={{ opacity: 0, height: 0 }}
@@ -372,6 +398,7 @@ const ExpenseAddModal: React.FC<ExpenseAddModalProps> = ({
                             )}
                             {/* Modal de Cadastro de Recebedor */}
                             <ReceiverFormModal
+                                key="receiver-modal"
                                 isOpen={isReceiverModalOpen}
                                 onClose={() => setIsReceiverModalOpen(false)}
                                 onAdd={async (newRec) => {

@@ -1,5 +1,6 @@
 import React from 'react';
-import { FinancialRecord, FinancialType } from '../../types';
+import { FinancialRecord, FinancialType, Branch } from '../../types';
+import { MapPin, ChevronDown } from 'lucide-react';
 
 interface NewFinancialModalProps {
     isModalOpen: boolean;
@@ -56,6 +57,28 @@ const NewFinancialModal: React.FC<NewFinancialModalProps> = ({
                                 <option value={FinancialType.RECEITA}>Receita</option>
                                 <option value={FinancialType.DESPESA}>Despesa</option>
                             </select>
+                        </div>
+                    </div>
+
+                    {/* Filial */}
+                    <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1 flex items-center gap-1">
+                            <MapPin size={12} className="text-gold-500" /> Filial
+                        </label>
+                        <div className="relative">
+                            <select
+                                className="w-full bg-black border border-zinc-700 rounded p-2 text-white outline-none focus:border-emerald-500 appearance-none cursor-pointer"
+                                value={newRecord.filial || ''}
+                                onChange={(e) => setNewRecord({ ...newRecord, filial: e.target.value as Branch })}
+                            >
+                                <option value="">Selecione a Filial...</option>
+                                {Object.values(Branch).map(b => (
+                                    <option key={b} value={b}>{b}</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500">
+                                <ChevronDown size={14} />
+                            </div>
                         </div>
                     </div>
                     <button

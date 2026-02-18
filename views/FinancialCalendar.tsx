@@ -20,6 +20,7 @@ import {
     DollarSign
 } from 'lucide-react';
 import { formatCurrencyInput, parseCurrencyToNumber } from '../services/formatters';
+import BranchSelector from '../components/Layout/BranchSelector';
 
 interface UnifiedReceipt {
     id: string;
@@ -27,6 +28,7 @@ interface UnifiedReceipt {
     data_vencimento: string;
     valor: number;
     pago: boolean;
+    data_pagamento?: string;
     parcela_numero?: number;
     titulo?: string;
     case_id: string;
@@ -74,7 +76,7 @@ const FinancialCalendar: React.FC = () => {
             // 1. Fetch Installments (Seguro Defeso)
             const { data: instData, error: instError } = await supabase
                 .from('case_installments')
-                .select('*, cases!inner(tipo, clients!inner(*))')
+                .select('*, cases(tipo, clients(*))') // Remove !inner to get all even if clients missing
                 .eq('destino', 'Escritório')
                 .gte('data_vencimento', startDate)
                 .lte('data_vencimento', endDate);
@@ -82,7 +84,7 @@ const FinancialCalendar: React.FC = () => {
             // 2. Fetch Financial Records (Honorários/Receitas)
             const { data: finData, error: finError } = await supabase
                 .from('financial_records')
-                .select('*, cases!inner(tipo, clients!inner(*))')
+                .select('*, clients(nome_completo, id, filial, captador, cidade, telefone, foto), cases(tipo, clients(*))')
                 .eq('tipo', 'Receita')
                 .gte('data_vencimento', `${startDate}T00:00:00`)
                 .lte('data_vencimento', `${endDate}T23:59:59`);
@@ -91,41 +93,49 @@ const FinancialCalendar: React.FC = () => {
             if (finError) throw finError;
 
             // 3. Normalize and Merge
-            const normalizedInst: UnifiedReceipt[] = (instData || []).map(i => ({
-                id: i.id,
-                source: 'installment',
-                data_vencimento: i.data_vencimento,
-                valor: i.valor,
-                pago: i.pago,
-                parcela_numero: i.parcela_numero,
-                case_id: i.case_id,
-                case_type: i.cases.tipo,
-                client_name: i.cases.clients.nome_completo,
-                client_id: i.cases.clients.id,
-                filial: i.cases.clients.filial,
-                captador: i.cases.clients.captador,
-                cidade: i.cases.clients.cidade,
-                telefone: i.cases.clients.telefone,
-                foto: i.cases.clients.foto
-            }));
+            const normalizedInst: UnifiedReceipt[] = (instData || []).map(i => {
+                const client = i.cases?.clients;
+                return {
+                    id: i.id,
+                    source: 'installment',
+                    data_vencimento: i.data_vencimento,
+                    valor: i.valor,
+                    pago: i.pago,
+                    data_pagamento: i.data_pagamento,
+                    parcela_numero: i.parcela_numero,
+                    case_id: i.case_id,
+                    case_type: i.cases?.tipo || '',
+                    client_name: client?.nome_completo || 'Cliente s/ Cadastro',
+                    client_id: client?.id || '',
+                    filial: client?.filial || '',
+                    captador: client?.captador || '',
+                    cidade: client?.cidade || '',
+                    telefone: client?.telefone || '',
+                    foto: client?.foto
+                };
+            });
 
-            const normalizedFin: UnifiedReceipt[] = (finData || []).map(f => ({
-                id: f.id,
-                source: 'financial',
-                data_vencimento: f.data_vencimento.split('T')[0],
-                valor: f.valor,
-                pago: f.status_pagamento,
-                titulo: f.titulo,
-                case_id: f.case_id,
-                case_type: f.cases.tipo,
-                client_name: f.cases.clients.nome_completo,
-                client_id: f.cases.clients.id,
-                filial: f.cases.clients.filial,
-                captador: f.cases.clients.captador,
-                cidade: f.cases.clients.cidade,
-                telefone: f.cases.clients.telefone,
-                foto: f.cases.clients.foto
-            }));
+            const normalizedFin: UnifiedReceipt[] = (finData || []).map(f => {
+                const client = f.clients || f.cases?.clients;
+                return {
+                    id: f.id,
+                    source: 'financial',
+                    data_vencimento: f.data_vencimento.split('T')[0],
+                    valor: f.valor,
+                    pago: f.status_pagamento,
+                    data_pagamento: f.data_pagamento,
+                    titulo: f.titulo,
+                    case_id: f.case_id,
+                    case_type: f.cases?.tipo || 'Avulso',
+                    client_name: client?.nome_completo || 'Cliente s/ Cadastro',
+                    client_id: client?.id || f.client_id || '',
+                    filial: f.filial || client?.filial || '',
+                    captador: client?.captador || '',
+                    cidade: client?.cidade || '',
+                    telefone: client?.telefone || '',
+                    foto: client?.foto
+                };
+            });
 
             setUnifiedReceipts([...normalizedInst, ...normalizedFin]);
         } catch (err: any) {
@@ -196,19 +206,24 @@ const FinancialCalendar: React.FC = () => {
 
     const handleTogglePaid = async (receipt: UnifiedReceipt) => {
         if (receipt.source === 'installment') {
-            await toggleInstallmentPaid({ id: receipt.id, pago: receipt.pago, valor: receipt.valor, case_id: receipt.case_id } as any, receipt.client_name);
+            await toggleInstallmentPaid({ id: receipt.id, pago: receipt.pago, valor: receipt.valor, case_id: receipt.case_id, data_pagamento: receipt.data_pagamento } as any, receipt.client_name);
         } else {
             // For financial records, we use addFinancialRecord as an upsert/update
             await addFinancialRecord({
                 id: receipt.id,
                 status_pagamento: !receipt.pago,
                 case_id: receipt.case_id,
-                client_id: receipt.client_id
+                client_id: receipt.client_id,
+                data_pagamento: !receipt.pago ? new Date().toISOString() : null
             } as any);
         }
 
         // Refresh local data
-        setUnifiedReceipts(prev => prev.map(p => p.id === receipt.id ? { ...p, pago: !p.pago } : p));
+        setUnifiedReceipts(prev => prev.map(p => p.id === receipt.id ? {
+            ...p,
+            pago: !p.pago,
+            data_pagamento: !p.pago ? new Date().toISOString().split('T')[0] : undefined
+        } : p));
     };
 
     const handleWhatsApp = (receipt: UnifiedReceipt) => {
@@ -262,23 +277,19 @@ Podemos confirmar o recebimento?`;
                     </div>
 
                     {/* FILTERS TOGGLE */}
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className={`px-4 py-2 rounded-xl border text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all ${showFilters ? 'bg-gold-500/10 border-gold-500 text-gold-500' : 'bg-[#18181b] border-white/10 text-slate-400 hover:text-white hover:border-white/20'}`}
-                    >
-                        <Filter size={16} /> Filtros Avançados
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <BranchSelector />
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`px-4 py-2 rounded-xl border text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all ${showFilters ? 'bg-gold-500/10 border-gold-500 text-gold-500' : 'bg-[#18181b] border-white/10 text-slate-400 hover:text-white hover:border-white/20'}`}
+                        >
+                            <Filter size={16} /> Filtros Avançados
+                        </button>
+                    </div>
                 </div>
 
                 {showFilters && (
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-[#0f1014] p-4 rounded-xl border border-white/10 animate-in slide-in-from-top-2 shadow-xl">
-                        <div>
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Filial</label>
-                            <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filters.branch} onChange={e => setFilters({ ...filters, branch: e.target.value })}>
-                                <option value="all">Todas</option>
-                                {Object.values(Branch).map(b => <option key={b} value={b}>{b}</option>)}
-                            </select>
-                        </div>
                         <div>
                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Captador</label>
                             <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filters.captador} onChange={e => setFilters({ ...filters, captador: e.target.value })}>

@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { OfficeExpense, OfficeBalance } from '../types';
 import {
     Plus, Calendar, DollarSign, Building, TrendingDown,
-    LayoutList, CalendarRange, Wallet, PiggyBank, Briefcase
+    LayoutList, CalendarRange, Wallet, PiggyBank, Briefcase, MapPin
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { OfficeExpense, OfficeBalance, Branch } from '../types';
 import { formatDateDisplay } from '../utils/dateUtils';
 import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import ExpenseDayDetailsModal from '../components/modals/ExpenseDayDetailsModal';
@@ -14,9 +14,10 @@ import ExpenseBalanceModal from '../components/modals/ExpenseBalanceModal';
 import ExpenseAddModal from '../components/modals/ExpenseAddModal';
 import ExpenseTable from '../components/expenses/ExpenseTable';
 import ExpenseCalendar from '../components/expenses/ExpenseCalendar';
+import BranchSelector from '../components/Layout/BranchSelector';
 
 const OfficeExpenses: React.FC = () => {
-    const { officeExpenses, officeBalances, addOfficeExpense, deleteOfficeExpense, updateOfficeExpense, toggleOfficeExpenseStatus, addOfficeBalance } = useApp();
+    const { officeExpenses, officeBalances, addOfficeExpense, deleteOfficeExpense, updateOfficeExpense, toggleOfficeExpenseStatus, addOfficeBalance, globalBranchFilter, setGlobalBranchFilter } = useApp();
 
     // View Mode
     const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
@@ -65,10 +66,11 @@ const OfficeExpenses: React.FC = () => {
             const matchesPayer = filterPayer === 'all' || e.pagador === filterPayer;
             const matchesAccount = filterAccount === 'all' || e.conta === filterAccount;
             const matchesStatus = filterStatus === 'all' || e.status === filterStatus;
+            const matchesBranch = globalBranchFilter === 'all' || e.filial === globalBranchFilter;
 
-            return matchesMonth && matchesSearch && matchesPayer && matchesAccount && matchesStatus;
+            return matchesMonth && matchesSearch && matchesPayer && matchesAccount && matchesStatus && matchesBranch;
         }).sort((a, b) => new Date(b.data_despesa).getTime() - new Date(a.data_despesa).getTime());
-    }, [officeExpenses, filterMonth, searchTerm, filterPayer, filterAccount, filterStatus]);
+    }, [officeExpenses, filterMonth, searchTerm, filterPayer, filterAccount, filterStatus, globalBranchFilter]);
 
     // Agrupamento
     const groupedList = useMemo(() => {
@@ -201,6 +203,8 @@ const OfficeExpenses: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <BranchSelector />
+
                     <div className="flex items-center bg-[#131418] border border-white/10 rounded-xl p-1 shadow-inner h-10">
                         <button
                             onClick={() => setViewMode('list')}

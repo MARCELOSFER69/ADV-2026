@@ -347,6 +347,7 @@ export interface FinancialRecord {
   data_pagamento?: string;
   clients?: { nome_completo: string; cpf_cnpj: string };
   cases?: { titulo: string; numero_processo: string; client_id: UUID };
+  filial?: Branch;
 }
 
 export interface FinancialReceiver {
@@ -378,6 +379,7 @@ export interface OfficeExpense {
   forma_pagamento?: string;
   recebedor?: string;
   paid_with_balance_id?: string;
+  filial?: string;
 }
 
 export interface OfficeBalance {

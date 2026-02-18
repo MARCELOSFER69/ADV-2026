@@ -37,12 +37,7 @@ export const fetchFinancialRecords = async (
         .gte('data_vencimento', startDate) // Greater than or equal to startDate
         .lte('data_vencimento', endDate);  // Less than or equal to endDate
 
-    // Apply Branch Filter
-    if (filters.filial && filters.filial !== 'all') {
-        const branchTerm = filters.filial;
-        // PostgREST OR filter across multiple joins
-        query = query.or(`clients.filial.eq."${branchTerm}",cases.clients.filial.eq."${branchTerm}"`);
-    }
+    // Apply Other Filters (Branch filter will be applied locally after fetch due to PostgREST limitations with relationship ORs)
 
     // Apply Filters
     if (filters.type && filters.type !== 'all') {
@@ -91,7 +86,16 @@ export const fetchFinancialRecords = async (
         throw error;
     }
 
-    let records = (data as FinancialRecord[]) || [];
+    let records = (data as any[]) || [];
+
+    // --- FILTRAGEM DE FILIAL LOCAL (Pós-DB para suportar lógica de herança) ---
+    if (filters.filial && filters.filial !== 'all') {
+        const branchTerm = filters.filial;
+        records = records.filter(r => {
+            const clientFilial = r.clients?.filial || r.cases?.clients?.filial;
+            return r.filial === branchTerm || clientFilial === branchTerm;
+        });
+    }
 
     // --- BUSCAR GPS (Injetar como Despesas) ---
     // Apenas se não houver filtro excluindo Despesas ou Status Pendente/Pago conflitante
@@ -174,6 +178,7 @@ export const fetchFinancialRecords = async (
                             valor: gps.valor,
                             data_vencimento: dueDate,
                             status_pagamento: true, // Only 'Paga' items reach here
+                            data_pagamento: gps.data_pagamento || dueDate, // GPS payment date
                             captador_nome: 'INSS',
                             // recebedor: 'Previdência Social', // Removed as per user request
                             forma_pagamento: gps.forma_pagamento || 'Boleto',
@@ -212,8 +217,8 @@ export const fetchFinancialRecords = async (
 export const fetchFinancialSummary = async (startDate: string, endDate: string) => {
     try {
         const { data, error } = await supabase.rpc('get_financial_summary', {
-            start_date: startDate,
-            end_date: endDate
+            p_start_date: startDate,
+            p_end_date: endDate
         });
 
         if (error) throw error;
@@ -274,6 +279,7 @@ export const fetchFinancialsByCaseId = async (caseId: string): Promise<Financial
                 valor: gps.valor,
                 data_vencimento: dueDate || '',
                 status_pagamento: isPaid,
+                data_pagamento: gps.data_pagamento || (isPaid ? dueDate : undefined),
                 captador_nome: 'INSS',
                 forma_pagamento: gps.forma_pagamento || 'Boleto',
                 clients: clientData ? {

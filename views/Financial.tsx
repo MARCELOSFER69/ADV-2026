@@ -116,6 +116,11 @@ const Financial: React.FC = () => {
         // Filtrar Despesas do Escritório pelo período selecionado
         const filteredOfficeExpenses = officeExpenses.filter(e => {
             const dateStr = e.data_despesa;
+
+            // FILTRO DE FILIAL (LOCAL)
+            const matchesBranch = globalBranchFilter === 'all' || e.filial === globalBranchFilter;
+            if (!matchesBranch) return false;
+
             if (periodMode === 'all') return true;
             if (!dateStr) return false;
             const recordDate = dateStr.substring(0, 10);
@@ -318,7 +323,25 @@ const Financial: React.FC = () => {
             if (saldo > 0) valorColorClass = 'text-blue-400';
             else if (saldo < 0) valorColorClass = 'text-red-400';
 
-            return { ...g, saldo, status, valorColorClass, children: g.children.sort((a: any, b: any) => new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime()) } as FinancialViewItem;
+            // Calcular a data de pagamento máxima (mais recente) entre os filhos pagos
+            let dataPagamentoMaxima = '';
+            g.children.forEach((c: any) => {
+                if (c.status_pagamento && c.data_pagamento) {
+                    const payDate = c.data_pagamento.substring(0, 10);
+                    if (!dataPagamentoMaxima || payDate > dataPagamentoMaxima) {
+                        dataPagamentoMaxima = payDate;
+                    }
+                }
+            });
+
+            return {
+                ...g,
+                saldo,
+                status,
+                valorColorClass,
+                dataPagamentoMaxima: dataPagamentoMaxima || undefined,
+                children: g.children.sort((a: any, b: any) => new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime())
+            } as FinancialViewItem;
         });
 
         // Finalize GPS Aggregation
@@ -431,8 +454,24 @@ const Financial: React.FC = () => {
 
     const handleAddAvulso = async () => {
         if (!newRecord.titulo || !newRecord.valor) { showToast('error', 'Preencha dados.'); return; }
-        await addFinancialRecord({ id: crypto.randomUUID(), ...newRecord as FinancialRecord });
-        setIsModalOpen(false); setNewRecord({ titulo: '', valor: 0, tipo: FinancialType.RECEITA, data_vencimento: new Date().toISOString().split('T')[0], status_pagamento: true }); setAmountStr('');
+
+        const recordToSave = {
+            id: crypto.randomUUID(),
+            ...newRecord,
+            // If it's already paid, ensure it has a payment date (today)
+            data_pagamento: newRecord.status_pagamento ? new Date().toISOString() : null
+        } as FinancialRecord;
+
+        await addFinancialRecord(recordToSave);
+        setIsModalOpen(false);
+        setNewRecord({
+            titulo: '',
+            valor: 0,
+            tipo: FinancialType.RECEITA,
+            data_vencimento: new Date().toISOString().split('T')[0],
+            status_pagamento: true
+        });
+        setAmountStr('');
         showToast('success', 'Adicionado!');
     };
 

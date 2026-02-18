@@ -5,7 +5,7 @@ import { FinancialRecord, FinancialType } from '../../types';
 import { formatDateDisplay } from '../../utils/dateUtils';
 
 export type FinancialViewItem =
-    | { type: 'group'; id: string; caseId?: string; clientId: string; title: string; clientName: string; totalEntradas: number; totalSaidas: number; saldo: number; children: any[]; dataReferencia: string; status: 'PAGO' | 'PARCIAL' | 'PENDENTE' | 'DESPESA'; valorColorClass: string; isGpsSummary?: boolean }
+    | { type: 'group'; id: string; caseId?: string; clientId: string; title: string; clientName: string; totalEntradas: number; totalSaidas: number; saldo: number; children: any[]; dataReferencia: string; dataPagamentoMaxima?: string; status: 'PAGO' | 'PARCIAL' | 'PENDENTE' | 'DESPESA'; valorColorClass: string; isGpsSummary?: boolean }
     | { type: 'single'; data: FinancialRecord };
 
 interface FinancialTableProps {
@@ -96,7 +96,17 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`p-1.5 rounded-md transition-colors border ${isExpanded ? 'bg-transparent border-gold-500 text-gold-500 shadow-[0_0_10px_rgba(234,179,8,0.2)]' : 'bg-transparent border-zinc-700 text-zinc-500 group-hover:text-zinc-300 group-hover:border-zinc-500'}`}>{isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</div>
-                                                    <div><span className="font-bold text-zinc-200 block group-hover:text-gold-500 transition-colors text-sm">{item.title}</span><span className="text-[10px] text-zinc-500 flex items-center gap-1"><Calendar size={10} /> Ref: {formatDateDisplay(item.dataReferencia)}</span></div>
+                                                    <div>
+                                                        <span className="font-bold text-zinc-200 block group-hover:text-gold-500 transition-colors text-sm">{item.title}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] text-zinc-500 flex items-center gap-1"><Calendar size={10} /> Ref: {formatDateDisplay(item.dataReferencia)}</span>
+                                                            {item.dataPagamentoMaxima && (
+                                                                <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-1">
+                                                                    <DollarSign size={10} /> Pago: {formatDateDisplay(item.dataPagamentoMaxima)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-center"><span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-zinc-800 border-zinc-700 text-zinc-400`}>{item.status}</span></td>
@@ -148,7 +158,16 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                                                                                     }
                                                                                 }}
                                                                             >
-                                                                                <td className="py-2 px-4 text-xs text-zinc-400 w-32 font-mono">{formatDateDisplay(child.data_vencimento)}</td>
+                                                                                <td className="py-2 px-4 text-xs text-zinc-400 w-32 font-mono">
+                                                                                    <div className="flex flex-col">
+                                                                                        <span>{formatDateDisplay(child.data_vencimento)}</span>
+                                                                                        {child.data_pagamento && (
+                                                                                            <span className="text-[10px] text-emerald-500 font-bold mt-0.5">
+                                                                                                Pago: {formatDateDisplay(child.data_pagamento)}
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </td>
                                                                                 <td className="py-2 px-4 text-xs text-zinc-300">
                                                                                     {child.clients?.nome_completo ? (
                                                                                         <div>
@@ -195,7 +214,14 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                                                 <div className={`p-1.5 rounded-md bg-transparent border border-white/10 text-zinc-500`}>{record.is_office_expense ? <Building size={16} /> : <DollarSign size={16} />}</div>
                                                 <div>
                                                     <span className="font-medium text-zinc-300 block group-hover:text-white transition-colors text-sm">{record.titulo}</span>
-                                                    <span className="text-[10px] text-zinc-500 flex items-center gap-1 mt-0.5"><Calendar size={10} /> {formatDateDisplay(record.data_vencimento)}</span>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className="text-[10px] text-zinc-500 flex items-center gap-1"><Calendar size={10} /> {formatDateDisplay(record.data_vencimento)}</span>
+                                                        {record.data_pagamento && (
+                                                            <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-1 leading-none">
+                                                                <DollarSign size={8} /> Pago: {formatDateDisplay(record.data_pagamento)}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </td>
