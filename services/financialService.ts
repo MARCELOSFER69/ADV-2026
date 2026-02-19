@@ -9,6 +9,8 @@ export interface FinancialFilters {
     receiver?: string;
     search?: string;
     filial?: string;
+    startDate?: string;
+    endDate?: string;
 }
 
 /**
@@ -34,14 +36,19 @@ export const fetchFinancialRecords = async (
                 clients (nome_completo, cpf_cnpj, filial)
             )
         `)
-        .gte('data_vencimento', startDate) // Greater than or equal to startDate
-        .lte('data_vencimento', endDate);  // Less than or equal to endDate
+        .gte('data_vencimento', startDate)
+        .lte('data_vencimento', endDate);
 
-    // Apply Other Filters (Branch filter will be applied locally after fetch due to PostgREST limitations with relationship ORs)
+    // Apply Other Filters
 
     // Apply Filters
     if (filters.type && filters.type !== 'all') {
-        query = query.eq('tipo', filters.type);
+        if (filters.type === FinancialType.COMISSAO) {
+            // Se filtrar por comissão, busca tanto pelo tipo quanto pela movimentação em várias grafias
+            query = query.or(`tipo.eq.Comissão,tipo.eq.comissao,tipo_movimentacao.eq.Comissao,tipo_movimentacao.eq.Comissão`);
+        } else {
+            query = query.eq('tipo', filters.type);
+        }
     }
 
     if (filters.status === 'paid') {
@@ -55,21 +62,20 @@ export const fetchFinancialRecords = async (
     }
 
     if (filters.account && filters.account !== 'all') {
-        query = query.eq('conta', filters.account);
+        if (filters.account.includes('|')) {
+            const [recebedor, conta] = filters.account.split('|');
+            query = query.eq('conta', conta);
+            if (recebedor && recebedor !== 'Outros') {
+                query = query.eq('recebedor', recebedor);
+            }
+        } else {
+            query = query.eq('conta', filters.account);
+        }
     }
 
     if (filters.receiver && filters.receiver !== 'all') {
-        // Recebedor pode ser 'recebedor' ou 'captador_nome' dependendo da estrutura exata, 
-        // mas assumindo que filtramos pela coluna 'recebedor' ou talvez precisemos de um OR.
-        // Se a UI filtra pelo campo 'recebedor' ou 'captador_nome' combinados, o backend precisa refletir isso.
-        // Por simplicidade e performance, vamos filtrar onde 'recebedor' bate, ou ajustar se necessário.
-        // Dado o código do frontend: const rec = record.recebedor || record.captador_nome;
-        // O ideal seria um .or(), mas o PostgREST tem sintaxe específica para combinados.
-        // Vamos tentar filtrar apenas colunas diretas primeiro garantindo a indexação.
-        // Se 'captador_nome' for relevante apenas para comissões, talvez precisemos de "or".
-
-        // Sintaxe PostgREST para OR: .or(`recebedor.eq.${filters.receiver},captador_nome.eq.${filters.receiver}`)
-        query = query.or(`recebedor.eq.${filters.receiver},captador_nome.eq.${filters.receiver}`);
+        // Sintaxe PostgREST para OR com aspas para lidar com nomes com espaços
+        query = query.or(`recebedor.eq."${filters.receiver}",captador_nome.eq."${filters.receiver}"`);
     }
 
     if (filters.search) {
@@ -153,8 +159,12 @@ export const fetchFinancialRecords = async (
                         // Filtro de Data
                         if (dueDate < startDate || dueDate > endDate) return;
 
-                        // Filter by Status: Only include 'Paga' (Paid) as requested by user
-                        if (gps.status !== 'Paga') return;
+                        // Filter by Status
+                        if (filters.status === 'paid' && gps.status !== 'Paga') return;
+                        if (filters.status === 'pending' && gps.status === 'Paga') return;
+                        // Default behavior: if no status filter, usually we show everything or just paid?
+                        // The previous code only showed 'Paga'. Let's keep that but allow 'Pendente' if filtered.
+                        if (!filters.status && gps.status !== 'Paga') return;
 
                         // Filtro Texto (Se busca explicita por GPS)
                         if (filters.search) {
@@ -342,5 +352,39 @@ export const addReceiver = async (receiver: Partial<FinancialReceiver>): Promise
     } catch (error) {
         console.error('Erro ao adicionar recebedor:', error);
         throw error;
+    }
+};
+
+/**
+ * Busca todas as contas e recebedores únicos já registrados no sistema.
+ */
+export const fetchUniqueAccounts = async (): Promise<{ recebedor: string, conta: string }[]> => {
+    try {
+        const { data, error } = await supabase
+            .from('financial_records')
+            .select('recebedor, conta')
+            .not('conta', 'is', null);
+
+        if (error) throw error;
+
+        // Extrair pares únicos
+        const seen = new Set();
+        const accounts: { recebedor: string, conta: string }[] = [];
+
+        data.forEach(item => {
+            const key = `${item.recebedor || ''}|${item.conta}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                accounts.push({
+                    recebedor: item.recebedor || 'Outros',
+                    conta: item.conta
+                });
+            }
+        });
+
+        return accounts.sort((a, b) => a.recebedor.localeCompare(b.recebedor));
+    } catch (error) {
+        console.error('Erro ao buscar contas:', error);
+        return [];
     }
 };

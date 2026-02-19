@@ -2,8 +2,10 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { fetchFinancialRecords, FinancialFilters } from '../services/financialService';
 import { FinancialRecord } from '../types';
 
+export type PeriodMode = 'month' | 'year' | 'all' | 'custom';
+
 interface UseFinancialProps {
-    periodMode: 'month' | 'year' | 'all';
+    periodMode: PeriodMode;
     selectedDate: Date;
     filters?: FinancialFilters;
     enabled?: boolean;
@@ -28,6 +30,9 @@ export const useFinancial = ({ periodMode, selectedDate, filters = {}, enabled =
             const lastDay = new Date(year, 11, 31);
             startDate = firstDay.toISOString().split('T')[0];
             endDate = lastDay.toISOString().split('T')[0];
+        } else if (periodMode === 'custom' && filters.startDate && filters.endDate) {
+            startDate = filters.startDate;
+            endDate = filters.endDate;
         } else {
             // 'all' - definindo um range bem amplo ou lidando no service
             // Para 'all', passamos datas extremas ou o service trata.

@@ -5,6 +5,7 @@ import CaseDetailsModal from '../components/modals/CaseDetailsModal';
 import CommissionReceiptModal from '../components/modals/CommissionReceiptModal';
 import { formatCurrencyInput, parseCurrencyToNumber } from '../services/formatters';
 import { useFinancial } from '../hooks/useFinancial';
+import { fetchUniqueAccounts } from '../services/financialService';
 
 // Sub-components
 import FinancialHeader, { PeriodMode } from '../components/financial/FinancialHeader';
@@ -12,6 +13,7 @@ import FinancialSummaryCards from '../components/financial/FinancialSummaryCards
 import FinancialTable, { FinancialViewItem } from '../components/financial/FinancialTable';
 import CommissionsTab from '../components/financial/CommissionsTab';
 import NewFinancialModal from '../components/financial/NewFinancialModal';
+import ExportFinancialModal from '../components/modals/ExportFinancialModal';
 
 type TabType = 'overview' | 'commissions';
 type SubTabType = 'list' | 'receipts';
@@ -47,22 +49,82 @@ const Financial: React.FC = () => {
     const [filterMethod, setFilterMethod] = useState('all');
     const [filterReceiver, setFilterReceiver] = useState('all');
     const [filterAccount, setFilterAccount] = useState('all');
+    const [customStartDate, setCustomStartDate] = useState(new Date().toISOString().split('T')[0]);
+    const [customEndDate, setCustomEndDate] = useState(new Date().toISOString().split('T')[0]);
+    const [accounts, setAccounts] = useState<{ recebedor: string, conta: string }[]>([]);
     const [showFilters, setShowFilters] = useState(false);
 
-    // --- DADOS OTIMIZADOS ---
-    const { data: financial, summary: serverSummary, isLoading } = useFinancial({
+    // --- DADOS BRUTOS (Sem filtros para popular dropdowns e filtrar localmente) ---
+    const { data: rawFinancial, summary: serverSummary, isLoading } = useFinancial({
         periodMode,
         selectedDate,
         filters: {
-            type: filterType !== 'all' ? filterType : undefined,
-            status: filterStatus !== 'all' ? filterStatus : undefined,
-            method: filterMethod !== 'all' ? filterMethod : undefined,
-            account: filterAccount !== 'all' ? filterAccount : undefined,
-            receiver: filterReceiver !== 'all' ? filterReceiver : undefined,
-            search: searchTerm || undefined,
-            filial: globalBranchFilter !== 'all' ? globalBranchFilter : undefined
+            startDate: periodMode === 'custom' ? customStartDate : undefined,
+            endDate: periodMode === 'custom' ? customEndDate : undefined
         }
     });
+
+    // --- FILTRAGEM LOCAL (Para UX estável e lógica consistente) ---
+    const financial = useMemo(() => {
+        return (rawFinancial || []).filter(item => {
+            // Filtro por Filial (Herança de filial do cliente/caso)
+            if (globalBranchFilter !== 'all') {
+                const clientFilial = item.clients?.filial || item.cases?.clients?.filial;
+                if (item.filial !== globalBranchFilter && clientFilial !== globalBranchFilter) return false;
+            }
+
+            // Filtro de Busca
+            if (searchTerm) {
+                const term = searchTerm.toLowerCase();
+                const match =
+                    (item.titulo || '').toLowerCase().includes(term) ||
+                    (item.recebedor || '').toLowerCase().includes(term) ||
+                    (item.captador_nome || '').toLowerCase().includes(term);
+                if (!match) return false;
+            }
+
+            // Filtro de Tipo
+            if (filterType !== 'all') {
+                if (filterType === FinancialType.COMISSAO) {
+                    const cleanTipo = (item.tipo || '').toString().toLowerCase();
+                    const cleanMov = (item.tipo_movimentacao || '').toString().toLowerCase();
+                    if (!cleanTipo.includes('comis') && !cleanMov.includes('comis')) return false;
+                } else if (item.tipo !== filterType) {
+                    return false;
+                }
+            }
+
+            // Filtro de Status
+            if (filterStatus !== 'all') {
+                const isPaid = item.status_pagamento;
+                if (filterStatus === 'paid' && !isPaid) return false;
+                if (filterStatus === 'pending' && isPaid) return false;
+            }
+
+            // Filtro de Forma
+            if (filterMethod !== 'all' && item.forma_pagamento !== filterMethod) return false;
+
+            // Filtro de Conta
+            if (filterAccount !== 'all') {
+                const [accReceiver, accName] = filterAccount.split('|');
+                if (item.conta !== accName) return false;
+                if (accReceiver !== 'Outros' && item.recebedor !== accReceiver) return false;
+            }
+
+            // Filtro de Recebedor/Captador
+            if (filterReceiver !== 'all') {
+                const recordReceiver = item.recebedor;
+                const recordCaptador = item.captador_nome;
+                const implicitCaptador = item.titulo && item.titulo.includes(' - ') ? item.titulo.split(' - ')[1] : null;
+
+                if (recordReceiver !== filterReceiver &&
+                    recordCaptador !== filterReceiver &&
+                    implicitCaptador !== filterReceiver) return false;
+            }
+
+            return true;
+        });
+    }, [rawFinancial, globalBranchFilter, searchTerm, filterType, filterStatus, filterMethod, filterAccount, filterReceiver]);
 
     const [sortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'dataReferencia', direction: 'desc' });
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -80,11 +142,27 @@ const Financial: React.FC = () => {
         titulo: '', valor: 0, tipo: FinancialType.RECEITA, data_vencimento: new Date().toISOString().split('T')[0], status_pagamento: true
     });
     const [amountStr, setAmountStr] = useState('');
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-    // --- LISTAS DINÂMICAS PARA OS DROPDOWNS ---
-    const uniqueMethods = useMemo(() => Array.from(new Set(financial.map(f => f.forma_pagamento).filter(Boolean))), [financial]);
-    const uniqueReceivers = useMemo(() => Array.from(new Set(financial.map(f => f.recebedor || f.captador_nome).filter(Boolean))), [financial]);
-    const uniqueAccounts = useMemo(() => Array.from(new Set(financial.map(f => f.conta).filter(Boolean))), [financial]);
+    // --- LISTAS DINÂMICAS PARA OS DROPDOWNS (Baseadas em rawFinancial para estabilidade) ---
+    const uniqueMethods = useMemo(() => Array.from(new Set((rawFinancial || []).map(f => f.forma_pagamento).filter(Boolean))), [rawFinancial]);
+    const uniqueReceivers = useMemo(() => Array.from(new Set((rawFinancial || []).map(f => f.recebedor).filter(Boolean))), [rawFinancial]);
+    const uniqueCaptadores = useMemo(() => {
+        const comissoes = (rawFinancial || []).filter(f => {
+            const cleanTipo = (f.tipo || '').toString().toLowerCase();
+            const cleanMov = (f.tipo_movimentacao || '').toString().toLowerCase();
+            return cleanTipo.includes('comis') || cleanMov.includes('comis');
+        });
+        return Array.from(new Set(comissoes.map(f => {
+            if (f.captador_nome) return f.captador_nome;
+            if (f.titulo && f.titulo.includes(' - ')) return f.titulo.split(' - ')[1];
+            return f.recebedor;
+        }).filter(Boolean)));
+    }, [rawFinancial]);
+
+    useEffect(() => {
+        fetchUniqueAccounts().then(setAccounts);
+    }, []);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -418,10 +496,11 @@ const Financial: React.FC = () => {
     }, [financial]);
 
     const totalCommissions = useMemo(() => commissionsData.reduce((acc, curr) => acc + (curr.status_pagamento ? Number(curr.valor) : 0), 0), [commissionsData]);
+    const totalPendingCommissions = useMemo(() => commissionsData.reduce((acc, curr) => acc + (!curr.status_pagamento ? Number(curr.valor) : 0), 0), [commissionsData]);
 
     const toggleGroup = (id: string) => { const newSet = new Set(expandedGroups); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setExpandedGroups(newSet); };
     const navigateToCase = (caseId: string) => { setCaseToView(caseId); setCurrentView('cases'); };
-    const handleExportCSV = () => { showToast('success', 'Função de exportação em manutenção.'); };
+    const handleExportCSV = () => { setIsExportModalOpen(true); };
 
     const handleSelectCommission = (record: FinancialRecord) => {
         if (record.receipt_id) { showToast('error', 'Este item já possui recibo gerado.'); return; }
@@ -492,45 +571,78 @@ const Financial: React.FC = () => {
                 showFilters={showFilters}
                 setShowFilters={setShowFilters}
                 handleExportCSV={handleExportCSV}
+                customStartDate={customStartDate}
+                setCustomStartDate={setCustomStartDate}
+                customEndDate={customEndDate}
+                setCustomEndDate={setCustomEndDate}
+                view={activeTab}
             />
 
             {showFilters && (
-                <div className="bg-[#0f1014] p-4 rounded-xl border border-white/10 animate-in slide-in-from-top-2 grid grid-cols-2 md:grid-cols-4 gap-4 shadow-xl">
-                    <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Tipo</label>
-                        <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterType} onChange={(e) => setFilterType(e.target.value as any)}>
-                            <option value="all">Todos</option>
-                            <option value={FinancialType.RECEITA}>Receita</option>
-                            <option value={FinancialType.DESPESA}>Despesa</option>
-                            <option value={FinancialType.COMISSAO}>Comissão</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Status</label>
-                        <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
-                            <option value="all">Todos</option>
-                            <option value="paid">Pago</option>
-                            <option value="pending">Pendente</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Forma</label>
-                        <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterMethod} onChange={(e) => setFilterMethod(e.target.value)}>
-                            <option value="all">Todas</option>
-                            <option value="Especie">Espécie</option>
-                            <option value="Conta">Conta</option>
-                            <option value="Pix">Pix</option>
-                            <option value="Boleto">Boleto</option>
-                            {uniqueMethods.filter(m => !['Especie', 'Conta', 'Pix', 'Boleto'].includes(m)).map(m => <option key={m as string} value={m as string}>{m as string}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Conta</label>
-                        <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterAccount} onChange={(e) => setFilterAccount(e.target.value)}>
-                            <option value="all">Todas</option>
-                            {uniqueAccounts.map(a => <option key={a as string} value={a as string}>{a as string}</option>)}
-                        </select>
-                    </div>
+                <div className="bg-[#0f1014] p-4 rounded-xl border border-white/10 animate-in slide-in-from-top-2 grid grid-cols-2 lg:grid-cols-4 gap-4 shadow-xl">
+                    {activeTab === 'overview' ? (
+                        <>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Tipo</label>
+                                <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterType} onChange={(e) => setFilterType(e.target.value as any)}>
+                                    <option value="all">Todos</option>
+                                    <option value={FinancialType.RECEITA}>Receita</option>
+                                    <option value={FinancialType.DESPESA}>Despesa</option>
+                                    <option value={FinancialType.COMISSAO}>Comissão</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Status</label>
+                                <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
+                                    <option value="all">Todos</option>
+                                    <option value="paid">Pago</option>
+                                    <option value="pending">Pendente</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Forma</label>
+                                <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterMethod} onChange={(e) => setFilterMethod(e.target.value)}>
+                                    <option value="all">Todas</option>
+                                    <option value="Especie">Espécie</option>
+                                    <option value="Conta">Conta</option>
+                                    <option value="Pix">Pix</option>
+                                    <option value="Boleto">Boleto</option>
+                                    {uniqueMethods.filter(m => !['Especie', 'Conta', 'Pix', 'Boleto'].includes(m)).map(m => <option key={m as string} value={m as string}>{m as string}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Conta</label>
+                                <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterAccount} onChange={(e) => setFilterAccount(e.target.value)}>
+                                    <option value="all">Todas</option>
+                                    {accounts.map((a, i) => (
+                                        <option key={i} value={`${a.recebedor}|${a.conta}`}>
+                                            {a.recebedor !== 'Outros' ? `${a.recebedor} - ${a.conta}` : a.conta}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Captador</label>
+                                <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterReceiver} onChange={(e) => setFilterReceiver(e.target.value)}>
+                                    <option value="all">Todos</option>
+                                    {uniqueCaptadores.map((r, i) => (
+                                        <option key={i} value={r as string}>{r as string}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Status</label>
+                                <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
+                                    <option value="all">Todos</option>
+                                    <option value="paid">Pago</option>
+                                    <option value="pending">Pendente</option>
+                                </select>
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
 
@@ -548,6 +660,7 @@ const Financial: React.FC = () => {
             ) : (
                 <CommissionsTab
                     totalCommissions={totalCommissions}
+                    totalPendingCommissions={totalPendingCommissions}
                     subTab={subTab}
                     setSubTab={setSubTab}
                     selectedCommissionIds={selectedCommissionIds}
@@ -562,6 +675,7 @@ const Financial: React.FC = () => {
                     setReceiptModalOpen={setReceiptModalOpen}
                     setActiveUploadId={setActiveUploadId}
                     fileInputRef={fileInputRef}
+                    addFinancialRecord={addFinancialRecord}
                 />
             )}
 
@@ -595,6 +709,14 @@ const Financial: React.FC = () => {
                 amountStr={amountStr}
                 handleAmountChange={handleAmountChange}
                 handleAddAvulso={handleAddAvulso}
+            />
+
+            <ExportFinancialModal
+                isOpen={isExportModalOpen}
+                onClose={() => setIsExportModalOpen(false)}
+                data={financial}
+                periodLabel={getPeriodLabel()}
+                showToast={showToast}
             />
         </div>
     );

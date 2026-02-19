@@ -6,6 +6,7 @@ import { formatDateDisplay } from '../../utils/dateUtils';
 
 interface CommissionsTabProps {
     totalCommissions: number;
+    totalPendingCommissions: number;
     subTab: 'list' | 'receipts';
     setSubTab: (tab: 'list' | 'receipts') => void;
     selectedCommissionIds: Set<string>;
@@ -20,6 +21,7 @@ interface CommissionsTabProps {
     setReceiptModalOpen: (open: boolean) => void;
     setActiveUploadId: (id: string) => void;
     fileInputRef: React.RefObject<HTMLInputElement>;
+    addFinancialRecord: (record: FinancialRecord) => Promise<void>;
 }
 
 const getImplicitCaptador = (record?: FinancialRecord) => {
@@ -31,6 +33,7 @@ const getImplicitCaptador = (record?: FinancialRecord) => {
 
 const CommissionsTab: React.FC<CommissionsTabProps> = ({
     totalCommissions,
+    totalPendingCommissions,
     subTab,
     setSubTab,
     selectedCommissionIds,
@@ -44,27 +47,44 @@ const CommissionsTab: React.FC<CommissionsTabProps> = ({
     deleteCommissionReceipt,
     setReceiptModalOpen,
     setActiveUploadId,
-    fileInputRef
+    fileInputRef,
+    addFinancialRecord
 }) => {
     return (
         <>
-            <div className="mb-6 flex gap-4">
-                <div className="bg-[#0a090b] p-6 rounded-2xl border-2 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.05)] relative overflow-hidden group max-w-sm flex-1 hover:border-purple-500/80 hover:shadow-[0_0_30px_rgba(168,85,247,0.1)] transition-all duration-300">
+            <div className="mb-6 flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
+                <div className="bg-[#0a090b] p-6 rounded-2xl border-2 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.05)] relative overflow-hidden group min-w-[280px] flex-1 hover:border-purple-500/80 hover:shadow-[0_0_30px_rgba(168,85,247,0.1)] transition-all duration-300">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-700"></div>
                     <div className="relative z-10 flex items-center justify-between">
                         <div>
                             <p className="text-[10px] text-purple-400/80 font-black uppercase tracking-[0.2em] mb-1">Total Comissões Pagas</p>
-                            <h3 className="text-3xl font-black text-white tracking-tight">
+                            <h3 className="text-2xl font-black text-white tracking-tight">
                                 - {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCommissions)}
                             </h3>
                         </div>
-                        <div className="p-3 bg-transparent rounded-xl text-purple-500 border-2 border-purple-500/80 transition-all duration-300 group-hover:scale-105">
-                            <HandCoins size={28} strokeWidth={2} />
+                        <div className="p-2.5 bg-transparent rounded-xl text-purple-500 border-2 border-purple-500/80 transition-all duration-300 group-hover:scale-105">
+                            <HandCoins size={24} strokeWidth={2} />
                         </div>
                     </div>
                 </div>
-                <div className="bg-[#0f1014] p-5 rounded-xl border border-white/10 flex-1 flex flex-col justify-center">
-                    <div className="flex gap-2 bg-[#18181b] p-1.5 rounded-xl w-fit border border-white/5">
+
+                <div className="bg-[#0a090b] p-6 rounded-2xl border-2 border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.02)] relative overflow-hidden group min-w-[280px] flex-1 hover:border-yellow-500/50 hover:shadow-[0_0_30px_rgba(234,179,8,0.05)] transition-all duration-300">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/5 rounded-full blur-3xl -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-700"></div>
+                    <div className="relative z-10 flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] text-yellow-500/80 font-black uppercase tracking-[0.2em] mb-1">Comissões a Pagar (Pendentes)</p>
+                            <h3 className="text-2xl font-black text-white tracking-tight">
+                                - {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPendingCommissions)}
+                            </h3>
+                        </div>
+                        <div className="p-2.5 bg-transparent rounded-xl text-yellow-500 border-2 border-yellow-500/50 transition-all duration-300 group-hover:scale-105">
+                            <Clock size={24} strokeWidth={2} />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-[#0f1014] p-5 rounded-xl border border-white/10 min-w-[280px] flex-1 flex flex-col justify-center">
+                    <div className="flex gap-2 bg-[#18181b] p-1.5 rounded-xl w-fit border border-white/5 mx-auto">
                         <button onClick={() => setSubTab('list')} className={`px-4 py-2 text-xs font-black rounded-lg transition-all ${subTab === 'list' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-slate-400 hover:text-white'}`}>Lista de Comissões</button>
                         <button onClick={() => setSubTab('receipts')} className={`px-4 py-2 text-xs font-black rounded-lg transition-all ${subTab === 'receipts' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-slate-400 hover:text-white'}`}>Recibos Gerados</button>
                     </div>
@@ -93,19 +113,55 @@ const CommissionsTab: React.FC<CommissionsTabProps> = ({
                                     const isSelected = selectedCommissionIds.has(comm.id);
                                     const hasReceipt = !!comm.receipt_id;
                                     const receiptInfo = hasReceipt ? commissionReceipts.find(r => r.id === comm.receipt_id) : null;
+                                    const isPaid = comm.status_pagamento;
+
                                     return (
                                         <motion.tr
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ duration: 0.3, delay: index * 0.03 }}
                                             key={comm.id} className={`transition-colors ${isSelected ? 'bg-purple-500/10' : 'hover:bg-zinc-900'}`}>
-                                            <td className="px-6 py-4 text-center">{!hasReceipt ? (<button onClick={() => handleSelectCommission(comm)} className={`text-zinc-500 hover:text-purple-400 transition-colors ${isSelected ? 'text-purple-500' : ''}`}>{isSelected ? <CheckSquare size={18} /> : <Square size={18} />}</button>) : (<div className="w-4 h-4 mx-auto" />)}</td>
+                                            <td className="px-6 py-4 text-center">{!hasReceipt && isPaid ? (<button onClick={() => handleSelectCommission(comm)} className={`text-zinc-500 hover:text-purple-400 transition-colors ${isSelected ? 'text-purple-500' : ''}`}>{isSelected ? <CheckSquare size={18} /> : <Square size={18} />}</button>) : (<div className="w-4 h-4 mx-auto" />)}</td>
                                             <td className="px-6 py-4"><div className="font-bold text-purple-400">{displayCaptador}</div></td>
-                                            <td className="px-6 py-4"><div className="text-sm text-zinc-300 font-bold">{relatedClient?.nome_completo || 'N/A'}</div><div className="text-xs text-zinc-500">{relatedCase?.titulo || 'Avulso'}</div></td>
-                                            <td className="px-6 py-4 text-sm text-zinc-400 font-mono">{formatDateDisplay(comm.data_vencimento)}</td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-zinc-300 font-bold">{relatedClient?.nome_completo || 'N/A'}</div>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <div className="text-xs text-zinc-500">{relatedCase?.titulo || 'Avulso'}</div>
+                                                    {isPaid ? (
+                                                        <span className="text-[9px] bg-emerald-500/10 text-emerald-500 px-1 rounded uppercase font-black tracking-tighter">PAGO</span>
+                                                    ) : (
+                                                        <span className="text-[9px] bg-yellow-500/10 text-yellow-500 px-1 rounded uppercase font-black tracking-tighter">PENDENTE</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-zinc-400 font-mono">{formatDateDisplay(comm.data_vencimento)}</div>
+                                                {isPaid && comm.data_pagamento && (
+                                                    <div className="text-[9px] text-zinc-500 italic">Efetivado: {formatDateDisplay(comm.data_pagamento)}</div>
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4 text-sm font-bold text-right text-red-400">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comm.valor)}</td>
                                             <td className="px-6 py-4 text-center">{hasReceipt ? ((receiptInfo?.status_assinatura === 'assinado' || receiptInfo?.status === 'signed') ? (<span className="inline-flex items-center gap-1 text-[10px] bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 rounded-full"><FileCheck size={12} /> Assinado</span>) : (<span className="inline-flex items-center gap-1 text-[10px] bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-2 py-0.5 rounded-full"><FileText size={12} /> Gerado</span>)) : (<span className="text-zinc-600 text-xs">-</span>)}</td>
-                                            <td className="px-6 py-4 text-right"><button onClick={() => deleteFinancialRecord(comm.id)} className="p-2 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={18} /></button></td>
+                                            <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                                                {!isPaid && (
+                                                    <button
+                                                        onClick={() => {
+                                                            if (confirm('Deseja confirmar o pagamento desta comissão agora?')) {
+                                                                addFinancialRecord({
+                                                                    ...comm,
+                                                                    status_pagamento: true,
+                                                                    data_pagamento: new Date().toISOString()
+                                                                });
+                                                            }
+                                                        }}
+                                                        className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all"
+                                                        title="Confirmar Pagamento"
+                                                    >
+                                                        <CheckCircle size={18} />
+                                                    </button>
+                                                )}
+                                                <button onClick={() => deleteFinancialRecord(comm.id)} className="p-2 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={18} /></button>
+                                            </td>
                                         </motion.tr>
                                     );
                                 })}

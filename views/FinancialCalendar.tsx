@@ -92,7 +92,7 @@ const FinancialCalendar: React.FC = () => {
             if (instError) throw instError;
             if (finError) throw finError;
 
-            // 3. Normalize and Merge
+            // 3. Normalize and Merge with Deduplication
             const normalizedInst: UnifiedReceipt[] = (instData || []).map(i => {
                 const client = i.cases?.clients;
                 return {
@@ -115,27 +115,37 @@ const FinancialCalendar: React.FC = () => {
                 };
             });
 
-            const normalizedFin: UnifiedReceipt[] = (finData || []).map(f => {
-                const client = f.clients || f.cases?.clients;
-                return {
-                    id: f.id,
-                    source: 'financial',
-                    data_vencimento: f.data_vencimento.split('T')[0],
-                    valor: f.valor,
-                    pago: f.status_pagamento,
-                    data_pagamento: f.data_pagamento,
-                    titulo: f.titulo,
-                    case_id: f.case_id,
-                    case_type: f.cases?.tipo || 'Avulso',
-                    client_name: client?.nome_completo || 'Cliente s/ Cadastro',
-                    client_id: client?.id || f.client_id || '',
-                    filial: f.filial || client?.filial || '',
-                    captador: client?.captador || '',
-                    cidade: client?.cidade || '',
-                    telefone: client?.telefone || '',
-                    foto: client?.foto
-                };
-            });
+            // Criar conjunto de chaves para deduplicação (Caso + Valor + Data)
+            const installmentKeys = new Set(normalizedInst.map(i => `${i.case_id}-${i.valor}-${i.data_vencimento}`));
+
+            const normalizedFin: UnifiedReceipt[] = (finData || [])
+                .filter(f => {
+                    // Deduplicação: Se for um honorário automático que já existe como parcela, ignora
+                    const dateStr = f.data_vencimento.split('T')[0];
+                    const key = `${f.case_id}-${f.valor}-${dateStr}`;
+                    return !installmentKeys.has(key);
+                })
+                .map(f => {
+                    const client = f.clients || f.cases?.clients;
+                    return {
+                        id: f.id,
+                        source: 'financial',
+                        data_vencimento: f.data_vencimento.split('T')[0],
+                        valor: f.valor,
+                        pago: f.status_pagamento,
+                        data_pagamento: f.data_pagamento,
+                        titulo: f.titulo,
+                        case_id: f.case_id,
+                        case_type: f.cases?.tipo || 'Avulso',
+                        client_name: client?.nome_completo || 'Cliente s/ Cadastro',
+                        client_id: client?.id || f.client_id || '',
+                        filial: f.filial || client?.filial || '',
+                        captador: client?.captador || '',
+                        cidade: client?.cidade || '',
+                        telefone: client?.telefone || '',
+                        foto: client?.foto
+                    };
+                });
 
             setUnifiedReceipts([...normalizedInst, ...normalizedFin]);
         } catch (err: any) {
@@ -380,7 +390,7 @@ Podemos confirmar o recebimento?`;
                     </div>
 
                     {/* Days Grid */}
-                    <div className="flex-1 grid grid-cols-7 auto-rows-fr bg-[#0f1014]">
+                    <div className="flex-1 grid grid-cols-7 auto-rows-[140px] bg-[#0f1014] overflow-y-auto custom-scrollbar">
                         {loading ? (
                             <div className="col-span-7 flex items-center justify-center h-64">
                                 <Loader2 size={40} className="text-gold-500 animate-spin" />
@@ -435,7 +445,7 @@ Podemos confirmar o recebimento?`;
                 </div>
 
                 {/* SIDE PANEL DETAILS */}
-                <div className="w-full lg:w-96 bg-[#0f1014] border border-zinc-800 rounded-xl flex flex-col shadow-2xl h-[600px] lg:h-auto">
+                <div className="w-full lg:w-96 bg-[#0f1014] border border-zinc-800 rounded-xl flex flex-col shadow-2xl h-[600px] lg:h-[755px]">
                     <div className="p-4 border-b border-zinc-800 bg-[#131418]">
                         <h3 className="font-bold text-white flex items-center gap-2">
                             <span className="text-gold-500 text-lg">{selectedDate.getDate()}</span>

@@ -81,6 +81,17 @@ const NewFinancialModal: React.FC<NewFinancialModalProps> = ({
                             </div>
                         </div>
                     </div>
+
+                    {/* Observação */}
+                    <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Observações</label>
+                        <textarea
+                            className="w-full bg-black border border-zinc-700 rounded p-2 text-white outline-none focus:border-emerald-500 h-20 resize-none"
+                            value={newRecord.observacao || ''}
+                            onChange={e => setNewRecord({ ...newRecord, observacao: e.target.value })}
+                            placeholder="Adicione anotações sobre este registro..."
+                        />
+                    </div>
                     <button
                         onClick={handleAddAvulso}
                         className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg mt-2"

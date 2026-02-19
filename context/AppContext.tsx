@@ -1140,7 +1140,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         const validKeys = [
             'id', 'client_id', 'case_id', 'titulo', 'tipo', 'valor',
             'data_vencimento', 'status_pagamento', 'data_pagamento',
-            'forma_pagamento', 'recebedor', 'tipo_conta', 'conta', 'tipo_movimentacao', 'is_honorary'
+            'forma_pagamento', 'recebedor', 'tipo_conta', 'conta', 'tipo_movimentacao', 'is_honorary', 'observacao'
         ];
 
         const payload: any = {};
@@ -1421,7 +1421,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                     is_honorary: true,
                     forma_pagamento: paymentDetails?.forma_pagamento,
                     recebedor: paymentDetails?.recebedor,
-                    conta: paymentDetails?.conta
+                    conta: paymentDetails?.conta,
+                    observacao: paymentDetails?.observacao
                 };
 
                 const { error: finError } = await supabase.from('financial_records').insert([financialRecord]);

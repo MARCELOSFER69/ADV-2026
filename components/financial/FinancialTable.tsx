@@ -45,6 +45,11 @@ const renderPaymentDetails = (record: FinancialRecord) => {
                     <Building2 size={10} /> {record.tipo_conta ? `${record.tipo_conta} - ` : ''}{record.conta}
                 </div>
             )}
+            {record.observacao && (
+                <div className="mt-1 text-[10px] text-zinc-400 italic">
+                    "{record.observacao}"
+                </div>
+            )}
         </div>
     );
 };

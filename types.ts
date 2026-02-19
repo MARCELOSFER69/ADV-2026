@@ -275,6 +275,7 @@ export interface CaseInstallment {
   recebedor?: string;
   tipo_conta?: 'PF' | 'PJ';
   conta?: string;
+  observacao?: string;
 }
 
 export interface CaseHistory {
@@ -345,9 +346,15 @@ export interface FinancialRecord {
   conta?: string;
   is_honorary?: boolean;
   data_pagamento?: string;
-  clients?: { nome_completo: string; cpf_cnpj: string };
-  cases?: { titulo: string; numero_processo: string; client_id: UUID };
+  clients?: { nome_completo: string; cpf_cnpj: string; filial?: string };
+  cases?: {
+    titulo: string;
+    numero_processo: string;
+    client_id: UUID;
+    clients?: { nome_completo: string; cpf_cnpj: string; filial?: string };
+  };
   filial?: Branch;
+  observacao?: string;
 }
 
 export interface FinancialReceiver {

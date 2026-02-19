@@ -32,6 +32,7 @@ interface PaymentConfirmationModalProps {
         receiver: string;
         accType: 'PJ' | 'PF';
         account: string;
+        observacao: string;
     };
     onAddNewReceiver?: () => void;
 }
@@ -167,6 +168,16 @@ const PaymentConfirmationModal: React.FC<PaymentConfirmationModalProps> = ({
                             </div>
                         </motion.div>
                     )}
+
+                    <div>
+                        <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2 tracking-widest">Observações / Descrição</label>
+                        <textarea
+                            className="w-full bg-black/20 border border-white/5 rounded-xl px-3 py-2 text-sm text-white focus:border-emerald-500/50 outline-none resize-none h-20"
+                            value={data.observacao}
+                            onChange={e => setData(prev => ({ ...prev, observacao: e.target.value }))}
+                            placeholder="Adicione anotações sobre este pagamento..."
+                        />
+                    </div>
                 </div>
 
                 <div className="p-6 bg-black/20 border-t border-white/5 flex gap-3">
@@ -205,13 +216,14 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
     const [receiverSetter, setReceiverSetter] = useState<((val: string) => void) | null>(null);
     // STATE: ADD FINANCIAL
     const [isAddingFinancial, setIsAddingFinancial] = useState(false);
-    const [newFinancial, setNewFinancial] = useState<{ desc: string, type: FinancialType, val: string, date: string, isHonorary: boolean, isPaidNow: boolean }>({
+    const [newFinancial, setNewFinancial] = useState<{ desc: string, type: FinancialType, val: string, date: string, isHonorary: boolean, isPaidNow: boolean, observacao: string }>({
         desc: '',
         type: FinancialType.DESPESA,
         val: '',
         date: new Date().toISOString().substring(0, 10),
         isHonorary: false,
-        isPaidNow: true
+        isPaidNow: false,
+        observacao: ''
     });
     const [captadorCommission, setCaptadorCommission] = useState<string | null>(null);
 
@@ -222,6 +234,7 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
         receiver: existingReceivers[0] || '',
         accType: 'PJ' as 'PJ' | 'PF', // Fixed: actually use existing receivers/accounts logic or defaults
         account: existingAccounts[0] || '',
+        observacao: ''
     });
 
     // STATE: HONORARIOS CONFIRMATION
@@ -231,6 +244,7 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
         receiver: existingReceivers[0] || '',
         accType: 'PJ' as 'PJ' | 'PF',
         account: existingAccounts[0] || '',
+        observacao: ''
     });
 
     const [isGeneratingParcels, setIsGeneratingParcels] = useState(false);
@@ -244,6 +258,7 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
         receiver: existingReceivers[0] || '',
         accType: 'PJ' as 'PJ' | 'PF',
         account: existingAccounts[0] || '',
+        observacao: ''
     });
 
     const receiverOptions = React.useMemo(() => [
@@ -281,7 +296,8 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                 data_pagamento: new Date().toISOString(),
                 forma_pagamento: data.method,
                 recebedor: data.receiver,
-                conta: data.account
+                conta: data.account,
+                observacao: data.observacao
             });
         }
         setIsConfirmingHonorarios(false);
@@ -292,7 +308,8 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
             await toggleInstallmentPaid(isConfirmingInstallment, client?.nome_completo || 'Cliente', {
                 forma_pagamento: data.method,
                 recebedor: data.receiver,
-                conta: data.account
+                conta: data.account,
+                observacao: data.observacao
             });
         }
         setIsConfirmingInstallment(null);
@@ -306,7 +323,8 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                 data_pagamento: new Date().toISOString(),
                 forma_pagamento: data.method,
                 recebedor: data.receiver,
-                conta: data.account
+                conta: data.account,
+                observacao: data.observacao
             });
         }
         setIsConfirmingRecord(null);
@@ -330,12 +348,13 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
             data_vencimento: newFinancial.date ? new Date(newFinancial.date).toISOString() : new Date().toISOString(),
             status_pagamento: newFinancial.isPaidNow,
             captador_nome: captadorNome || undefined,
-            is_honorary: newFinancial.isHonorary
+            is_honorary: newFinancial.isHonorary,
+            observacao: newFinancial.observacao
         };
 
         await onAddFinancial(newRecord);
         setIsAddingFinancial(false);
-        setNewFinancial({ desc: '', type: FinancialType.DESPESA, val: '', date: new Date().toISOString().substring(0, 10), isHonorary: false, isPaidNow: true });
+        setNewFinancial({ desc: '', type: FinancialType.DESPESA, val: '', date: new Date().toISOString().substring(0, 10), isHonorary: false, isPaidNow: false, observacao: '' });
     };
 
     const handleConfirmRecordPayment = async () => {
@@ -348,6 +367,7 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
             recebedor: recordConfirmationData.method === 'Conta' ? recordConfirmationData.receiver : undefined,
             conta: recordConfirmationData.method === 'Conta' ? recordConfirmationData.account : undefined,
             tipo_conta: recordConfirmationData.method === 'Conta' ? recordConfirmationData.accType : undefined,
+            observacao: recordConfirmationData.observacao,
             data_vencimento: new Date().toISOString() // Set current date as payment date
         };
 
@@ -400,7 +420,8 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                     is_honorary: true,
                     forma_pagamento: honorariosData.method,
                     recebedor: honorariosData.receiver || undefined,
-                    conta: honorariosData.account || undefined
+                    conta: honorariosData.account || undefined,
+                    observacao: honorariosData.observacao
                 };
                 await onAddFinancial(financialRecord);
             }
@@ -410,13 +431,13 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
     };
 
     const handleToggleInstallment = async (inst: CaseInstallment, clientName: string) => {
-        // Se estiver desmarcando, ou se destino for Cliente, faz o toggle direto
-        if (inst.pago || inst.destino === 'Cliente') {
+        // Se estiver desmarcando, faz o toggle direto
+        if (inst.pago) {
             await toggleInstallmentPaid(inst, clientName);
             return;
         }
 
-        // Se estiver marcando como PAGO para o ESCRITÓRIO, abre o modal de detalhes
+        // Se estiver marcando como PAGO, abre o modal de detalhes
         setIsConfirmingInstallment(inst);
     };
 
@@ -427,7 +448,8 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
             forma_pagamento: installmentData.method,
             recebedor: installmentData.receiver,
             tipo_conta: installmentData.accType,
-            conta: installmentData.account
+            conta: installmentData.account,
+            observacao: installmentData.observacao
         };
 
         await toggleInstallmentPaid(isConfirmingInstallment, client?.nome_completo || 'Cliente', paymentDetails);
@@ -766,6 +788,15 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                     <span className={`text-sm ${newFinancial.isPaidNow ? 'text-green-500 font-bold' : 'text-zinc-400'}`}>Pago agora?</span>
                                 </label>
                             </div>
+                            <div className="lg:col-span-4">
+                                <label className="text-xs text-slate-400 block mb-1">Observações</label>
+                                <textarea
+                                    className="w-full bg-[#131418] border border-white/10 rounded px-3 py-2 text-sm text-white focus:border-gold-500 outline-none resize-none h-16"
+                                    value={newFinancial.observacao}
+                                    onChange={e => setNewFinancial({ ...newFinancial, observacao: e.target.value })}
+                                    placeholder="Notas adicionais..."
+                                />
+                            </div>
                         </div>
                         <div className="flex justify-end gap-2">
                             <button onClick={() => setIsAddingFinancial(false)} className="px-3 py-1.5 text-xs text-zinc-500 hover:text-white">Cancelar</button>
@@ -798,10 +829,10 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                         )}
                                     </div>
 
-                                    {(record.forma_pagamento || record.recebedor) && (
+                                    {(record.forma_pagamento || record.recebedor || record.observacao) && (
                                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-zinc-400 font-medium">
                                             {record.forma_pagamento && (
-                                                <div className="flex items-center gap-1.5">
+                                                <div className="flex items-center gap-1.5 font-bold text-zinc-300">
                                                     <Wallet size={12} className="text-green-500" />
                                                     {record.forma_pagamento}
                                                 </div>
@@ -813,9 +844,14 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                                 </div>
                                             )}
                                             {record.conta && (
-                                                <div className="flex items-center gap-1.5">
+                                                <div className="flex items-center gap-1.5 font-mono">
                                                     <Building size={12} className="text-zinc-500" />
                                                     {record.conta}
+                                                </div>
+                                            )}
+                                            {record.observacao && (
+                                                <div className="flex items-center gap-1.5 w-full mt-1 text-zinc-400 italic bg-white/5 px-2 py-1 rounded border border-white/5">
+                                                    "{record.observacao}"
                                                 </div>
                                             )}
                                         </div>
@@ -827,7 +863,7 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                     }`}>
                                     {record.tipo === FinancialType.DESPESA ? '-' : '+'} {(record.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                 </span>
-                                {record.tipo === FinancialType.RECEITA && !record.status_pagamento && (
+                                {(!record.status_pagamento) && (
                                     <button
                                         onClick={() => setIsConfirmingRecord(record)}
                                         className="px-3 py-1.5 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 text-emerald-500 hover:text-black rounded-lg text-xs font-black uppercase tracking-widest transition-all border border-emerald-500/20"
