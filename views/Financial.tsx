@@ -655,6 +655,7 @@ const Financial: React.FC = () => {
                         toggleGroup={toggleGroup}
                         navigateToCase={navigateToCase}
                         deleteFinancialRecord={deleteFinancialRecord}
+                        onUpdateFinancialRecord={addFinancialRecord}
                     />
                 </>
             ) : (

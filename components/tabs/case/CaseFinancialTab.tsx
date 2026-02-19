@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FinancialRecord, FinancialType, Case, CaseStatus, GPS, Client, OfficeExpense, CaseInstallment, CaseType } from '../../../types';
 import { BadgeDollarSign, Plus, Trash2, AlertTriangle, Check, DollarSign, Wallet, FileText, Calendar, User, Building, MessageCircle, Clock, UserPlus, X } from 'lucide-react';
 import { formatCurrencyInput, parseCurrencyToNumber } from '../../../services/formatters';
-import { formatDateDisplay, getTodayBrasilia } from '../../../utils/dateUtils';
+import { formatDateDisplay, getTodayBrasilia, cleanFinancialTitle } from '../../../utils/dateUtils';
 import CustomSelect from '../../ui/CustomSelect';
 import { useApp } from '../../../context/AppContext';
 import ReceiverFormModal from '../../modals/ReceiverFormModal';
@@ -261,6 +261,9 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
         observacao: ''
     });
 
+    const [editingPaymentDateRecordId, setEditingPaymentDateRecordId] = useState<string | null>(null);
+    const [tempPaymentDate, setTempPaymentDate] = useState<string>('');
+
     const receiverOptions = React.useMemo(() => [
         ...(receivers || []).map(r => ({
             label: `${r.name} (${r.type || 'PF'}) - ${r.bank_name || 'S/ Banco'}`,
@@ -454,6 +457,20 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
 
         await toggleInstallmentPaid(isConfirmingInstallment, client?.nome_completo || 'Cliente', paymentDetails);
         setIsConfirmingInstallment(null);
+    };
+
+    const handleUpdatePaymentDate = async (record: FinancialRecord) => {
+        if (!tempPaymentDate) return;
+        try {
+            await onAddFinancial({
+                ...record,
+                data_pagamento: new Date(tempPaymentDate).toISOString()
+            });
+            setEditingPaymentDateRecordId(null);
+            showToast('success', 'Data de pagamento atualizada!');
+        } catch (error) {
+            showToast('error', 'Erro ao atualizar data de pagamento.');
+        }
     };
 
     const handleGenerate = async () => {
@@ -817,15 +834,53 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                     <DollarSign size={14} />
                                 </div>
                                 <div>
-                                    <div className="text-sm text-white font-medium">{record.titulo}</div>
+                                    <div className="text-sm text-white font-medium" title={record.titulo}>{cleanFinancialTitle(record.titulo).replace(/\(Ref.*?\)/gi, '').trim()}</div>
                                     <div className="text-xs text-zinc-500 flex items-center gap-2 mt-1">
                                         <span>{formatDateDisplay(record.data_vencimento)}</span>
                                         {record.is_honorary && <span className="bg-gold-500/10 text-gold-500 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">Honorário</span>}
                                         {record.tipo_movimentacao === 'Comissao' && <span className="bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">Comissão</span>}
                                         {record.status_pagamento && record.data_pagamento && (
-                                            <span className="text-emerald-500 font-bold ml-1">
-                                                (Pago: {formatDateDisplay(record.data_pagamento)})
-                                            </span>
+                                            <div className="inline-flex items-center ml-1">
+                                                {editingPaymentDateRecordId === record.id ? (
+                                                    <div className="flex items-center gap-1 animate-in fade-in zoom-in duration-200">
+                                                        <input
+                                                            type="date"
+                                                            className="bg-zinc-800 border border-emerald-500/50 rounded px-1.5 py-0.5 text-[10px] text-white outline-none focus:ring-1 focus:ring-emerald-500"
+                                                            value={tempPaymentDate}
+                                                            onChange={(e) => setTempPaymentDate(e.target.value)}
+                                                            autoFocus
+                                                            onBlur={() => {
+                                                                // Delay to allow clicking the Save button if needed, 
+                                                                // but usually we save on blur or specific button
+                                                                setTimeout(() => setEditingPaymentDateRecordId(null), 200);
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') handleUpdatePaymentDate(record);
+                                                                if (e.key === 'Escape') setEditingPaymentDateRecordId(null);
+                                                            }}
+                                                        />
+                                                        <button
+                                                            onMouseDown={(e) => e.preventDefault()} // Prevent blur before click
+                                                            onClick={() => handleUpdatePaymentDate(record)}
+                                                            className="p-1 bg-emerald-500 text-black rounded hover:bg-emerald-400 transition-colors"
+                                                        >
+                                                            <Check size={10} strokeWidth={4} />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingPaymentDateRecordId(record.id);
+                                                            setTempPaymentDate(record.data_pagamento!.split('T')[0]);
+                                                        }}
+                                                        className="text-emerald-500 font-bold hover:text-emerald-400 hover:bg-emerald-500/10 px-1 rounded transition-all cursor-pointer flex items-center gap-1 group/pago"
+                                                        title="Clique para alterar a data de pagamento"
+                                                    >
+                                                        (Pago: {formatDateDisplay(record.data_pagamento)})
+                                                        <Clock size={10} className="opacity-0 group-hover/pago:opacity-100 transition-opacity" />
+                                                    </button>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
 

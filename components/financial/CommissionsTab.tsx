@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { HandCoins, CheckSquare, Square, FileText, FileCheck, Trash2, CheckCircle, Clock, FilePlus, Paperclip, ExternalLink } from 'lucide-react';
 import { FinancialRecord, CommissionReceipt, FinancialType } from '../../types';
-import { formatDateDisplay } from '../../utils/dateUtils';
+import { formatDateDisplay, cleanFinancialTitle } from '../../utils/dateUtils';
 
 interface CommissionsTabProps {
     totalCommissions: number;
@@ -50,6 +50,21 @@ const CommissionsTab: React.FC<CommissionsTabProps> = ({
     fileInputRef,
     addFinancialRecord
 }) => {
+    const [editingPaymentDateId, setEditingPaymentDateId] = React.useState<string | null>(null);
+    const [tempPaymentDate, setTempPaymentDate] = React.useState<string>('');
+
+    const handleUpdatePaymentDate = async (record: FinancialRecord) => {
+        if (!tempPaymentDate) return;
+        try {
+            await addFinancialRecord({
+                ...record,
+                data_pagamento: new Date(tempPaymentDate).toISOString()
+            });
+            setEditingPaymentDateId(null);
+        } catch (error) {
+            console.error('Erro ao atualizar data de pagamento:', error);
+        }
+    };
     return (
         <>
             <div className="mb-6 flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
@@ -126,7 +141,7 @@ const CommissionsTab: React.FC<CommissionsTabProps> = ({
                                             <td className="px-6 py-4">
                                                 <div className="text-sm text-zinc-300 font-bold">{relatedClient?.nome_completo || 'N/A'}</div>
                                                 <div className="flex items-center gap-2 mt-0.5">
-                                                    <div className="text-xs text-zinc-500">{relatedCase?.titulo || 'Avulso'}</div>
+                                                    <span className="font-bold text-zinc-200 block group-hover:text-gold-500 transition-colors text-sm">{cleanFinancialTitle(comm.titulo).replace(/\(Ref.*?\)/gi, '').trim()}</span>
                                                     {isPaid ? (
                                                         <span className="text-[9px] bg-emerald-500/10 text-emerald-500 px-1 rounded uppercase font-black tracking-tighter">PAGO</span>
                                                     ) : (
@@ -137,7 +152,43 @@ const CommissionsTab: React.FC<CommissionsTabProps> = ({
                                             <td className="px-6 py-4">
                                                 <div className="text-sm text-zinc-400 font-mono">{formatDateDisplay(comm.data_vencimento)}</div>
                                                 {isPaid && comm.data_pagamento && (
-                                                    <div className="text-[9px] text-zinc-500 italic">Efetivado: {formatDateDisplay(comm.data_pagamento)}</div>
+                                                    <div className="mt-1">
+                                                        {editingPaymentDateId === comm.id ? (
+                                                            <div className="flex items-center gap-1 animate-in fade-in zoom-in duration-200">
+                                                                <input
+                                                                    type="date"
+                                                                    className="bg-zinc-800 border border-purple-500/50 rounded px-1 py-0.5 text-[9px] text-white outline-none w-24"
+                                                                    value={tempPaymentDate}
+                                                                    onChange={(e) => setTempPaymentDate(e.target.value)}
+                                                                    autoFocus
+                                                                    onBlur={() => setTimeout(() => setEditingPaymentDateId(null), 200)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') handleUpdatePaymentDate(comm);
+                                                                        if (e.key === 'Escape') setEditingPaymentDateId(null);
+                                                                    }}
+                                                                />
+                                                                <button
+                                                                    onMouseDown={(e) => e.preventDefault()}
+                                                                    onClick={() => handleUpdatePaymentDate(comm)}
+                                                                    className="p-0.5 bg-purple-500 text-white rounded"
+                                                                >
+                                                                    <CheckCircle size={10} />
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingPaymentDateId(comm.id);
+                                                                    setTempPaymentDate(comm.data_pagamento!.split('T')[0]);
+                                                                }}
+                                                                className="text-[9px] text-zinc-500 italic hover:text-purple-400 hover:bg-purple-500/10 px-1 rounded transition-all flex items-center gap-1 group/editpago"
+                                                                title="Clique para alterar a data de efetivação"
+                                                            >
+                                                                Efetivado: {formatDateDisplay(comm.data_pagamento)}
+                                                                <Clock size={8} className="opacity-0 group-hover/editpago:opacity-100 transition-opacity" />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-sm font-bold text-right text-red-400">- {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(comm.valor)}</td>

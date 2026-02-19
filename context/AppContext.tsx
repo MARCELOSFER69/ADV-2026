@@ -1411,7 +1411,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                     id: crypto.randomUUID(),
                     case_id: inst.case_id,
                     client_id: (await supabase.from('cases').select('client_id').eq('id', inst.case_id).single()).data?.client_id,
-                    titulo: `${inst.parcela_numero}ª Parcela - Seguro Defeso (Ref. ${inst.data_vencimento})`,
+                    titulo: `${inst.parcela_numero}ª Parcela - Seguro Defeso`,
                     tipo: 'Receita',
                     tipo_movimentacao: 'Honorários',
                     valor: inst.valor,
@@ -1437,7 +1437,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             }
             // Limpeza Financeira: Se desmarcou como PAGO, remove o lançamento automático
             else if (!newState && inst.destino === 'Escritório') {
-                const targetTitulo = `${inst.parcela_numero}ª Parcela - Seguro Defeso (Ref. ${inst.data_vencimento})`;
+                const targetTitulo = `${inst.parcela_numero}ª Parcela - Seguro Defeso`;
                 const { error: delError } = await supabase.from('financial_records')
                     .delete()
                     .eq('case_id', inst.case_id)

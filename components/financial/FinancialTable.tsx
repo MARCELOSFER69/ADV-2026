@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, ChevronDown, ChevronRight, Eye, Trash2, Wallet, CreditCard, User, Building2, Building, DollarSign, X } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronRight, Eye, Trash2, Wallet, CreditCard, User, Building2, Building, DollarSign, X, Check, Clock } from 'lucide-react';
 import { FinancialRecord, FinancialType } from '../../types';
-import { formatDateDisplay } from '../../utils/dateUtils';
+import { formatDateDisplay, cleanFinancialTitle } from '../../utils/dateUtils';
 
 export type FinancialViewItem =
     | { type: 'group'; id: string; caseId?: string; clientId: string; title: string; clientName: string; totalEntradas: number; totalSaidas: number; saldo: number; children: any[]; dataReferencia: string; dataPagamentoMaxima?: string; status: 'PAGO' | 'PARCIAL' | 'PENDENTE' | 'DESPESA'; valorColorClass: string; isGpsSummary?: boolean }
@@ -14,6 +14,7 @@ interface FinancialTableProps {
     toggleGroup: (id: string) => void;
     navigateToCase: (caseId: string) => void;
     deleteFinancialRecord: (id: string) => void;
+    onUpdateFinancialRecord?: (record: FinancialRecord) => Promise<void>;
 }
 
 const renderPaymentDetails = (record: FinancialRecord) => {
@@ -59,10 +60,26 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
     expandedGroups,
     toggleGroup,
     navigateToCase,
-    deleteFinancialRecord
+    deleteFinancialRecord,
+    onUpdateFinancialRecord
 }) => {
     const [selectedGpsDay, setSelectedGpsDay] = React.useState<{ date: string; records: FinancialRecord[] } | null>(null);
     const [expandedDates, setExpandedDates] = React.useState<Set<string>>(new Set());
+    const [editingPaymentDateId, setEditingPaymentDateId] = React.useState<string | null>(null);
+    const [tempPaymentDate, setTempPaymentDate] = React.useState<string>('');
+
+    const handleUpdatePaymentDate = async (record: FinancialRecord) => {
+        if (!tempPaymentDate || !onUpdateFinancialRecord) return;
+        try {
+            await onUpdateFinancialRecord({
+                ...record,
+                data_pagamento: new Date(tempPaymentDate).toISOString()
+            });
+            setEditingPaymentDateId(null);
+        } catch (error) {
+            console.error('Erro ao atualizar data de pagamento:', error);
+        }
+    };
 
     const toggleDate = (date: string) => {
         const newExpanded = new Set(expandedDates);
@@ -102,7 +119,7 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                                                 <div className="flex items-center gap-3">
                                                     <div className={`p-1.5 rounded-md transition-colors border ${isExpanded ? 'bg-transparent border-gold-500 text-gold-500 shadow-[0_0_10px_rgba(234,179,8,0.2)]' : 'bg-transparent border-zinc-700 text-zinc-500 group-hover:text-zinc-300 group-hover:border-zinc-500'}`}>{isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</div>
                                                     <div>
-                                                        <span className="font-bold text-zinc-200 block group-hover:text-gold-500 transition-colors text-sm">{item.title}</span>
+                                                        <span className="font-bold text-zinc-200 block group-hover:text-gold-500 transition-colors text-sm">{cleanFinancialTitle(item.title).replace(/\(Ref.*?\)/gi, '').trim()}</span>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-[10px] text-zinc-500 flex items-center gap-1"><Calendar size={10} /> Ref: {formatDateDisplay(item.dataReferencia)}</span>
                                                             {item.dataPagamentoMaxima && (
@@ -167,9 +184,43 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                                                                                     <div className="flex flex-col">
                                                                                         <span>{formatDateDisplay(child.data_vencimento)}</span>
                                                                                         {child.data_pagamento && (
-                                                                                            <span className="text-[10px] text-emerald-500 font-bold mt-0.5">
-                                                                                                Pago: {formatDateDisplay(child.data_pagamento)}
-                                                                                            </span>
+                                                                                            <div className="mt-0.5">
+                                                                                                {editingPaymentDateId === child.id ? (
+                                                                                                    <div className="flex items-center gap-1">
+                                                                                                        <input
+                                                                                                            type="date"
+                                                                                                            className="bg-zinc-800 border border-emerald-500/50 rounded px-1 py-0.5 text-[9px] text-white outline-none w-24"
+                                                                                                            value={tempPaymentDate}
+                                                                                                            onChange={(e) => setTempPaymentDate(e.target.value)}
+                                                                                                            autoFocus
+                                                                                                            onBlur={() => setTimeout(() => setEditingPaymentDateId(null), 200)}
+                                                                                                            onKeyDown={(e) => {
+                                                                                                                if (e.key === 'Enter') handleUpdatePaymentDate(child);
+                                                                                                                if (e.key === 'Escape') setEditingPaymentDateId(null);
+                                                                                                            }}
+                                                                                                        />
+                                                                                                        <button
+                                                                                                            onMouseDown={(e) => e.preventDefault()}
+                                                                                                            onClick={() => handleUpdatePaymentDate(child)}
+                                                                                                            className="p-0.5 bg-emerald-500 text-black rounded"
+                                                                                                        >
+                                                                                                            <Check size={8} />
+                                                                                                        </button>
+                                                                                                    </div>
+                                                                                                ) : (
+                                                                                                    <button
+                                                                                                        onClick={(e) => {
+                                                                                                            e.stopPropagation();
+                                                                                                            setEditingPaymentDateId(child.id);
+                                                                                                            setTempPaymentDate(child.data_pagamento.split('T')[0]);
+                                                                                                        }}
+                                                                                                        className="text-[10px] text-emerald-500 font-bold flex items-center gap-1 hover:bg-emerald-500/10 px-1 rounded transition-colors group/editpago"
+                                                                                                    >
+                                                                                                        Pago: {formatDateDisplay(child.data_pagamento)}
+                                                                                                        <Clock size={8} className="opacity-0 group-hover/editpago:opacity-100" />
+                                                                                                    </button>
+                                                                                                )}
+                                                                                            </div>
                                                                                         )}
                                                                                     </div>
                                                                                 </td>
@@ -177,13 +228,13 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                                                                                     {child.clients?.nome_completo ? (
                                                                                         <div>
                                                                                             <div className="font-semibold text-zinc-200">{child.clients.nome_completo}</div>
-                                                                                            <div className="text-[10px] text-zinc-500">{child.titulo}</div>
+                                                                                            <div className="text-[10px] text-zinc-500">{cleanFinancialTitle(child.titulo).replace(/\(Ref.*?\)/gi, '').trim()}</div>
                                                                                         </div>
                                                                                     ) : (
                                                                                         <>
                                                                                             {child.tipo === FinancialType.COMISSAO && <span className="mr-2 text-[9px] font-bold bg-purple-500/20 text-purple-300 px-1 py-0.5 rounded uppercase">COMISSÃO</span>}
                                                                                             {child.isGpsDaySummary && <span className="mr-2 text-[9px] font-bold bg-blue-500/20 text-blue-300 px-1 py-0.5 rounded uppercase">RESUMO GPS</span>}
-                                                                                            {child.titulo}
+                                                                                            {cleanFinancialTitle(child.titulo).replace(/\(Ref.*?\)/gi, '').trim()}
                                                                                         </>
                                                                                     )}
                                                                                 </td>
@@ -218,13 +269,46 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                                             <div className="flex items-center gap-3">
                                                 <div className={`p-1.5 rounded-md bg-transparent border border-white/10 text-zinc-500`}>{record.is_office_expense ? <Building size={16} /> : <DollarSign size={16} />}</div>
                                                 <div>
-                                                    <span className="font-medium text-zinc-300 block group-hover:text-white transition-colors text-sm">{record.titulo}</span>
+                                                    <span className="font-medium text-zinc-300 block group-hover:text-white transition-colors text-sm">{cleanFinancialTitle(record.titulo).replace(/\(Ref.*?\)/gi, '').trim()}</span>
                                                     <div className="flex items-center gap-2 mt-0.5">
                                                         <span className="text-[10px] text-zinc-500 flex items-center gap-1"><Calendar size={10} /> {formatDateDisplay(record.data_vencimento)}</span>
                                                         {record.data_pagamento && (
-                                                            <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-1 leading-none">
-                                                                <DollarSign size={8} /> Pago: {formatDateDisplay(record.data_pagamento)}
-                                                            </span>
+                                                            <div className="flex items-center">
+                                                                {editingPaymentDateId === record.id ? (
+                                                                    <div className="flex items-center gap-1 ml-2">
+                                                                        <input
+                                                                            type="date"
+                                                                            className="bg-zinc-800 border border-emerald-500/50 rounded px-1 py-0.5 text-[9px] text-white outline-none w-24"
+                                                                            value={tempPaymentDate}
+                                                                            onChange={(e) => setTempPaymentDate(e.target.value)}
+                                                                            autoFocus
+                                                                            onBlur={() => setTimeout(() => setEditingPaymentDateId(null), 200)}
+                                                                            onKeyDown={(e) => {
+                                                                                if (e.key === 'Enter') handleUpdatePaymentDate(record);
+                                                                                if (e.key === 'Escape') setEditingPaymentDateId(null);
+                                                                            }}
+                                                                        />
+                                                                        <button
+                                                                            onMouseDown={(e) => e.preventDefault()}
+                                                                            onClick={() => handleUpdatePaymentDate(record)}
+                                                                            className="p-0.5 bg-emerald-500 text-black rounded"
+                                                                        >
+                                                                            <Check size={8} />
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setEditingPaymentDateId(record.id);
+                                                                            setTempPaymentDate(record.data_pagamento!.split('T')[0]);
+                                                                        }}
+                                                                        className="text-[10px] text-emerald-500 font-bold flex items-center gap-1 leading-none hover:bg-emerald-500/10 px-1 rounded transition-colors group/editpago ml-1"
+                                                                    >
+                                                                        <DollarSign size={8} /> Pago: {formatDateDisplay(record.data_pagamento)}
+                                                                        <Clock size={8} className="opacity-0 group-hover/editpago:opacity-100" />
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -300,7 +384,7 @@ const FinancialTable: React.FC<FinancialTableProps> = ({
                                                         {record.clients?.nome_completo || 'Cliente Não Identificado'}
                                                     </div>
                                                     <div className="text-[10px] text-zinc-500 mt-0.5 italic">
-                                                        {record.titulo}
+                                                        {cleanFinancialTitle(record.titulo).replace(/\(Ref.*?\)/gi, '').trim()}
                                                     </div>
                                                 </div>
                                             </div>
