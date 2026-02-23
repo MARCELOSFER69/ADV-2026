@@ -461,7 +461,7 @@ const Sidebar: React.FC = () => {
 
     // Derived Permissions
     const permissions = useMemo(() => {
-        const SUPER_ADMIN_EMAIL = 'marcelofernando@escritorio.com';
+        const SUPER_ADMIN_EMAIL = 'marcelo@escritorio.com';
         const isSuperAdmin = user?.email?.trim().toLowerCase() === SUPER_ADMIN_EMAIL.trim().toLowerCase();
         const isAdmin = isSuperAdmin || user?.permissions?.role === 'admin';
 

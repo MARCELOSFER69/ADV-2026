@@ -52,7 +52,86 @@ const GpsCalculator: React.FC = () => {
     const [guidesDatabaseStatus, setGuidesDatabaseStatus] = useState<Record<string, Case[]>>({});
     const [matchedClientsMap, setMatchedClientsMap] = useState<Record<string, { id: string; name: string }>>({});
     const [processingProgress, setProcessingProgress] = useState<{ current: number; total: number } | null>(null);
+    const [manualFileName, setManualFileName] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const STORAGE_KEY = 'gps_calculator_frozen_data';
+    const EXPIRATION_TIME = 4 * 60 * 60 * 1000; // 4 hours
+
+    // --- PERSISTENCE LOGIC ---
+    useEffect(() => {
+        const savedData = localStorage.getItem(STORAGE_KEY);
+        if (savedData) {
+            try {
+                const { rawGuides, referenceMonth, fileName, timestamp } = JSON.parse(savedData);
+                const now = Date.now();
+
+                if (now - timestamp < EXPIRATION_TIME) {
+                    setRawGuides(rawGuides);
+                    setReferenceMonth(referenceMonth);
+                    setManualFileName(fileName);
+
+                    // Trigger database sync for the loaded CPFs
+                    syncDatabaseStatus(rawGuides);
+                } else {
+                    localStorage.removeItem(STORAGE_KEY);
+                }
+            } catch (err) {
+                console.error('Error loading GPS data:', err);
+                localStorage.removeItem(STORAGE_KEY);
+            }
+        }
+    }, []);
+
+    useEffect(() => {
+        if (rawGuides.length > 0) {
+            const dataToSave = {
+                rawGuides,
+                referenceMonth,
+                fileName: file?.name || manualFileName,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+        }
+    }, [rawGuides, referenceMonth, file]);
+
+    const syncDatabaseStatus = async (guides: GpsGuide[]) => {
+        const rawCpfs = [...new Set(guides.map(g => g.cpf))];
+        const normalizedCpfs = rawCpfs.map(normalizeCpfOrCnpj);
+
+        const { data: dbClients } = await supabase
+            .from('clients')
+            .select('id, nome_completo, cpf_cnpj')
+            .or(`cpf_cnpj.in.(${rawCpfs.map(c => `"${c}"`).join(',')}),cpf_cnpj.in.(${normalizedCpfs.map(c => `"${c}"`).join(',')})`);
+
+        const clientMap: Record<string, { id: string; name: string }> = {};
+        const clientIds: string[] = [];
+
+        if (dbClients) {
+            dbClients.forEach(c => {
+                const normC = normalizeCpfOrCnpj(c.cpf_cnpj || '');
+                clientMap[normC] = { id: c.id, name: c.nome_completo };
+                clientIds.push(c.id);
+            });
+            setMatchedClientsMap(clientMap);
+        }
+
+        if (clientIds.length > 0) {
+            const { data: casesWithGps } = await supabase
+                .from('cases')
+                .select('id, client_id, gps_lista, titulo')
+                .in('client_id', clientIds);
+
+            if (casesWithGps) {
+                const statusMap: Record<string, Case[]> = {};
+                casesWithGps.forEach(c => {
+                    if (!statusMap[c.client_id]) statusMap[c.client_id] = [];
+                    statusMap[c.client_id].push(c as unknown as Case);
+                });
+                setGuidesDatabaseStatus(statusMap);
+            }
+        }
+    };
 
     // --- ARITMÉTICA E PROCESSAMENTO ---
 
@@ -402,6 +481,8 @@ const GpsCalculator: React.FC = () => {
         setFile(null);
         setRawGuides([]);
         setError(null);
+        setManualFileName(null);
+        localStorage.removeItem(STORAGE_KEY);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
@@ -424,15 +505,17 @@ const GpsCalculator: React.FC = () => {
                 </div>
 
                 {processedGuides.length > 0 && (
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={handleClear}
-                        className="h-10 px-6 bg-[#131418] border border-white/10 hover:border-red-500/50 text-red-500 rounded-xl font-bold text-xs transition-all flex items-center gap-2 shadow-lg"
-                    >
-                        <Trash2 size={16} />
-                        <span>Limpar Auditoria</span>
-                    </motion.button>
+                    <div className="flex items-center gap-4">
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={handleClear}
+                            className="h-10 px-6 bg-[#131418] border border-white/10 hover:border-red-500/50 text-red-500 rounded-xl font-bold text-xs transition-all flex items-center gap-2 shadow-lg"
+                        >
+                            <Trash2 size={16} />
+                            <span>Limpar Auditoria</span>
+                        </motion.button>
+                    </div>
                 )}
             </div>
 
@@ -458,7 +541,7 @@ const GpsCalculator: React.FC = () => {
             </div>
 
             {/* ÁREA DE UPLOAD */}
-            {!file || processedGuides.length === 0 ? (
+            {processedGuides.length === 0 ? (
                 <div
                     className={`rounded-xl p-12 flex flex-col items-center justify-center text-center transition-all cursor-pointer group border-2 border-dashed ${isDragging ? 'border-yellow-500 bg-yellow-500/10' : 'bg-zinc-900/30 border-zinc-700 hover:border-zinc-500 hover:bg-zinc-900/50'}`}
                     onDragOver={handleDragOver}
@@ -563,7 +646,7 @@ const GpsCalculator: React.FC = () => {
                                 <h4 className="font-bold text-white text-sm flex items-center gap-2">
                                     <FileText size={16} className="text-yellow-500" /> Detalhamento das Guias
                                 </h4>
-                                <span className="text-xs text-zinc-500 hidden md:inline">| {file.name}</span>
+                                <span className="text-xs text-zinc-500 hidden md:inline">| {file?.name || manualFileName || 'Arquivo carregado'}</span>
                             </div>
 
                             <div className="relative w-full md:w-64">
