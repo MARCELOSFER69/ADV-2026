@@ -461,8 +461,8 @@ const Sidebar: React.FC = () => {
 
     // Derived Permissions
     const permissions = useMemo(() => {
-        const SUPER_ADMIN_EMAIL = 'marcelo@escritorio.com';
-        const isSuperAdmin = user?.email?.trim().toLowerCase() === SUPER_ADMIN_EMAIL.trim().toLowerCase();
+        const SUPER_ADMINS = ['marcelo@escritorio.com', 'marcelofernando@escritorio.com'];
+        const isSuperAdmin = user?.email && SUPER_ADMINS.includes(user.email.trim().toLowerCase());
         const isAdmin = isSuperAdmin || user?.permissions?.role === 'admin';
 
         // Helper to check permission, defaulting to true for admins if field is missing/null
