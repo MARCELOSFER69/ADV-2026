@@ -150,6 +150,23 @@ const ClientRow: React.FC<ClientRowProps> = ({
                         );
                         return <span className="text-[10px] font-medium px-2 py-0.5 bg-green-500/5 text-green-500/40 border border-green-500/10 rounded-full">Regular</span>;
                     })()}
+                    {col.id === 'status_processo' && (
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                            {client.cases && client.cases.length > 0 ? (
+                                client.cases.map((c, idx) => (
+                                    <span
+                                        key={c.id || idx}
+                                        className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold bg-gold-500/10 text-gold-500 border border-gold-500/20 whitespace-nowrap"
+                                        title={c.titulo}
+                                    >
+                                        {c.status}
+                                    </span>
+                                ))
+                            ) : (
+                                <span className="text-slate-500 text-[10px] italic">Sem Processos</span>
+                            )}
+                        </div>
+                    )}
                     {col.id === 'endereco' && <span className="text-xs text-slate-400 truncate max-w-[200px] block" title={client.endereco}>{client.endereco || '-'}</span>}
                     {col.id === 'nascimento' && <span className="text-xs text-slate-400">{formatDateDisplay(client.data_nascimento)}</span>}
                     {col.id === 'captador' && <span className="text-xs text-slate-400">{client.captador || '-'}</span>}

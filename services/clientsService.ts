@@ -81,6 +81,17 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
             if (filters.dateEnd) {
                 query = query.lte('data_cadastro', filters.dateEnd);
             }
+
+            // Filtro de Status Específico do Processo
+            if (filters.case_status && filters.case_status !== 'all') {
+                const { data: matchingClients } = await supabase
+                    .from('cases')
+                    .select('client_id')
+                    .eq('status', filters.case_status);
+
+                const matchingIds = matchingClients?.map(c => c.client_id) || [];
+                query = query.in('id', matchingIds);
+            }
         }
 
         // Paginação e Ordenação
@@ -197,6 +208,17 @@ export const fetchAllFilteredClientsData = async (search?: string, filters?: any
             }
             if (filters.dateEnd) {
                 query = query.lte('data_cadastro', filters.dateEnd);
+            }
+
+            // Filtro de Status Específico do Processo
+            if (filters.case_status && filters.case_status !== 'all') {
+                const { data: matchingClients } = await supabase
+                    .from('cases')
+                    .select('client_id')
+                    .eq('status', filters.case_status);
+
+                const matchingIds = matchingClients?.map(c => c.client_id) || [];
+                query = query.in('id', matchingIds);
             }
         }
 

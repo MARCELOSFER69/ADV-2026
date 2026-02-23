@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, SortAsc, ChevronDown, ChevronUp, Filter, Settings, LayoutGrid, LayoutList, ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
-import { Branch, ColumnConfig, Client } from '../../types';
+import { Search, X, SortAsc, ChevronDown, ChevronUp, Filter, Settings, LayoutGrid, LayoutList, ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ArrowRight, Snowflake } from 'lucide-react';
+import { Branch, ColumnConfig, Client, CaseStatus } from '../../types';
 import SizeScaler from '../ui/SizeScaler';
 
 interface ClientFiltersProps {
@@ -25,6 +25,8 @@ interface ClientFiltersProps {
     activeFilters: any;
     setActiveFilters: (filters: any) => void;
     clearFilters: () => void;
+    isFilterFrozen: boolean;
+    setIsFilterFrozen: (frozen: boolean) => void;
 }
 
 const ClientFilters: React.FC<ClientFiltersProps> = ({
@@ -47,7 +49,9 @@ const ClientFilters: React.FC<ClientFiltersProps> = ({
     saveUserPreferences,
     activeFilters,
     setActiveFilters,
-    clearFilters
+    clearFilters,
+    isFilterFrozen,
+    setIsFilterFrozen
 }) => {
     const [showSort, setShowSort] = useState(false);
 
@@ -104,6 +108,8 @@ const ClientFilters: React.FC<ClientFiltersProps> = ({
                         >
                             <Filter size={18} /> Filtros
                         </button>
+
+
 
                         {viewMode === 'list' && (
                             <button
@@ -246,6 +252,18 @@ const ClientFilters: React.FC<ClientFiltersProps> = ({
                                 </div>
 
                                 <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Status Específico</label>
+                                    <select
+                                        className="w-full bg-navy-900 text-white px-3 py-2 border border-white/10 rounded-lg text-sm outline-none focus:border-gold-500"
+                                        value={activeFilters.case_status}
+                                        onChange={(e) => setActiveFilters({ ...activeFilters, case_status: e.target.value })}
+                                    >
+                                        <option value="all">Todos</option>
+                                        {Object.values(CaseStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </div>
+
+                                <div>
                                     <label className="block text-xs font-medium text-slate-500 mb-1">Pendências</label>
                                     <select
                                         className="w-full bg-navy-900 text-white px-3 py-2 border border-white/10 rounded-lg text-sm outline-none focus:border-gold-500"
@@ -321,6 +339,7 @@ const ClientFilters: React.FC<ClientFiltersProps> = ({
                                     </select>
                                 </div>
 
+
                                 <div>
                                     <label className="block text-xs font-medium text-slate-500 mb-1">Profissão</label>
                                     <input
@@ -346,6 +365,26 @@ const ClientFilters: React.FC<ClientFiltersProps> = ({
                                             value={activeFilters.dateEnd}
                                             onChange={(e) => setActiveFilters({ ...activeFilters, dateEnd: e.target.value })}
                                         />
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col justify-end pb-1">
+                                    <div className="flex items-center gap-3 bg-navy-900/50 border border-white/5 rounded-lg px-3 py-2 h-[42px] hover:border-white/10 transition-all group">
+                                        <div
+                                            onClick={() => setIsFilterFrozen(!isFilterFrozen)}
+                                            className={`relative w-10 h-5 rounded-full cursor-pointer transition-colors duration-200 ${isFilterFrozen ? 'bg-blue-600' : 'bg-zinc-700'}`}
+                                        >
+                                            <motion.div
+                                                animate={{ x: isFilterFrozen ? 22 : 2 }}
+                                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                                className="absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm"
+                                            />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-bold text-white leading-none">CONGELAR FILTRO</span>
+                                            <span className="text-[9px] text-slate-500 leading-tight">Manter ativo por 4h</span>
+                                        </div>
+                                        <Snowflake size={14} className={`ml-auto ${isFilterFrozen ? 'text-blue-400 animate-pulse' : 'text-slate-600'}`} />
                                     </div>
                                 </div>
 

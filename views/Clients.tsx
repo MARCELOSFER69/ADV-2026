@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Search, Plus, Phone, Mail, FileText, X, MapPin, Eye, Calendar, User, ChevronRight, Filter, Edit2, Camera, Save, Building2, Loader2, MessageCircle, Clock, LayoutGrid, LayoutList, Settings, ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, CheckSquare, Copy, ArrowRight, CreditCard, Heart, Briefcase, Globe, Share2, AlertTriangle, CheckCircle2, Trash2, Archive, RefreshCw, Check, Lock, ChevronLeft, Users, Upload } from 'lucide-react';
+import { Search, Plus, Phone, Mail, FileText, X, MapPin, Eye, Calendar, User, ChevronRight, Filter, Edit2, Camera, Save, Building2, Loader2, MessageCircle, Clock, LayoutGrid, LayoutList, Settings, ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, CheckSquare, Copy, ArrowRight, CreditCard, Heart, Briefcase, Globe, Share2, AlertTriangle, CheckCircle2, Trash2, Archive, RefreshCw, Check, Lock, ChevronLeft, Users, Upload, Snowflake } from 'lucide-react';
 import { Client, Case, Branch, CaseStatus, ColumnConfig, Captador } from '../types';
 import CaseDetailsModal from '../components/modals/CaseDetailsModal';
 import WhatsAppModal from '../components/modals/WhatsAppModal';
@@ -35,12 +35,13 @@ const DEFAULT_CLIENT_COLUMNS: ColumnConfig[] = [
     { id: 'nascimento', label: 'Nascimento', visible: false, order: 7 },
     { id: 'captador', label: 'Captador', visible: false, order: 8 },
     { id: 'email', label: 'Email', visible: false, order: 9 },
-    { id: 'profissao', label: 'Profissão', visible: false, order: 10 },
-    { id: 'reap_21', label: 'REAP 2021', visible: false, order: 11 },
-    { id: 'reap_22', label: 'REAP 2022', visible: false, order: 12 },
-    { id: 'reap_23', label: 'REAP 2023', visible: false, order: 13 },
-    { id: 'reap_24', label: 'REAP 2024', visible: false, order: 14 },
-    { id: 'reap_25', label: 'REAP 2025', visible: false, order: 15 },
+    { id: 'status_processo', label: 'Status Processo', visible: true, order: 10 },
+    { id: 'profissao', label: 'Profissão', visible: false, order: 11 },
+    { id: 'reap_21', label: 'REAP 2021', visible: false, order: 12 },
+    { id: 'reap_22', label: 'REAP 2022', visible: false, order: 13 },
+    { id: 'reap_23', label: 'REAP 2023', visible: false, order: 14 },
+    { id: 'reap_24', label: 'REAP 2024', visible: false, order: 15 },
+    { id: 'reap_25', label: 'REAP 2025', visible: false, order: 16 },
 ];
 
 const PENDING_OPTIONS = [
@@ -91,7 +92,7 @@ const Clients: React.FC = () => {
     const [activeFilters, setActiveFilters] = useState({
         city: '', captador: '', status: 'all', filial: 'all', sexo: 'all',
         dateStart: '', dateEnd: '', pendencia: 'all', gps: 'all',
-        reap_anual: 'all', reap_2025: 'all', profissao: ''
+        reap_anual: 'all', reap_2025: 'all', profissao: '', case_status: 'all'
     });
 
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
@@ -112,6 +113,7 @@ const Clients: React.FC = () => {
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [selectedCase, setSelectedCase] = useState<Case | null>(null);
     const [isClientEditMode, setIsClientEditMode] = useState(false);
+    const [isFilterFrozen, setIsFilterFrozen] = useState(false);
     const [sortConfig, setSortConfig] = useState<{ key: keyof Client | 'status', direction: 'asc' | 'desc' }>({ key: 'nome_completo', direction: 'asc' });
     const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_CLIENT_COLUMNS);
     const [showColumnConfig, setShowColumnConfig] = useState(false);
@@ -359,6 +361,45 @@ const Clients: React.FC = () => {
         return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
     }, []);
 
+    // Congelar Filtro - Persistência
+    const FROZEN_FILTER_KEY = 'frozen_client_filters';
+    const FOUR_HOURS = 4 * 60 * 60 * 1000;
+
+    useEffect(() => {
+        const frozen = localStorage.getItem(FROZEN_FILTER_KEY);
+        if (frozen) {
+            try {
+                const { filters, search, timestamp } = JSON.parse(frozen);
+                const isExpired = Date.now() - timestamp > FOUR_HOURS;
+
+                if (!isExpired) {
+                    setActiveFilters(filters);
+                    setSearchTerm(search);
+                    setDebouncedSearch(search);
+                    setIsFilterFrozen(true);
+                } else {
+                    localStorage.removeItem(FROZEN_FILTER_KEY);
+                }
+            } catch (e) {
+                console.error("Erro ao carregar filtros congelados:", e);
+                localStorage.removeItem(FROZEN_FILTER_KEY);
+            }
+        }
+    }, []);
+
+    useEffect(() => {
+        if (isFilterFrozen) {
+            const data = {
+                filters: activeFilters,
+                search: searchTerm,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(FROZEN_FILTER_KEY, JSON.stringify(data));
+        } else {
+            localStorage.removeItem(FROZEN_FILTER_KEY);
+        }
+    }, [isFilterFrozen, activeFilters, searchTerm]);
+
     useEffect(() => {
         if (user?.preferences?.clientsViewMode) setViewMode(user.preferences.clientsViewMode);
         if (user?.preferences?.clientsColumns) {
@@ -465,7 +506,7 @@ const Clients: React.FC = () => {
     const clearFilters = useCallback(() => setActiveFilters({
         city: '', captador: '', status: 'all', filial: 'all', sexo: 'all',
         dateStart: '', dateEnd: '', pendencia: 'all', gps: 'all',
-        reap_anual: 'all', reap_2025: 'all', profissao: ''
+        reap_anual: 'all', reap_2025: 'all', profissao: '', case_status: 'all'
     }), []);
 
     // const duplicateClient = null; // Removido useMemo de filtro local. Recomenda-se query JIT se necessário.
@@ -609,6 +650,8 @@ const Clients: React.FC = () => {
                 activeFilters={activeFilters}
                 setActiveFilters={setActiveFilters}
                 clearFilters={clearFilters}
+                isFilterFrozen={isFilterFrozen}
+                setIsFilterFrozen={setIsFilterFrozen}
             />
 
             {isFetching ? (
