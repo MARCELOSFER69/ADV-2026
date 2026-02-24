@@ -37,11 +37,14 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
                 query = query.eq('status', 'arquivado');
             }
 
-            // Filtro de Pendências (Usando a coluna calculada da View)
+            // Filtro de Pendências (Usando a coluna calculada da View ou array bruto para específicos)
             if (filters.pendencia === 'com_pendencia') {
                 query = query.gt('pendencias_count', 0);
             } else if (filters.pendencia === 'sem_pendencia') {
                 query = query.eq('pendencias_count', 0);
+            } else if (filters.pendencia && filters.pendencia !== 'all') {
+                // Filtro para pendência específica usando a coluna 'pendencias' do tipo array
+                query = query.contains('pendencias', [filters.pendencia]);
             }
 
             // Filtro de Situação GPS (Usando a coluna calculada da View)
@@ -176,6 +179,9 @@ export const fetchAllFilteredClientsData = async (search?: string, filters?: any
                 query = query.gt('pendencias_count', 0);
             } else if (filters.pendencia === 'sem_pendencia') {
                 query = query.eq('pendencias_count', 0);
+            } else if (filters.pendencia && filters.pendencia !== 'all') {
+                // Filtro para pendência específica usando a coluna 'pendencias' do tipo array
+                query = query.contains('pendencias', [filters.pendencia]);
             }
 
             if (filters.gps && filters.gps !== 'all') {

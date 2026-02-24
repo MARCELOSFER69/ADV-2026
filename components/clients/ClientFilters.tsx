@@ -271,8 +271,15 @@ const ClientFilters: React.FC<ClientFiltersProps> = ({
                                         onChange={(e) => setActiveFilters({ ...activeFilters, pendencia: e.target.value })}
                                     >
                                         <option value="all">Todas</option>
-                                        <option value="com_pendencia">Com Pendências</option>
-                                        <option value="sem_pendencia">Regular</option>
+                                        <option value="com_pendencia">Com Pendências (Geral)</option>
+                                        <option value="sem_pendencia">Regular (Sem Pendência)</option>
+                                        <optgroup label="Tipo Específico">
+                                            <option value="Senha">Senha</option>
+                                            <option value="Duas Etapas">Duas Etapas</option>
+                                            <option value="Nível da Conta (Bronze)">Nível da Conta (Bronze)</option>
+                                            <option value="Pendência na Receita Federal">Pendência na Receita Federal</option>
+                                            <option value="Documentação Incompleta">Documentação Incompleta</option>
+                                        </optgroup>
                                     </select>
                                 </div>
 

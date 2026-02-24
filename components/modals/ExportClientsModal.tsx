@@ -34,6 +34,7 @@ const REPORT_COLUMNS = [
     { id: 'captador', label: 'Captador', default: true },
     { id: 'gps', label: 'Situação GPS', default: false },
     { id: 'profissao', label: 'Profissão', default: false },
+    { id: 'pendencias', label: 'Pendências Detalhadas', default: true },
     { id: 'reap_summary', label: 'Histórico REAP (Resumo)', default: false },
 ];
 
@@ -285,6 +286,9 @@ const ExportClientsModal: React.FC<ExportClientsModalProps> = ({
                                     c.gps_status_calculado === 'regular' ? 'Regular' : 'N/A';
                             break;
                         case 'profissao': value = c.profissao || 'N/A'; break;
+                        case 'pendencias':
+                            value = Array.isArray(c.pendencias) ? c.pendencias.join(', ') : 'N/A';
+                            break;
                         case 'reap_summary': {
                             const years = ['2021', '2022', '2023', '2024'];
                             const summary = years.map(y => `${y}: ${c.reap_history?.[y] ? 'OK' : 'Pendente'}`).join(' | ');
