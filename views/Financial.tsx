@@ -1,0 +1,726 @@
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useApp } from '../context/AppContext';
+import { FinancialType, Case, FinancialRecord, CommissionReceipt } from '../types';
+import CaseDetailsModal from '../components/modals/CaseDetailsModal';
+import CommissionReceiptModal from '../components/modals/CommissionReceiptModal';
+import { formatCurrencyInput, parseCurrencyToNumber } from '../services/formatters';
+import { useFinancial } from '../hooks/useFinancial';
+import { fetchUniqueAccounts } from '../services/financialService';
+
+// Sub-components
+import FinancialHeader, { PeriodMode } from '../components/financial/FinancialHeader';
+import FinancialSummaryCards from '../components/financial/FinancialSummaryCards';
+import FinancialTable, { FinancialViewItem } from '../components/financial/FinancialTable';
+import CommissionsTab from '../components/financial/CommissionsTab';
+import NewFinancialModal from '../components/financial/NewFinancialModal';
+import ExportFinancialModal from '../components/modals/ExportFinancialModal';
+
+type TabType = 'overview' | 'commissions';
+type SubTabType = 'list' | 'receipts';
+
+const Financial: React.FC = () => {
+    const {
+        showToast,
+        officeExpenses,
+        setCurrentView,
+        currentView,
+        setCaseToView,
+        deleteFinancialRecord,
+        commissionReceipts,
+        confirmReceiptSignature,
+        deleteCommissionReceipt,
+        uploadReceiptFile,
+        addFinancialRecord,
+        setClientToView,
+        globalBranchFilter
+    } = useApp();
+
+    const [activeTab, setActiveTab] = useState<TabType>('overview');
+    const [subTab, setSubTab] = useState<SubTabType>('list');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCase, setSelectedCase] = useState<Case | null>(null);
+
+    const [periodMode, setPeriodMode] = useState<PeriodMode>('month');
+    const [selectedDate, setSelectedDate] = useState(new Date());
+
+    // --- FILTROS ---
+    const [filterType, setFilterType] = useState<FinancialType | 'all'>('all');
+    const [filterStatus, setFilterStatus] = useState<'all' | 'paid' | 'pending'>('all');
+    const [filterMethod, setFilterMethod] = useState('all');
+    const [filterReceiver, setFilterReceiver] = useState('all');
+    const [filterAccount, setFilterAccount] = useState('all');
+    const [customStartDate, setCustomStartDate] = useState(new Date().toISOString().split('T')[0]);
+    const [customEndDate, setCustomEndDate] = useState(new Date().toISOString().split('T')[0]);
+    const [accounts, setAccounts] = useState<{ recebedor: string, conta: string }[]>([]);
+    const [showFilters, setShowFilters] = useState(false);
+
+    // --- DADOS BRUTOS (Sem filtros para popular dropdowns e filtrar localmente) ---
+    const { data: rawFinancial, summary: serverSummary, isLoading } = useFinancial({
+        periodMode,
+        selectedDate,
+        filters: {
+            startDate: periodMode === 'custom' ? customStartDate : undefined,
+            endDate: periodMode === 'custom' ? customEndDate : undefined
+        }
+    });
+
+    // --- FILTRAGEM LOCAL (Para UX estável e lógica consistente) ---
+    const financial = useMemo(() => {
+        return (rawFinancial || []).filter(item => {
+            // Filtro por Filial (Herança de filial do cliente/caso)
+            if (globalBranchFilter !== 'all') {
+                const clientFilial = item.clients?.filial || item.cases?.clients?.filial;
+                if (item.filial !== globalBranchFilter && clientFilial !== globalBranchFilter) return false;
+            }
+
+            // Filtro de Busca
+            if (searchTerm) {
+                const term = searchTerm.toLowerCase();
+                const match =
+                    (item.titulo || '').toLowerCase().includes(term) ||
+                    (item.recebedor || '').toLowerCase().includes(term) ||
+                    (item.captador_nome || '').toLowerCase().includes(term);
+                if (!match) return false;
+            }
+
+            // Filtro de Tipo
+            if (filterType !== 'all') {
+                if (filterType === FinancialType.COMISSAO) {
+                    const cleanTipo = (item.tipo || '').toString().toLowerCase();
+                    const cleanMov = (item.tipo_movimentacao || '').toString().toLowerCase();
+                    if (!cleanTipo.includes('comis') && !cleanMov.includes('comis')) return false;
+                } else if (item.tipo !== filterType) {
+                    return false;
+                }
+            }
+
+            // Filtro de Status
+            if (filterStatus !== 'all') {
+                const isPaid = item.status_pagamento;
+                if (filterStatus === 'paid' && !isPaid) return false;
+                if (filterStatus === 'pending' && isPaid) return false;
+            }
+
+            // Filtro de Forma
+            if (filterMethod !== 'all' && item.forma_pagamento !== filterMethod) return false;
+
+            // Filtro de Conta
+            if (filterAccount !== 'all') {
+                const [accReceiver, accName] = filterAccount.split('|');
+                if (item.conta !== accName) return false;
+                if (accReceiver !== 'Outros' && item.recebedor !== accReceiver) return false;
+            }
+
+            // Filtro de Recebedor/Captador
+            if (filterReceiver !== 'all') {
+                const recordReceiver = item.recebedor;
+                const recordCaptador = item.captador_nome;
+                const implicitCaptador = item.titulo && item.titulo.includes(' - ') ? item.titulo.split(' - ')[1] : null;
+
+                if (recordReceiver !== filterReceiver &&
+                    recordCaptador !== filterReceiver &&
+                    implicitCaptador !== filterReceiver) return false;
+            }
+
+            return true;
+        });
+    }, [rawFinancial, globalBranchFilter, searchTerm, filterType, filterStatus, filterMethod, filterAccount, filterReceiver]);
+
+    const [sortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'dataReferencia', direction: 'desc' });
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+    const [selectedCommissionIds, setSelectedCommissionIds] = useState<Set<string>>(new Set());
+    const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+    const [selectedReceipt, setSelectedReceipt] = useState<CommissionReceipt | undefined>(undefined);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
+
+    // Estados Modal Novo Lançamento (Avulso)
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [newRecord, setNewRecord] = useState<Partial<FinancialRecord>>({
+        titulo: '', valor: 0, tipo: FinancialType.RECEITA, data_vencimento: new Date().toISOString().split('T')[0], status_pagamento: true
+    });
+    const [amountStr, setAmountStr] = useState('');
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+    // --- LISTAS DINÂMICAS PARA OS DROPDOWNS (Baseadas em rawFinancial para estabilidade) ---
+    const uniqueMethods = useMemo(() => Array.from(new Set((rawFinancial || []).map(f => f.forma_pagamento).filter(Boolean))), [rawFinancial]);
+    const uniqueReceivers = useMemo(() => Array.from(new Set((rawFinancial || []).map(f => f.recebedor).filter(Boolean))), [rawFinancial]);
+    const uniqueCaptadores = useMemo(() => {
+        const comissoes = (rawFinancial || []).filter(f => {
+            const cleanTipo = (f.tipo || '').toString().toLowerCase();
+            const cleanMov = (f.tipo_movimentacao || '').toString().toLowerCase();
+            return cleanTipo.includes('comis') || cleanMov.includes('comis');
+        });
+        return Array.from(new Set(comissoes.map(f => {
+            if (f.captador_nome) return f.captador_nome;
+            if (f.titulo && f.titulo.includes(' - ')) return f.titulo.split(' - ')[1];
+            return f.recebedor;
+        }).filter(Boolean)));
+    }, [rawFinancial]);
+
+    useEffect(() => {
+        fetchUniqueAccounts().then(setAccounts);
+    }, []);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const urlTab = params.get('tab');
+        if (currentView === 'commissions' || urlTab === 'commissions') setActiveTab('commissions');
+        else setActiveTab('overview');
+    }, [currentView]);
+
+    const navigatePeriod = (direction: 'prev' | 'next') => {
+        const newDate = new Date(selectedDate);
+        if (periodMode === 'month') newDate.setMonth(newDate.getMonth() + (direction === 'next' ? 1 : -1));
+        else if (periodMode === 'year') newDate.setFullYear(newDate.getFullYear() + (direction === 'next' ? 1 : -1));
+        setSelectedDate(newDate);
+    };
+
+    const getPeriodLabel = () => {
+        if (periodMode === 'all') return 'Todo o Período';
+        if (periodMode === 'year') return selectedDate.getFullYear().toString();
+        const month = selectedDate.toLocaleString('pt-BR', { month: 'long' });
+        const year = selectedDate.getFullYear();
+        return `${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`;
+    };
+
+    const { processedData, totals } = useMemo(() => {
+        if (!financial) return { processedData: [], totals: { income: 0, expense: 0, balance: 0 } };
+        const groups: Record<string, any> = {};
+        const standaloneItems: any[] = [];
+
+        // Filtrar Despesas do Escritório pelo período selecionado
+        const filteredOfficeExpenses = officeExpenses.filter(e => {
+            const dateStr = e.data_despesa;
+
+            // FILTRO DE FILIAL (LOCAL)
+            const matchesBranch = globalBranchFilter === 'all' || e.filial === globalBranchFilter;
+            if (!matchesBranch) return false;
+
+            if (periodMode === 'all') return true;
+            if (!dateStr) return false;
+            const recordDate = dateStr.substring(0, 10);
+            const targetYear = selectedDate.getFullYear();
+            if (periodMode === 'year') return recordDate.startsWith(`${targetYear}`);
+            if (periodMode === 'month') {
+                const targetMonth = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                return recordDate.startsWith(`${targetYear}-${targetMonth}`);
+            }
+            return false;
+        });
+
+        // Agregação de despesas
+        const currentAggregatedOfficeExpenses: FinancialRecord[] = (() => {
+            const groups: Record<string, number> = {};
+            const paidExpenses = filteredOfficeExpenses.filter(e => e.status === 'Pago');
+
+            paidExpenses.forEach(expense => {
+                const key = expense.data_despesa.substring(0, 7);
+                if (!groups[key]) groups[key] = 0;
+                groups[key] += expense.valor;
+            });
+
+            return Object.entries(groups).map(([monthKey, totalValue]) => {
+                const [year, month] = monthKey.split('-');
+                const date = `${monthKey}-01`;
+                return {
+                    id: `office-agg-${monthKey}`,
+                    titulo: `Despesas Administrativas (Ref: ${month}/${year})`,
+                    tipo: FinancialType.DESPESA,
+                    valor: totalValue,
+                    data_vencimento: date,
+                    status_pagamento: true,
+                    is_office_expense: true
+                } as FinancialRecord;
+            });
+        })();
+
+        const allRecords = [...financial, ...currentAggregatedOfficeExpenses];
+
+        const filteredRecords = allRecords.filter(record => {
+            if (record.is_office_expense) return true;
+            if (searchTerm) {
+                const desc = record.titulo?.toLowerCase() || '';
+                const search = searchTerm.toLowerCase();
+
+                const getClientText = (rec: any) => {
+                    const c = Array.isArray(rec.clients) ? rec.clients[0] : rec.clients;
+                    const cc = Array.isArray(rec.cases?.clients) ? rec.cases.clients[0] : rec.cases?.clients;
+                    return `${c?.nome_completo || ''} ${c?.cpf_cnpj || ''} ${cc?.nome_completo || ''} ${cc?.cpf_cnpj || ''}`.toLowerCase();
+                };
+
+                const clientText = getClientText(record);
+                const recText = (record.recebedor || '').toLowerCase();
+                const capText = (record.captador_nome || '').toLowerCase();
+
+                return desc.includes(search) ||
+                    clientText.includes(search) ||
+                    recText.includes(search) ||
+                    capText.includes(search);
+            }
+            return true;
+        });
+
+        let calculatedIncome = 0;
+        let calculatedExpense = 0;
+
+        const gpsAggregationGroup: any = {
+            type: 'group',
+            id: 'group-gps-aggregated',
+
+
+            title: 'GUIAS GPS (INSS)',
+            clientName: 'Escritório',
+            totalEntradas: 0,
+            totalSaidas: 0,
+            children: [],
+            dataReferencia: '',
+            isGpsSummary: true
+        };
+
+        const dailyGps: Record<string, FinancialRecord[]> = {};
+
+        filteredRecords.forEach(record => {
+            // AGREGAR TODAS AS GPS (Pagas ou Pendentes)
+            if (record.tipo_movimentacao === 'GPS') {
+                const date = record.data_vencimento.substring(0, 10);
+                if (!dailyGps[date]) dailyGps[date] = [];
+                dailyGps[date].push(record);
+
+                // Somar ao total do grupo apenas se for pago?
+                // O usuário pediu "grupo somado".
+                // Se o financeiro mostra saldo, geralmente considera realizado.
+                // Mas para visualização de previsão, pode mostrar tudo.
+                // Vamos somar tudo ao valor do grupo para mostrar o "Volume Financeiro de GPS"
+                // E o status indicará se é Despesa Realizada ou Prevista.
+                // Mas a lógica do FinancialTable usa `totalSaidas` para calcular `saldo`.
+                // Se somarmos pendentes, o saldo ficará negativo "previsto".
+                // Isso é Ok. O status da linha vai indicar.
+
+                // Se quiser separar, teríamos dois grupos. Mas o usuário pediu "um grupo somado".
+
+                if (record.status_pagamento) {
+                    gpsAggregationGroup.totalSaidas += Number(record.valor) || 0;
+                } else {
+                    // Se for pendente, também somamos? 
+                    // Se somarmos, vai abater do saldo do dashboard se não cuidarmos.
+                    // Mas aqui estamos construindo `processedData`, que é visual.
+                    // O `totals` lá embaixo (lines 310+) usa `calculatedExpense` que soma `gpsAggregationGroup.totalSaidas`.
+                    // Se somarmos pendentes, vai parecer que já gastamos.
+                    // Melhor somar APENAS PAGOS para o TOTAL GERAL do Dashboard, mas mostrar o total do GRUPO incluindo pendentes?
+                    // A estrutura `FinancialViewItem` tem `saldo` derivado de `totalEntradas - totalSaidas`.
+                    // Vamos somar TUDO no grupo visual, mas cuidar com o `calculatedExpense`.
+
+                    // WAIT: `gpsAggregationGroup.totalSaidas` é usado para o `saldo` visual da linha.
+                    gpsAggregationGroup.totalSaidas += Number(record.valor) || 0;
+                }
+
+                if (!gpsAggregationGroup.dataReferencia || new Date(date) > new Date(gpsAggregationGroup.dataReferencia)) {
+                    gpsAggregationGroup.dataReferencia = date;
+                }
+                return; // Skip standard processing for GPS
+            }
+
+            let effectiveClientId = record.client_id;
+            if (!effectiveClientId && record.cases?.client_id) {
+                effectiveClientId = record.cases.client_id;
+            }
+
+            if (effectiveClientId) {
+                const clientId = effectiveClientId;
+                const getClientName = (rec: any) => {
+                    // 1. Tentar direto do registro (objeto ou primeiro do array)
+                    const directClient = Array.isArray(rec.clients) ? rec.clients[0] : rec.clients;
+                    if (directClient?.nome_completo) return directClient.nome_completo;
+
+                    // 2. Tentar via Caso (objeto ou primeiro do array)
+                    const caseClient = Array.isArray(rec.cases?.clients) ? rec.cases.clients[0] : rec.cases?.clients;
+                    if (caseClient?.nome_completo) return caseClient.nome_completo;
+
+                    return 'Cliente Desconhecido';
+                };
+
+                const clientName = getClientName(record);
+                if (!groups[clientId]) {
+                    groups[clientId] = {
+                        type: 'group',
+                        id: `group-${clientId}`,
+                        clientId: clientId,
+                        caseId: record.case_id,
+                        title: clientName,
+                        clientName: clientName,
+                        children: [],
+                        totalEntradas: 0,
+                        totalSaidas: 0,
+                        dataReferencia: record.data_vencimento
+                    };
+                }
+
+                const g = groups[clientId];
+                g.children.push(record);
+
+                if (new Date(record.data_vencimento) > new Date(g.dataReferencia)) {
+                    g.dataReferencia = record.data_vencimento;
+                }
+
+                if (record.status_pagamento) {
+                    const val = Number(record.valor) || 0;
+                    const cleanTipo = (record.tipo || '').toString().toLowerCase().trim();
+                    if (cleanTipo === 'receita') {
+                        g.totalEntradas += val;
+                        calculatedIncome += val;
+                    } else if (cleanTipo === 'despesa' || cleanTipo === 'comissao' || cleanTipo === 'comissão') {
+                        g.totalSaidas += val;
+                        calculatedExpense += val;
+                    }
+                }
+            } else {
+                standaloneItems.push({ type: 'single', data: record });
+                if (record.status_pagamento) {
+                    const val = Number(record.valor) || 0;
+                    const cleanTipo = (record.tipo || '').toString().toLowerCase().trim();
+                    if (cleanTipo === 'receita') {
+                        calculatedIncome += val;
+                    } else if (cleanTipo === 'despesa' || cleanTipo === 'comissao' || cleanTipo === 'comissão') {
+                        calculatedExpense += val;
+                    }
+                }
+            }
+        });
+
+        const processedGroups = Object.values(groups).map((g: any) => {
+            const saldo = g.totalEntradas - g.totalSaidas;
+            let status: 'PAGO' | 'PARCIAL' | 'PENDENTE' | 'DESPESA' = 'PENDENTE';
+            if (g.totalEntradas > 0) status = 'PAGO';
+            else if (g.totalSaidas > 0 && g.totalEntradas === 0) status = 'DESPESA';
+            else if (g.totalEntradas > 0 && g.totalEntradas < 500) status = 'PARCIAL';
+
+            let valorColorClass = 'text-zinc-200';
+            if (saldo > 0) valorColorClass = 'text-blue-400';
+            else if (saldo < 0) valorColorClass = 'text-red-400';
+
+            // Calcular a data de pagamento máxima (mais recente) entre os filhos pagos
+            let dataPagamentoMaxima = '';
+            g.children.forEach((c: any) => {
+                if (c.status_pagamento && c.data_pagamento) {
+                    const payDate = c.data_pagamento.substring(0, 10);
+                    if (!dataPagamentoMaxima || payDate > dataPagamentoMaxima) {
+                        dataPagamentoMaxima = payDate;
+                    }
+                }
+            });
+
+            return {
+                ...g,
+                saldo,
+                status,
+                valorColorClass,
+                dataPagamentoMaxima: dataPagamentoMaxima || undefined,
+                children: g.children.sort((a: any, b: any) => new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime())
+            } as FinancialViewItem;
+        });
+
+        // Finalize GPS Aggregation
+        if (gpsAggregationGroup.totalSaidas > 0) {
+            gpsAggregationGroup.saldo = -gpsAggregationGroup.totalSaidas;
+            gpsAggregationGroup.status = 'DESPESA';
+            gpsAggregationGroup.valorColorClass = 'text-red-400';
+
+            // Add ALL individual GPS records as children, sorted by date
+            // This satisfies the request to show individual items "separated" by line,
+            // while keeping them grouped in the main "GUIAS GPS" folder.
+            // visual separation by day is handled by the sorting.
+            const allGpsRecords = Object.values(dailyGps).flat().sort((a, b) =>
+                new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime()
+            );
+
+            const childrenWithHeaders: any[] = [];
+            let lastDate = '';
+
+            // Helper to calculate daily totals
+            const getDailyStats = (date: string) => {
+                const records = (dailyGps[date] || []).filter(r => r.tipo_movimentacao === 'GPS');
+                const total = records.filter(r => r.status_pagamento).reduce((sum, r) => sum + (Number(r.valor) || 0), 0);
+                const count = records.length;
+                return { total, count };
+            };
+
+            allGpsRecords.forEach(record => {
+                const currentDate = record.data_vencimento.substring(0, 10);
+                if (currentDate !== lastDate) {
+                    const stats = getDailyStats(currentDate);
+                    childrenWithHeaders.push({
+                        id: `header-${currentDate}`,
+                        isDateHeader: true,
+                        date: currentDate,
+                        data_vencimento: currentDate,
+                        total: stats.total,
+                        count: stats.count
+                    });
+                    lastDate = currentDate;
+                }
+                childrenWithHeaders.push(record);
+            });
+
+            gpsAggregationGroup.children = childrenWithHeaders;
+
+            standaloneItems.push(gpsAggregationGroup);
+
+            const totalPaidGps = allGpsRecords.filter(r => r.status_pagamento).reduce((sum, r) => sum + (Number(r.valor) || 0), 0);
+            calculatedExpense += totalPaidGps;
+        }
+
+        const sortedData = [...processedGroups, ...standaloneItems].flat().sort((a, b) => {
+            const dateA = a.type === 'group' ? a.dataReferencia : a.data.data_vencimento;
+            const dateB = b.type === 'group' ? b.dataReferencia : b.data.data_vencimento;
+            return sortConfig.direction === 'asc'
+                ? new Date(dateA).getTime() - new Date(dateB).getTime()
+                : new Date(dateB).getTime() - new Date(dateA).getTime();
+        });
+
+        return {
+            processedData: sortedData,
+            totals: {
+                income: calculatedIncome,
+                expense: calculatedExpense,
+                balance: calculatedIncome - calculatedExpense
+            }
+        };
+    }, [financial, officeExpenses, searchTerm, periodMode, selectedDate, sortConfig]);
+
+    const commissionsData = useMemo(() => {
+        return (financial || []).filter(f => (f.tipo === FinancialType.COMISSAO || f.tipo_movimentacao === 'Comissao') && !f.receipt_id)
+            .sort((a, b) => new Date(b.data_vencimento).getTime() - new Date(a.data_vencimento).getTime());
+    }, [financial]);
+
+    const totalCommissions = useMemo(() => commissionsData.reduce((acc, curr) => acc + (curr.status_pagamento ? Number(curr.valor) : 0), 0), [commissionsData]);
+    const totalPendingCommissions = useMemo(() => commissionsData.reduce((acc, curr) => acc + (!curr.status_pagamento ? Number(curr.valor) : 0), 0), [commissionsData]);
+
+    const toggleGroup = (id: string) => { const newSet = new Set(expandedGroups); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setExpandedGroups(newSet); };
+    const navigateToCase = (caseId: string) => { setCaseToView(caseId); setCurrentView('cases'); };
+    const handleExportCSV = () => { setIsExportModalOpen(true); };
+
+    const handleSelectCommission = (record: FinancialRecord) => {
+        if (record.receipt_id) { showToast('error', 'Este item já possui recibo gerado.'); return; }
+        const firstSelectedId = Array.from(selectedCommissionIds)[0];
+        if (firstSelectedId) {
+            const firstRecord = commissionsData.find(c => c.id === firstSelectedId);
+            const getCaptador = (r?: FinancialRecord) => r?.captador_nome || r?.titulo?.split(' - ')[1] || 'Unknown';
+            if (getCaptador(firstRecord) !== getCaptador(record)) {
+                if (!confirm(`Atenção: Seleção de outro captador. Limpar atual?`)) return;
+                setSelectedCommissionIds(new Set([record.id])); return;
+            }
+        }
+        const newSet = new Set(selectedCommissionIds);
+        if (newSet.has(record.id)) newSet.delete(record.id); else newSet.add(record.id);
+        setSelectedCommissionIds(newSet);
+    };
+
+    const currentCaptadorName = useMemo(() => {
+        if (selectedCommissionIds.size === 0) return '';
+        const firstId = Array.from(selectedCommissionIds)[0];
+        const record = commissionsData.find(c => c.id === firstId);
+        return record?.captador_nome || record?.titulo?.split(' - ')[1] || 'Não identificado';
+    }, [selectedCommissionIds, commissionsData]);
+
+    const handleOpenReceipt = (receipt: CommissionReceipt) => { setSelectedReceipt(receipt); setReceiptModalOpen(true); };
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]; if (file && activeUploadId) await uploadReceiptFile(activeUploadId, file);
+        setActiveUploadId(null); if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleAddAvulso = async () => {
+        if (!newRecord.titulo || !newRecord.valor) { showToast('error', 'Preencha dados.'); return; }
+
+        const recordToSave = {
+            id: crypto.randomUUID(),
+            ...newRecord,
+            // If it's already paid, ensure it has a payment date (today)
+            data_pagamento: newRecord.status_pagamento ? new Date().toISOString() : null
+        } as FinancialRecord;
+
+        await addFinancialRecord(recordToSave);
+        setIsModalOpen(false);
+        setNewRecord({
+            titulo: '',
+            valor: 0,
+            tipo: FinancialType.RECEITA,
+            data_vencimento: new Date().toISOString().split('T')[0],
+            status_pagamento: true
+        });
+        setAmountStr('');
+        showToast('success', 'Adicionado!');
+    };
+
+    const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value; setAmountStr(formatCurrencyInput(val));
+        setNewRecord({ ...newRecord, valor: parseCurrencyToNumber(formatCurrencyInput(val)) });
+    };
+
+    return (
+        <div className="h-full overflow-y-auto custom-scrollbar space-y-8 pb-20 animate-in fade-in duration-500">
+            <FinancialHeader
+                periodMode={periodMode}
+                setPeriodMode={setPeriodMode}
+                navigatePeriod={navigatePeriod}
+                getPeriodLabel={getPeriodLabel}
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                showFilters={showFilters}
+                setShowFilters={setShowFilters}
+                handleExportCSV={handleExportCSV}
+                customStartDate={customStartDate}
+                setCustomStartDate={setCustomStartDate}
+                customEndDate={customEndDate}
+                setCustomEndDate={setCustomEndDate}
+                view={activeTab}
+            />
+
+            {showFilters && (
+                <div className="bg-[#0f1014] p-4 rounded-xl border border-white/10 animate-in slide-in-from-top-2 grid grid-cols-2 lg:grid-cols-4 gap-4 shadow-xl">
+                    {activeTab === 'overview' ? (
+                        <>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Tipo</label>
+                                <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterType} onChange={(e) => setFilterType(e.target.value as any)}>
+                                    <option value="all">Todos</option>
+                                    <option value={FinancialType.RECEITA}>Receita</option>
+                                    <option value={FinancialType.DESPESA}>Despesa</option>
+                                    <option value={FinancialType.COMISSAO}>Comissão</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Status</label>
+                                <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
+                                    <option value="all">Todos</option>
+                                    <option value="paid">Pago</option>
+                                    <option value="pending">Pendente</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Forma</label>
+                                <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterMethod} onChange={(e) => setFilterMethod(e.target.value)}>
+                                    <option value="all">Todas</option>
+                                    <option value="Especie">Espécie</option>
+                                    <option value="Conta">Conta</option>
+                                    <option value="Pix">Pix</option>
+                                    <option value="Boleto">Boleto</option>
+                                    {uniqueMethods.filter(m => !['Especie', 'Conta', 'Pix', 'Boleto'].includes(m)).map(m => <option key={m as string} value={m as string}>{m as string}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Conta</label>
+                                <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterAccount} onChange={(e) => setFilterAccount(e.target.value)}>
+                                    <option value="all">Todas</option>
+                                    {accounts.map((a, i) => (
+                                        <option key={i} value={`${a.recebedor}|${a.conta}`}>
+                                            {a.recebedor !== 'Outros' ? `${a.recebedor} - ${a.conta}` : a.conta}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Captador</label>
+                                <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterReceiver} onChange={(e) => setFilterReceiver(e.target.value)}>
+                                    <option value="all">Todos</option>
+                                    {uniqueCaptadores.map((r, i) => (
+                                        <option key={i} value={r as string}>{r as string}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Status</label>
+                                <select className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-gold-500/50 transition-all cursor-pointer" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
+                                    <option value="all">Todos</option>
+                                    <option value="paid">Pago</option>
+                                    <option value="pending">Pendente</option>
+                                </select>
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {activeTab === 'overview' ? (
+                <>
+                    <FinancialSummaryCards totals={totals} />
+                    <FinancialTable
+                        processedData={processedData}
+                        expandedGroups={expandedGroups}
+                        toggleGroup={toggleGroup}
+                        navigateToCase={navigateToCase}
+                        deleteFinancialRecord={deleteFinancialRecord}
+                        onUpdateFinancialRecord={addFinancialRecord}
+                    />
+                </>
+            ) : (
+                <CommissionsTab
+                    totalCommissions={totalCommissions}
+                    totalPendingCommissions={totalPendingCommissions}
+                    subTab={subTab}
+                    setSubTab={setSubTab}
+                    selectedCommissionIds={selectedCommissionIds}
+                    commissionsData={commissionsData}
+                    allFinancial={financial}
+                    commissionReceipts={commissionReceipts}
+                    handleSelectCommission={handleSelectCommission}
+                    deleteFinancialRecord={deleteFinancialRecord}
+                    handleOpenReceipt={handleOpenReceipt}
+                    confirmReceiptSignature={confirmReceiptSignature}
+                    deleteCommissionReceipt={deleteCommissionReceipt}
+                    setReceiptModalOpen={setReceiptModalOpen}
+                    setActiveUploadId={setActiveUploadId}
+                    fileInputRef={fileInputRef}
+                    addFinancialRecord={addFinancialRecord}
+                />
+            )}
+
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/*,.pdf" onChange={handleFileChange} />
+
+            {selectedCase && (
+                <CaseDetailsModal
+                    caseItem={selectedCase}
+                    onClose={() => setSelectedCase(null)}
+                    onViewClient={(clientId) => {
+                        setClientToView(clientId);
+                        setCurrentView('clients');
+                        setSelectedCase(null);
+                    }}
+                />
+            )}
+
+            <CommissionReceiptModal
+                isOpen={receiptModalOpen}
+                onClose={() => { setReceiptModalOpen(false); setSelectedCommissionIds(new Set()); setSelectedReceipt(undefined); }}
+                selectedRecords={commissionsData.filter(c => selectedCommissionIds.has(c.id))}
+                captadorName={currentCaptadorName}
+                existingReceipt={selectedReceipt}
+            />
+
+            <NewFinancialModal
+                isModalOpen={isModalOpen}
+                setIsModalOpen={setIsModalOpen}
+                newRecord={newRecord}
+                setNewRecord={setNewRecord}
+                amountStr={amountStr}
+                handleAmountChange={handleAmountChange}
+                handleAddAvulso={handleAddAvulso}
+            />
+
+            <ExportFinancialModal
+                isOpen={isExportModalOpen}
+                onClose={() => setIsExportModalOpen(false)}
+                data={financial}
+                periodLabel={getPeriodLabel()}
+                showToast={showToast}
+            />
+        </div>
+    );
+};
+
+export default Financial;

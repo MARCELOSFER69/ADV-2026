@@ -1,0 +1,6 @@
+selenium
+undetected-chromedriver
+webdriver-manager
+requests
+pandas
+openpyxl
