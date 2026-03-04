@@ -91,15 +91,10 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
                 query = query.lte('data_cadastro', filters.dateEnd);
             }
 
-            // Filtro de Status Específico do Processo
+            // Filtro de Status Específico do Processo (Usando a coluna agregada da View)
             if (filters.case_status && filters.case_status !== 'all') {
-                const { data: matchingClients } = await supabase
-                    .from('cases')
-                    .select('client_id')
-                    .eq('status', filters.case_status);
-
-                const matchingIds = matchingClients?.map(c => c.client_id) || [];
-                query = query.in('id', matchingIds);
+                const normalizedStatus = filters.case_status.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                query = query.ilike('casos_status_unaccent', `%${normalizedStatus}%`);
             }
 
             // Filtro por Nome do Processo

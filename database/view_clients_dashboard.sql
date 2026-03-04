@@ -68,6 +68,18 @@ SELECT
         WHERE cs.client_id = c.id
         AND cs.status != 'Arquivado'
     ) AS casos_titulos_unaccent,
+    (
+        SELECT string_agg(cs.status::text, ', ') -- Agrega os status dos processos
+        FROM cases cs 
+        WHERE cs.client_id = c.id
+        AND cs.status != 'Arquivado'
+    ) AS casos_status,
+    (
+        SELECT unaccent(COALESCE(string_agg(cs.status::text, ', '), ''))
+        FROM cases cs 
+        WHERE cs.client_id = c.id
+        AND cs.status != 'Arquivado'
+    ) AS casos_status_unaccent,
 
     -- Nova coluna para Situação GPS (Cálculo no Banco)
     (

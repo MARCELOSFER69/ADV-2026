@@ -468,7 +468,7 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
                 data_fatal: newCase.data_fatal || undefined,
                 metadata: newCase.metadata
             };
-            addCase(caseData);
+            await addCase(caseData);
         }
 
         if (isBulk) {

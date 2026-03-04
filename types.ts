@@ -138,6 +138,8 @@ export interface Client {
   import_source?: 'imported' | null;
   casos_titulos?: string;
   casos_titulos_unaccent?: string;
+  casos_status?: string;
+  casos_status_unaccent?: string;
 }
 
 export interface Task {
