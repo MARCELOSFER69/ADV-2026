@@ -32,11 +32,15 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
                 query = query.eq('status_calculado', 'Inativo');
             } else if (filters.status === 'concedido') {
                 query = query.eq('status_calculado', 'Concedido');
+            } else if (filters.status === 'indeferido') {
+                query = query.eq('status_calculado', 'Indeferido');
             } else if (filters.status === 'arquivado') {
-                query = query.eq('status', 'arquivado');
-            } else {
-                // Por padrão, esconde registros arquivados se não estiver filtrando explicitamente por eles
-                query = query.neq('status', 'arquivado');
+                query = query.ilike('status', 'arquivado');
+            }
+
+            // Sempre esconde registros arquivados se não estiver filtrando explicitamente por eles
+            if (filters.status !== 'arquivado') {
+                query = query.not('status', 'ilike', 'arquivado');
             }
 
             // Filtro de Pendências (Usando a coluna calculada da View ou array bruto para específicos)
