@@ -3,10 +3,11 @@ CREATE TABLE IF NOT EXISTS timesheets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     date DATE NOT NULL DEFAULT CURRENT_DATE,
-    entry_1 TIMESTAMPTZ,
-    exit_1 TIMESTAMPTZ,
-    entry_2 TIMESTAMPTZ,
-    exit_2 TIMESTAMPTZ,
+    entry_1 TEXT,
+    exit_1 TEXT,
+    entry_2 TEXT,
+    exit_2 TEXT,
+    is_no_work BOOLEAN DEFAULT false,
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now(),
@@ -44,10 +45,13 @@ WITH CHECK (
     AND date <= CURRENT_DATE
 );
 
--- 4. Only Admins can update timesheets
-CREATE POLICY "Only admins can update timesheets" 
+-- 4. Users can update their own timesheets (only for past/present dates)
+--    Admins can update any timesheet
+CREATE POLICY "Users and admins can update timesheets" 
 ON timesheets FOR UPDATE 
 USING (
+  (auth.uid() = user_id AND date <= CURRENT_DATE)
+  OR
   EXISTS (
     SELECT 1 FROM user_permissions 
     WHERE user_permissions.email = auth.jwt()->>'email' 

@@ -136,6 +136,8 @@ export interface Client {
   updated_at?: string;
   gps_status_calculado?: 'puxada' | 'pendente' | 'regular' | null;
   import_source?: 'imported' | null;
+  casos_titulos?: string;
+  casos_titulos_unaccent?: string;
 }
 
 export interface Task {
@@ -480,6 +482,7 @@ export interface TimesheetEntry {
   entry_2: string | null;
   exit_2: string | null;
   notes: string | null;
+  is_no_work?: boolean;
   user_name?: string; // Para visualização ADM
 }
 

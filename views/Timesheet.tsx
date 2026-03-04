@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import {
     Clock, Calendar, Save, Loader2, ChevronLeft, ChevronRight,
-    User as UserIcon, AlertCircle, CheckCircle2, Info
+    User as UserIcon, AlertCircle, CheckCircle2, Info, Coffee, XCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { timesheetService } from '../services/timesheetService';
@@ -56,25 +56,35 @@ const Timesheet: React.FC = () => {
         setCurrentDate(next);
     };
 
-    const handleSaveEntry = async (date: string, field: keyof TimesheetEntry, value: string) => {
+    const handleSaveEntry = async (date: string, field: keyof TimesheetEntry, value: any) => {
+        if (!user) return;
         if (viewMode === 'individual' && isFuture(new Date(date + 'T12:00:00'))) return;
 
-        // Se for usuário comum, ele não deve conseguir editar (RLS vai bloquear, mas UI também ajuda)
-        // No entanto, o plano diz que usuários podem ADICIONAR, mas ADM altera.
-        // Vamos permitir editar se for hoje ou passado e o registro for novo ou se estivermos em modo ADM.
+        // Determinar o valor correto (bool para is_no_work, string ou null para o resto)
+        let finalValue = value;
+        if (field === 'is_no_work') {
+            finalValue = value === 'true' || value === true;
+        } else {
+            finalValue = value || null;
+        }
 
+        // SEMPRE usar o user_id do usuário logado para novos registros ou garantir consistência
         const existing = entries.find(e => e.date === date);
-        const entryData: Partial<TimesheetEntry> = existing
-            ? { ...existing, [field]: value || null }
-            : { user_id: user?.id, date, [field]: value || null };
+        const targetUserId = viewMode === 'admin' && existing ? existing.user_id : user.id;
+
+        const entryData: any = {
+            user_id: targetUserId,
+            date,
+            [field]: finalValue
+        };
 
         try {
             await timesheetService.saveEntry(entryData);
-            // Atualizar localmente
+
+            // Atualizar localmente de forma otimista
             if (existing) {
-                setEntries(entries.map(e => e.date === date ? { ...e, [field]: value || null } : e));
+                setEntries(entries.map(e => e.date === date ? { ...e, [field]: finalValue } : e));
             } else {
-                // Recarregar para pegar o ID e outros campos
                 loadData();
             }
         } catch (error: any) {
@@ -202,20 +212,30 @@ const Timesheet: React.FC = () => {
                                                             type="time"
                                                             value={entry ? (entry as any)[field] || '' : ''}
                                                             onChange={(e) => handleSaveEntry(dateStr, field as any, e.target.value)}
-                                                            disabled={!!(isFutureDay || (!isAdmin && entry && (entry as any)[field]))}
-                                                            className={`w-full bg-navy-800/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-gold-500/50 outline-none transition-all ${isFutureDay ? 'opacity-30 cursor-not-allowed' : 'hover:border-white/20'}`}
+                                                            disabled={!!(isFutureDay || (!isAdmin && entry && (entry as any)[field]) || entry?.is_no_work)}
+                                                            className={`w-full bg-navy-800/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-gold-500/50 outline-none transition-all ${isFutureDay || entry?.is_no_work ? 'opacity-30 cursor-not-allowed' : 'hover:border-white/20'}`}
                                                         />
                                                     </td>
                                                 ))}
                                                 <td className="px-6 py-4">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="..."
-                                                        value={entry?.notes || ''}
-                                                        onChange={(e) => handleSaveEntry(dateStr, 'notes', e.target.value)}
-                                                        disabled={!!(isFutureDay || (!isAdmin && entry?.notes))}
-                                                        className={`w-full bg-transparent border-b border-transparent hover:border-white/10 focus:border-gold-500/50 px-2 py-1 text-sm text-slate-400 placeholder:text-slate-700 outline-none transition-all ${isFutureDay ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                                    />
+                                                    <div className="flex items-center gap-3">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="..."
+                                                            value={entry?.notes || ''}
+                                                            onChange={(e) => handleSaveEntry(dateStr, 'notes', e.target.value)}
+                                                            disabled={!!(isFutureDay || (!isAdmin && entry?.notes) || entry?.is_no_work)}
+                                                            className={`flex-1 bg-transparent border-b border-transparent hover:border-white/10 focus:border-gold-500/50 px-2 py-1 text-sm text-slate-400 placeholder:text-slate-700 outline-none transition-all ${isFutureDay || entry?.is_no_work ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                        />
+                                                        <button
+                                                            onClick={() => handleSaveEntry(dateStr, 'is_no_work', entry?.is_no_work ? 'false' : 'true' as any)}
+                                                            title={entry?.is_no_work ? "Remover marcação de sem expediente" : "Marcar como sem expediente"}
+                                                            disabled={isFutureDay}
+                                                            className={`p-1.5 rounded-lg transition-all ${entry?.is_no_work ? 'bg-red-500/20 text-red-500' : 'text-slate-600 hover:bg-white/5 hover:text-slate-400'}`}
+                                                        >
+                                                            <Coffee size={16} />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );

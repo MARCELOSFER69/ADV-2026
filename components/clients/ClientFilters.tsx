@@ -64,7 +64,7 @@ const ClientFilters: React.FC<ClientFiltersProps> = ({
                         <input
                             ref={searchInputRef}
                             type="text"
-                            placeholder="Buscar por nome, CPF, cidade ou telefone..."
+                            placeholder="Buscar por nome, processo, CPF, cidade ou telefone..."
                             className="w-full bg-navy-950/50 text-white pl-10 pr-10 py-2.5 border border-white/10 rounded-lg focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 outline-none transition-all placeholder:text-slate-600"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -92,7 +92,7 @@ const ClientFilters: React.FC<ClientFiltersProps> = ({
                             >
                                 <SortAsc size={18} />
                                 <span className="hidden sm:inline">
-                                    {sortConfig.key === 'nome_completo' ? 'Nome' : sortConfig.key === 'filial' ? 'Filial' : sortConfig.key === 'captador' ? 'Captador' : 'Ordenar'}
+                                    {sortConfig.key === 'nome_completo' ? 'Nome' : sortConfig.key === 'filial' ? 'Filial' : sortConfig.key === 'captador' ? 'Captador' : sortConfig.key === 'casos_titulos' ? 'Processos' : 'Ordenar'}
                                 </span>
                                 <ChevronDown size={14} className={`transition-transform duration-200 ${showSort ? 'rotate-180' : ''}`} />
                             </button>
@@ -171,6 +171,12 @@ const ClientFilters: React.FC<ClientFiltersProps> = ({
                                     className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-all ${sortConfig.key === 'captador' ? 'bg-gold-600 text-white shadow-lg shadow-gold-600/20' : 'bg-navy-900 border border-white/10 text-slate-400 hover:border-white/20'}`}
                                 >
                                     Captador {sortConfig.key === 'captador' && (sortConfig.direction === 'asc' ? <ArrowDown size={14} /> : <ArrowUp size={14} />)}
+                                </button>
+                                <button
+                                    onClick={() => handleSort('casos_titulos' as any)}
+                                    className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-all ${sortConfig.key === 'casos_titulos' ? 'bg-gold-600 text-white shadow-lg shadow-gold-600/20' : 'bg-navy-900 border border-white/10 text-slate-400 hover:border-white/20'}`}
+                                >
+                                    Processos {sortConfig.key === 'casos_titulos' && (sortConfig.direction === 'asc' ? <ArrowDown size={14} /> : <ArrowUp size={14} />)}
                                 </button>
                             </div>
                         </motion.div>
@@ -368,6 +374,16 @@ const ClientFilters: React.FC<ClientFiltersProps> = ({
                                         <option value="sim">Sim (Cidades da Lista)</option>
                                         <option value="nao">Não (Outras Cidades)</option>
                                     </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Nome do Processo</label>
+                                    <input
+                                        className="w-full bg-navy-900 text-white px-3 py-2 border border-white/10 rounded-lg text-sm outline-none focus:border-gold-500"
+                                        placeholder="Filtrar por nome do processo"
+                                        value={activeFilters.casos_titulos || ''}
+                                        onChange={(e) => setActiveFilters({ ...activeFilters, casos_titulos: e.target.value })}
+                                    />
                                 </div>
 
                                 <div className="md:col-span-2">

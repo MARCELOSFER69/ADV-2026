@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, AlertTriangle, Phone, MapPin, MessageCircle, RefreshCw, Archive, Trash2, Eye } from 'lucide-react';
+import { Building2, AlertTriangle, Phone, MapPin, MessageCircle, RefreshCw, Archive, Trash2, Eye, Briefcase } from 'lucide-react';
 import { Client } from '../../types';
 import PendencyIndicator from '../ui/PendencyIndicator';
 import { isClientIncomplete } from '../../services/importService';
@@ -42,6 +42,18 @@ const ClientGridCard = React.memo(({ client, setSelectedClient, getClientStatus,
                     </div>
                 </PendencyIndicator>
             </div>
+
+            {client.casos_titulos && (
+                <div className="mb-3">
+                    <div className="text-[10px] uppercase font-bold text-slate-500 mb-1 flex items-center gap-1">
+                        <Briefcase size={10} /> Processos
+                    </div>
+                    <p className="text-xs text-gold-500/90 font-medium line-clamp-2 leading-relaxed bg-gold-500/5 p-2 rounded-lg border border-gold-500/10">
+                        {client.casos_titulos}
+                    </p>
+                </div>
+            )}
+
             <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-2 text-sm text-slate-400"><Phone size={14} /> {client.telefone || '-'}</div>
                 <div className="flex items-center gap-2 text-sm text-slate-400 truncate"><MapPin size={14} /> {client.cidade ? `${client.cidade} - ${client.uf}` : (client.endereco ? client.endereco.split(',')[0] : 'Endereço não informado')}</div>

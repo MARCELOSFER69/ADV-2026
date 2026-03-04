@@ -35,7 +35,7 @@ const DEFAULT_CLIENT_COLUMNS: ColumnConfig[] = [
     { id: 'nascimento', label: 'Nascimento', visible: false, order: 7 },
     { id: 'captador', label: 'Captador', visible: false, order: 8 },
     { id: 'email', label: 'Email', visible: false, order: 9 },
-    { id: 'status_processo', label: 'Status Processo', visible: true, order: 10 },
+    { id: 'casos_titulos', label: 'Processos', visible: true, order: 10 },
     { id: 'profissao', label: 'Profissão', visible: false, order: 11 },
     { id: 'reap_21', label: 'REAP 2021', visible: false, order: 12 },
     { id: 'reap_22', label: 'REAP 2022', visible: false, order: 13 },
@@ -93,7 +93,7 @@ const Clients: React.FC = () => {
         city: '', captador: '', status: 'all', filial: 'all', sexo: 'all',
         dateStart: '', dateEnd: '', pendencia: 'all', gps: 'all',
         reap_anual: 'all', reap_2025: 'all', profissao: '', case_status: 'all',
-        entrevista: 'all'
+        entrevista: 'all', casos_titulos: ''
     });
 
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
@@ -508,7 +508,7 @@ const Clients: React.FC = () => {
         city: '', captador: '', status: 'all', filial: 'all', sexo: 'all',
         dateStart: '', dateEnd: '', pendencia: 'all', gps: 'all',
         reap_anual: 'all', reap_2025: 'all', profissao: '', case_status: 'all',
-        entrevista: 'all'
+        entrevista: 'all', casos_titulos: ''
     }), []);
 
     // const duplicateClient = null; // Removido useMemo de filtro local. Recomenda-se query JIT se necessário.

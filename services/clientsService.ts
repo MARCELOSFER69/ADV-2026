@@ -12,9 +12,9 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
             const normalizedSearch = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const cleanSearch = search.replace(/\D/g, '');
             if (cleanSearch.length > 0) {
-                query = query.or(`nome_completo_unaccent.ilike.%${normalizedSearch}%,cpf_cnpj.ilike.%${search}%,cpf_cnpj.ilike.%${cleanSearch}%`);
+                query = query.or(`nome_completo_unaccent.ilike.%${normalizedSearch}%,cpf_cnpj.ilike.%${search}%,cpf_cnpj.ilike.%${cleanSearch}%,casos_titulos_unaccent.ilike.%${normalizedSearch}%`);
             } else {
-                query = query.ilike('nome_completo_unaccent', `%${normalizedSearch}%`);
+                query = query.or(`nome_completo_unaccent.ilike.%${normalizedSearch}%,casos_titulos_unaccent.ilike.%${normalizedSearch}%`);
             }
         }
 
@@ -98,6 +98,12 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
                 query = query.in('id', matchingIds);
             }
 
+            // Filtro por Nome do Processo
+            if (filters.casos_titulos && filters.casos_titulos !== '') {
+                const normalizedProcess = filters.casos_titulos.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                query = query.ilike('casos_titulos_unaccent', `%${normalizedProcess}%`);
+            }
+
             // Filtro de Entrevista (CML)
             if (filters.entrevista && filters.entrevista !== 'all') {
                 query = query.eq('is_entrevista', filters.entrevista === 'sim');
@@ -159,9 +165,9 @@ export const fetchAllFilteredClientsData = async (search?: string, filters?: any
             const normalizedSearch = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const cleanSearch = search.replace(/\D/g, '');
             if (cleanSearch.length > 0) {
-                query = query.or(`nome_completo_unaccent.ilike.%${normalizedSearch}%,cpf_cnpj.ilike.%${search}%,cpf_cnpj.ilike.%${cleanSearch}%`);
+                query = query.or(`nome_completo_unaccent.ilike.%${normalizedSearch}%,cpf_cnpj.ilike.%${search}%,cpf_cnpj.ilike.%${cleanSearch}%,casos_titulos_unaccent.ilike.%${normalizedSearch}%`);
             } else {
-                query = query.ilike('nome_completo_unaccent', `%${normalizedSearch}%`);
+                query = query.or(`nome_completo_unaccent.ilike.%${normalizedSearch}%,casos_titulos_unaccent.ilike.%${normalizedSearch}%`);
             }
         }
 
@@ -235,6 +241,12 @@ export const fetchAllFilteredClientsData = async (search?: string, filters?: any
 
                 const matchingIds = matchingClients?.map(c => c.client_id) || [];
                 query = query.in('id', matchingIds);
+            }
+
+            // Filtro por Nome do Processo
+            if (filters.casos_titulos && filters.casos_titulos !== '') {
+                const normalizedProcess = filters.casos_titulos.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                query = query.ilike('casos_titulos_unaccent', `%${normalizedProcess}%`);
             }
 
             // Filtro de Entrevista (CML)

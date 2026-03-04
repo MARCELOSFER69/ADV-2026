@@ -1,17 +1,17 @@
 import { supabase } from './supabaseClient';
 import { TimesheetEntry } from '../types';
 import { getTodayBrasilia } from '../utils/dateUtils';
+import { startOfMonth, endOfMonth, format, parseISO } from 'date-fns';
 
 export const timesheetService = {
     /**
      * Fetch timesheet entries for a specific user and month
      */
     async fetchUserTimesheets(userId: string, month: string): Promise<TimesheetEntry[]> {
-        const startDate = `${month}-01`;
-        // Get last day of month
-        const date = new Date(startDate);
-        const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-        const endDate = `${month}-${lastDay}`;
+        // month format: "yyyy-MM"
+        const monthDate = parseISO(`${month}-01`);
+        const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd');
+        const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd');
 
         const { data, error } = await supabase
             .from('timesheets')
@@ -29,17 +29,16 @@ export const timesheetService = {
      * Fetch all timesheets for all users (Admin only)
      */
     async fetchAllTimesheets(month: string): Promise<TimesheetEntry[]> {
-        const startDate = `${month}-01`;
-        const date = new Date(startDate);
-        const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-        const endDate = `${month}-${lastDay}`;
+        const monthDate = parseISO(`${month}-01`);
+        const startDate = format(startOfMonth(monthDate), 'yyyy-MM-dd');
+        const endDate = format(endOfMonth(monthDate), 'yyyy-MM-dd');
 
         const { data, error } = await supabase
             .from('timesheets')
             .select(`
-        *,
-        users:user_id (full_name)
-      `)
+                *,
+                users:user_id (full_name)
+            `)
             .gte('date', startDate)
             .lte('date', endDate)
             .order('date', { ascending: true });
