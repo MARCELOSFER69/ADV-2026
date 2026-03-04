@@ -1,4 +1,3 @@
-
 import { supabase } from './supabaseClient';
 import { Client, CaseStatus, ClientNote } from '../types';
 import { auditService } from './auditService';
@@ -94,6 +93,11 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
 
                 const matchingIds = matchingClients?.map(c => c.client_id) || [];
                 query = query.in('id', matchingIds);
+            }
+
+            // Filtro de Entrevista (CML)
+            if (filters.entrevista && filters.entrevista !== 'all') {
+                query = query.eq('is_entrevista', filters.entrevista === 'sim');
             }
         }
 
@@ -225,6 +229,11 @@ export const fetchAllFilteredClientsData = async (search?: string, filters?: any
 
                 const matchingIds = matchingClients?.map(c => c.client_id) || [];
                 query = query.in('id', matchingIds);
+            }
+
+            // Filtro de Entrevista (CML)
+            if (filters.entrevista && filters.entrevista !== 'all') {
+                query = query.eq('is_entrevista', filters.entrevista === 'sim');
             }
         }
 

@@ -357,6 +357,19 @@ const ClientFilters: React.FC<ClientFiltersProps> = ({
                                     />
                                 </div>
 
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Entrevista</label>
+                                    <select
+                                        className="w-full bg-navy-900 text-white px-3 py-2 border border-white/10 rounded-lg text-sm outline-none focus:border-gold-500"
+                                        value={activeFilters.entrevista || 'all'}
+                                        onChange={(e) => setActiveFilters({ ...activeFilters, entrevista: e.target.value })}
+                                    >
+                                        <option value="all">Todas</option>
+                                        <option value="sim">Sim (Cidades da Lista)</option>
+                                        <option value="nao">Não (Outras Cidades)</option>
+                                    </select>
+                                </div>
+
                                 <div className="md:col-span-2">
                                     <label className="block text-xs font-medium text-slate-500 mb-1">Data Cadastro</label>
                                     <div className="flex gap-2">

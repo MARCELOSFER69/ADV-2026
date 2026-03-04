@@ -92,7 +92,8 @@ const Clients: React.FC = () => {
     const [activeFilters, setActiveFilters] = useState({
         city: '', captador: '', status: 'all', filial: 'all', sexo: 'all',
         dateStart: '', dateEnd: '', pendencia: 'all', gps: 'all',
-        reap_anual: 'all', reap_2025: 'all', profissao: '', case_status: 'all'
+        reap_anual: 'all', reap_2025: 'all', profissao: '', case_status: 'all',
+        entrevista: 'all'
     });
 
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
@@ -506,7 +507,8 @@ const Clients: React.FC = () => {
     const clearFilters = useCallback(() => setActiveFilters({
         city: '', captador: '', status: 'all', filial: 'all', sexo: 'all',
         dateStart: '', dateEnd: '', pendencia: 'all', gps: 'all',
-        reap_anual: 'all', reap_2025: 'all', profissao: '', case_status: 'all'
+        reap_anual: 'all', reap_2025: 'all', profissao: '', case_status: 'all',
+        entrevista: 'all'
     }), []);
 
     // const duplicateClient = null; // Removido useMemo de filtro local. Recomenda-se query JIT se necessário.
