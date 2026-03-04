@@ -34,6 +34,9 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
                 query = query.eq('status_calculado', 'Concedido');
             } else if (filters.status === 'arquivado') {
                 query = query.eq('status', 'arquivado');
+            } else {
+                // Por padrão, esconde registros arquivados se não estiver filtrando explicitamente por eles
+                query = query.neq('status', 'arquivado');
             }
 
             // Filtro de Pendências (Usando a coluna calculada da View ou array bruto para específicos)
@@ -177,6 +180,9 @@ export const fetchAllFilteredClientsData = async (search?: string, filters?: any
                 query = query.eq('status_calculado', 'Concedido');
             } else if (filters.status === 'arquivado') {
                 query = query.eq('status', 'arquivado');
+            } else {
+                // Por padrão, esconde registros arquivados se não estiver filtrando explicitamente por eles
+                query = query.neq('status', 'arquivado');
             }
 
             if (filters.pendencia === 'com_pendencia') {
@@ -240,10 +246,24 @@ export const fetchAllFilteredClientsData = async (search?: string, filters?: any
         const sortKey = filters?.sortKey || 'nome_completo';
         const sortAsc = filters?.sortDirection !== 'desc';
 
-        const { data, error } = await query.order(sortKey, { ascending: sortAsc });
+        let allData: Client[] = [];
+        let page = 0;
+        const PAGE_SIZE = 1000;
 
-        if (error) throw error;
-        return (data || []) as Client[];
+        while (true) {
+            const { data, error } = await query
+                .order(sortKey, { ascending: sortAsc })
+                .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+            if (error) throw error;
+            if (!data || data.length === 0) break;
+
+            allData = [...allData, ...(data as Client[])];
+            if (data.length < PAGE_SIZE) break;
+            page++;
+        }
+
+        return allData;
     } catch (error) {
         console.error("Erro fetchAllFilteredClients:", error);
         throw error;
@@ -270,13 +290,26 @@ export const deleteClient = async (id: string, reason?: string) => {
 // ... existing code ...
 export const fetchAllClientsData = async (): Promise<Client[]> => {
     try {
-        const { data, error } = await supabase
-            .from('clients')
-            .select('*')
-            .order('nome_completo', { ascending: true });
+        let allData: Client[] = [];
+        let page = 0;
+        const PAGE_SIZE = 1000;
 
-        if (error) throw error;
-        return (data || []) as Client[];
+        while (true) {
+            const { data, error } = await supabase
+                .from('clients')
+                .select('*')
+                .order('nome_completo', { ascending: true })
+                .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+            if (error) throw error;
+            if (!data || data.length === 0) break;
+
+            allData = [...allData, ...(data as Client[])];
+            if (data.length < PAGE_SIZE) break;
+            page++;
+        }
+
+        return allData;
     } catch (error) {
         console.error("Error fetching all clients:", error);
         return [];
