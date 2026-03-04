@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../services/supabaseClient';
 import { CaseStatus, CaseType, Case } from '../../types';
-import { X, Save, FileText, User, Gavel, DollarSign, Hash, CreditCard, Search, ChevronDown, Check, AlertTriangle } from 'lucide-react';
+import { X, Save, FileText, User, Gavel, DollarSign, Hash, CreditCard, Search, ChevronDown, Check, AlertTriangle, Users } from 'lucide-react';
 import { formatCurrencyInput, formatProcessNumber, parseCurrencyToNumber } from '../../services/formatters';
 import { formatDateForDB } from '../../utils/dateUtils';
 import { useLockBodyScroll } from '../../hooks/useLockBodyScroll';
@@ -430,9 +430,12 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
     const hasDuplicate = existingCasesForClient.length > 0;
     const handleCreateCase = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newCase.client_id) { showToast('error', 'Selecione um cliente.'); return; }
+        if (!newCase.client_id && !newCaseParams?.bulkClientIds) { showToast('error', 'Selecione um cliente.'); return; }
 
-        if (existingCasesForClient.length > 0) {
+        const isBulk = !!newCaseParams?.bulkClientIds && newCaseParams.bulkClientIds.length > 0;
+        const targetClientIds = isBulk ? newCaseParams!.bulkClientIds! : [newCase.client_id!];
+
+        if (!isBulk && existingCasesForClient.length > 0) {
             const confirmed = await confirmCustom({
                 title: 'Processo Existente',
                 message: `O cliente já possui ${existingCasesForClient.length} processo(s) ativo(s) nesta categoria (${newCase.tipo}). Deseja criar mesmo assim?`,
@@ -444,27 +447,34 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
         }
 
         const modalidadeStr = newCase.modalidade ? ` (${newCase.modalidade})` : '';
-
         const caseType = (newCase.tipo as any) || SAFE_CIVIL;
-        const caseData: Case = {
-            id: crypto.randomUUID(),
-            client_id: newCase.client_id,
-            titulo: `${caseType}${modalidadeStr}`,
-            numero_processo: newCase.numero_processo || 'S/N',
-            modalidade: newCase.modalidade,
-            tribunal: newCase.tribunal || 'Administrativo',
-            valor_causa: newCase.valor_causa || 0,
-            status: (newCase.status as CaseStatus) || CaseStatus.PROTOCOLAR,
-            tipo: (newCase.tipo as any) || SAFE_CIVIL,
-            data_abertura: newCase.data_abertura || new Date().toISOString(),
-            acessos: [],
-            status_pagamento: (newCase.status_pagamento === 'Pago' ? 'Pago' : 'Pendente'),
-            valor_honorarios_pagos: newCase.valor_honorarios_pagos || 0,
-            data_fatal: newCase.data_fatal || undefined,
-            metadata: newCase.metadata
-        };
 
-        addCase(caseData);
+        // Loop por todos os clientes (ou apenas o único selecionado)
+        for (const cid of targetClientIds) {
+            const caseData: Case = {
+                id: crypto.randomUUID(),
+                client_id: cid,
+                titulo: `${caseType}${modalidadeStr}`,
+                numero_processo: newCase.numero_processo || 'S/N',
+                modalidade: newCase.modalidade,
+                tribunal: newCase.tribunal || 'Administrativo',
+                valor_causa: newCase.valor_causa || 0,
+                status: (newCase.status as CaseStatus) || CaseStatus.PROTOCOLAR,
+                tipo: (newCase.tipo as any) || SAFE_CIVIL,
+                data_abertura: newCase.data_abertura || new Date().toISOString(),
+                acessos: [],
+                status_pagamento: (newCase.status_pagamento === 'Pago' ? 'Pago' : 'Pendente'),
+                valor_honorarios_pagos: newCase.valor_honorarios_pagos || 0,
+                data_fatal: newCase.data_fatal || undefined,
+                metadata: newCase.metadata
+            };
+            addCase(caseData);
+        }
+
+        if (isBulk) {
+            showToast('success', `${targetClientIds.length} processos criados com sucesso!`);
+        }
+
         onClose();
     };
 
@@ -482,54 +492,69 @@ const NewCaseModal: React.FC<NewCaseModalProps> = ({ isOpen, onClose, forcedType
                 </div>
 
                 <form onSubmit={handleCreateCase} className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
-                    {/* Client Search */}
-                    <div className="relative" ref={searchWrapperRef}>
-                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Cliente (Busca por Nome ou CPF) *</label>
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
-                            <input
-                                type="text"
-                                className="w-full bg-[#09090b] border border-zinc-700 rounded-lg pl-10 pr-10 py-3 text-sm text-white outline-none focus:border-yellow-600 placeholder:text-zinc-600"
-                                placeholder="Digite o nome ou cole o CPF..."
-                                value={clientSearchTerm}
-                                onChange={(e) => {
-                                    setClientSearchTerm(e.target.value);
-                                    setIsClientListOpen(true);
-                                    if (e.target.value === '') setNewCase(prev => ({ ...prev, client_id: '' }));
-                                }}
-                                onFocus={() => setIsClientListOpen(true)}
-                                autoFocus={!newCase.client_id}
-                            />
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">
-                                {isSearchingClients ? <div className="animate-spin h-4 w-4 border-2 border-zinc-500 border-t-transparent rounded-full" /> : <ChevronDown size={16} />}
+                    {newCaseParams?.bulkClientIds && newCaseParams.bulkClientIds.length > 0 && (
+                        <div className="p-4 bg-gold-600/10 border border-gold-500/20 rounded-xl flex items-center gap-4 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-gold-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-gold-900/20">
+                                <Users size={20} />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="text-sm font-bold text-gold-500">Adição em Massa</h4>
+                                <p className="text-xs text-slate-400">
+                                    Você está criando o processo <strong>{newCase.tipo}</strong> para <strong>{newCaseParams.bulkClientIds.length} clientes</strong> simultaneamente.
+                                </p>
                             </div>
                         </div>
-                        {isClientListOpen && filteredClients.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 mt-1 bg-[#0f1014] border border-zinc-700 rounded-lg shadow-2xl max-h-60 overflow-y-auto z-50 custom-scrollbar">
-                                {filteredClients.map(client => (
-                                    <button key={client.id} type="button" onClick={() => handleSelectClient(client)} className={`w-full text-left px-4 py-3 text-sm hover:bg-zinc-800 transition-colors flex justify-between items-center border-b border-zinc-800 last:border-0 ${newCase.client_id === client.id ? 'bg-zinc-800/50' : ''}`}>
-                                        <div><span className="block text-white font-medium">{client.nome_completo}</span><span className="block text-zinc-500 text-xs font-mono">{client.cpf_cnpj}</span></div>
-                                        {newCase.client_id === client.id && <Check size={16} className="text-yellow-600" />}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                        {isClientListOpen && clientSearchTerm.length >= 2 && !isSearchingClients && filteredClients.length === 0 && (
-                            <div className="absolute top-full left-0 right-0 mt-1 bg-[#0f1014] border border-zinc-700 rounded-lg shadow-2xl p-4 text-center z-50">
-                                <span className="text-zinc-500 text-xs">Nenhum cliente encontrado.</span>
-                            </div>
-                        )}
+                    )}
 
-                        {hasDuplicate && (
-                            <div className="mt-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-1">
-                                <AlertTriangle className="text-red-500 shrink-0" size={18} />
-                                <div className="text-xs text-red-200">
-                                    <span className="font-bold block">Atenção: Duplicidade Detectada</span>
-                                    O cliente já possui {existingCasesForClient.length} processo(s) ativos nesta categoria ({newCase.tipo}).
+                    {!newCaseParams?.bulkClientIds && (
+                        <div className="relative" ref={searchWrapperRef}>
+                            <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Cliente (Busca por Nome ou CPF) *</label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+                                <input
+                                    type="text"
+                                    className="w-full bg-[#09090b] border border-zinc-700 rounded-lg pl-10 pr-10 py-3 text-sm text-white outline-none focus:border-yellow-600 placeholder:text-zinc-600"
+                                    placeholder="Digite o nome ou cole o CPF..."
+                                    value={clientSearchTerm}
+                                    onChange={(e) => {
+                                        setClientSearchTerm(e.target.value);
+                                        setIsClientListOpen(true);
+                                        if (e.target.value === '') setNewCase(prev => ({ ...prev, client_id: '' }));
+                                    }}
+                                    onFocus={() => setIsClientListOpen(true)}
+                                    autoFocus={!newCase.client_id}
+                                />
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">
+                                    {isSearchingClients ? <div className="animate-spin h-4 w-4 border-2 border-zinc-500 border-t-transparent rounded-full" /> : <ChevronDown size={16} />}
                                 </div>
                             </div>
-                        )}
-                    </div>
+                            {isClientListOpen && filteredClients.length > 0 && (
+                                <div className="absolute top-full left-0 right-0 mt-1 bg-[#0f1014] border border-zinc-700 rounded-lg shadow-2xl max-h-60 overflow-y-auto z-50 custom-scrollbar">
+                                    {filteredClients.map(client => (
+                                        <button key={client.id} type="button" onClick={() => handleSelectClient(client)} className={`w-full text-left px-4 py-3 text-sm hover:bg-zinc-800 transition-colors flex justify-between items-center border-b border-zinc-800 last:border-0 ${newCase.client_id === client.id ? 'bg-zinc-800/50' : ''}`}>
+                                            <div><span className="block text-white font-medium">{client.nome_completo}</span><span className="block text-zinc-500 text-xs font-mono">{client.cpf_cnpj}</span></div>
+                                            {newCase.client_id === client.id && <Check size={16} className="text-yellow-600" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            {isClientListOpen && clientSearchTerm.length >= 2 && !isSearchingClients && filteredClients.length === 0 && (
+                                <div className="absolute top-full left-0 right-0 mt-1 bg-[#0f1014] border border-zinc-700 rounded-lg shadow-2xl p-4 text-center z-50">
+                                    <span className="text-zinc-500 text-xs">Nenhum cliente encontrado.</span>
+                                </div>
+                            )}
+
+                            {hasDuplicate && (
+                                <div className="mt-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-1">
+                                    <AlertTriangle className="text-red-500 shrink-0" size={18} />
+                                    <div className="text-xs text-red-200">
+                                        <span className="font-bold block">Atenção: Duplicidade Detectada</span>
+                                        O cliente já possui {existingCasesForClient.length} processo(s) ativos nesta categoria ({newCase.tipo}).
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>

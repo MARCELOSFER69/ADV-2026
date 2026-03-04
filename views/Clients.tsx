@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Search, Plus, Phone, Mail, FileText, X, MapPin, Eye, Calendar, User, ChevronRight, Filter, Edit2, Camera, Save, Building2, Loader2, MessageCircle, Clock, LayoutGrid, LayoutList, Settings, ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, CheckSquare, Copy, ArrowRight, CreditCard, Heart, Briefcase, Globe, Share2, AlertTriangle, CheckCircle2, Trash2, Archive, RefreshCw, Check, Lock, ChevronLeft, Users, Upload, Snowflake } from 'lucide-react';
+import { Search, Plus, Phone, Mail, FileText, X, MapPin, Eye, Calendar, User, ChevronRight, Filter, Edit2, Camera, Save, Building2, Loader2, MessageCircle, Clock, LayoutGrid, LayoutList, Settings, ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, CheckSquare, Copy, ArrowRight, CreditCard, Heart, Briefcase, Globe, Share2, AlertTriangle, CheckCircle2, Trash2, Archive, RefreshCw, Check, Lock, ChevronLeft, Users, Upload, Snowflake, Shield, Gavel } from 'lucide-react';
 import { Client, Case, Branch, CaseStatus, ColumnConfig, Captador } from '../types';
 import CaseDetailsModal from '../components/modals/CaseDetailsModal';
 import WhatsAppModal from '../components/modals/WhatsAppModal';
@@ -78,7 +78,7 @@ const Clients: React.FC = () => {
         captadores, addCaptador, mergedPreferences,
         isNewClientModalOpen, setIsNewClientModalOpen,
         clientDetailTab, setClientDetailTab,
-        globalBranchFilter
+        globalBranchFilter, openNewCaseWithParams
     } = useAppContext();
 
     // State
@@ -122,6 +122,7 @@ const Clients: React.FC = () => {
     const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
     const [isBulkArchiving, setIsBulkArchiving] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+    const [isBulkProcessMenuOpen, setIsBulkProcessMenuOpen] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [duplicateClient, setDuplicateClient] = useState<Client | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -737,6 +738,62 @@ const Clients: React.FC = () => {
                                 {isBulkDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                                 Excluir Permanentemente
                             </button>
+
+                            <div className="w-px h-6 bg-zinc-700 mx-2" />
+
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsBulkProcessMenuOpen(!isBulkProcessMenuOpen)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-gold-600 hover:bg-gold-500 text-white rounded-xl transition-all font-medium text-xs shadow-lg shadow-gold-900/20"
+                                >
+                                    <Plus size={14} />
+                                    Adicionar Processo
+                                    <ChevronUp size={14} className={`transition-transform ${isBulkProcessMenuOpen ? 'rotate-0' : 'rotate-180'}`} />
+                                </button>
+
+                                <AnimatePresence>
+                                    {isBulkProcessMenuOpen && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            animate={{ opacity: 1, y: -8, scale: 1 }}
+                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            className="absolute bottom-full right-0 mb-2 w-56 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-[110] overflow-hidden flex flex-col ring-1 ring-black"
+                                        >
+                                            <div className="px-3 py-2 bg-zinc-950/50 border-b border-white/5 text-[10px] uppercase font-bold text-zinc-500">
+                                                Tipo de Processo
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    openNewCaseWithParams(null, 'Seguro Defeso' as any, undefined, selectedClientIds);
+                                                    setIsBulkProcessMenuOpen(false);
+                                                }}
+                                                className="text-left px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-gold-500 transition-colors border-b border-white/5 flex items-center gap-2"
+                                            >
+                                                <Shield size={16} /> Seguro Defeso
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    openNewCaseWithParams(null, 'Aposentadoria' as any, undefined, selectedClientIds);
+                                                    setIsBulkProcessMenuOpen(false);
+                                                }}
+                                                className="text-left px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-gold-500 transition-colors border-b border-white/5 flex items-center gap-2"
+                                            >
+                                                <FileText size={16} /> Administrativo
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    openNewCaseWithParams(null, 'Cível/Outros' as any, undefined, selectedClientIds);
+                                                    setIsBulkProcessMenuOpen(false);
+                                                }}
+                                                className="text-left px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-gold-500 transition-colors flex items-center gap-2"
+                                            >
+                                                <Gavel size={16} /> Judicial
+                                            </button>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+
                             <div className="w-px h-6 bg-zinc-700 mx-2" />
                             <button
                                 onClick={() => setSelectedClientIds([])}

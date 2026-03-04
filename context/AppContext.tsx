@@ -115,8 +115,8 @@ interface AppContextType {
     setIsNewCaseModalOpen: (isOpen: boolean) => void;
     isNewClientModalOpen: boolean;
     setIsNewClientModalOpen: (isOpen: boolean) => void;
-    newCaseParams: { clientId?: string; type?: CaseType; clientName?: string } | null;
-    openNewCaseWithParams: (clientId: string, type: CaseType, clientName?: string) => void;
+    newCaseParams: { clientId?: string; type?: CaseType; clientName?: string; bulkClientIds?: string[] } | null;
+    openNewCaseWithParams: (clientId: string | null, type: CaseType, clientName?: string, bulkClientIds?: string[]) => void;
     caseToView: string | null;
     setCaseToView: (id: string | null) => void;
 
@@ -350,7 +350,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isNewCaseModalOpen, setIsNewCaseModalOpenInternal] = useState(false);
     const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
-    const [newCaseParams, setNewCaseParams] = useState<{ clientId?: string; type?: CaseType; clientName?: string } | null>(null);
+    const [newCaseParams, setNewCaseParams] = useState<{ clientId?: string; type?: CaseType; clientName?: string; bulkClientIds?: string[] } | null>(null);
 
     // Custom Modal State
     const [confirmState, setConfirmState] = useState<CustomConfirmState | null>(null);
@@ -374,8 +374,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         }
     }, []);
 
-    const openNewCaseWithParams = useCallback((clientId: string, type: CaseType, clientName?: string) => {
-        setNewCaseParams({ clientId, type, clientName });
+    const openNewCaseWithParams = useCallback((clientId: string | null, type: CaseType, clientName?: string, bulkClientIds?: string[]) => {
+        setNewCaseParams({ clientId: clientId || undefined, type, clientName, bulkClientIds });
         setIsNewCaseModalOpen(true);
     }, []);
 

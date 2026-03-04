@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 // import { useAllCases } from '../../hooks/useCases'; // REMOVED
 import { Client, Case } from '../../types';
 import ProcessTimeline from '../ProcessTimeline';
-import { Briefcase, DollarSign, CheckCircle2, AlertTriangle, ChevronRight, LayoutDashboard, Send, Clock, Check, X, Settings2, FileText, Trash2, Plus, Edit2 } from 'lucide-react';
+import { Briefcase, DollarSign, CheckCircle2, AlertTriangle, ChevronRight, LayoutDashboard, Send, Clock, Check, X, Settings2, FileText, Trash2, Plus, Edit2, User, MapPin } from 'lucide-react';
 import { fetchClientNotes, addClientNote, deleteClientNote, updateClientNote } from '../../services/clientsService';
 import { ClientNote } from '../../types';
 import { formatDateDisplay } from '../../utils/dateUtils';
@@ -128,7 +128,21 @@ const Client360Tab: React.FC<Client360TabProps> = ({ client, onSelectCase, cases
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <Card
+                    title="Captador"
+                    value={client.captador || 'Não informado'}
+                    subtitle={client.filial || 'Sem filial'}
+                    icon={User}
+                    color="text-amber-400"
+                />
+                <Card
+                    title="Cidade"
+                    value={client.cidade || 'Não informada'}
+                    subtitle={client.uf || '--'}
+                    icon={MapPin}
+                    color="text-indigo-400"
+                />
                 <Card
                     title="Processos"
                     value={stats.totalCases}
