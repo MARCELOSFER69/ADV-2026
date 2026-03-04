@@ -5,7 +5,7 @@ import {
     Save, Trash2, Loader2, FileScan, Briefcase, ChevronDown, Calculator,
     Shield, Gavel, FileText, Building, HandCoins, CalendarCheck, Bell,
     UserCog, User, Stethoscope, MessageSquare, Cpu, Download,
-    Sun, Moon, Monitor, Bot, Settings, MapPin
+    Sun, Moon, Monitor, Bot, Settings, MapPin, Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BRAND_CONFIG } from '../../logoData';
@@ -73,6 +73,7 @@ interface SidebarViewProps {
         canViewRetirements: boolean;
         canViewExpertise: boolean;
         canViewEvents: boolean;
+        canViewTimesheet: boolean;
     };
     onOpenSettings: () => void;
     isSettingsOpen: boolean;
@@ -107,7 +108,7 @@ const SidebarView = memo(({
         }
     }, [currentView]);
 
-    const { isAdmin, canViewFinancial, canViewCases, canViewClients, canViewTools, canViewWhatsApp, canViewPersonal, canViewRobots, canViewRetirements, canViewExpertise, canViewEvents } = permissions;
+    const { isAdmin, canViewFinancial, canViewCases, canViewClients, canViewTools, canViewWhatsApp, canViewPersonal, canViewRobots, canViewRetirements, canViewExpertise, canViewEvents, canViewTimesheet } = permissions;
 
     const mainItemsBeforeCases = useMemo(() => [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -364,16 +365,32 @@ const SidebarView = memo(({
                             </div>
                         )}
 
-                        {(canViewPersonal) && (
-                            <button onClick={() => onNavigate('personal')} className="w-full flex items-center h-14 group/personal relative">
-                                {currentView === 'personal' && <div className="absolute left-0 h-8 w-1 bg-purple-500 rounded-r opacity-0 group-hover:opacity-100 transition-opacity" />}
-                                <div className="min-w-[70px] flex items-center justify-center">
-                                    <div className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 ${currentView === 'personal' ? 'bg-purple-900/50 text-purple-500' : 'text-slate-400 group-hover/personal:text-purple-500'}`}>
-                                        <User size={20} />
-                                    </div>
-                                </div>
-                                <span className={`whitespace-nowrap overflow-hidden text-sm font-medium transition-all duration-300 ${currentView === 'personal' ? 'text-white' : 'text-slate-400 group-hover/personal:text-white'} w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 group-hover:ml-1`}>Pessoal</span>
-                            </button>
+                        {(canViewPersonal || permissions.canViewTimesheet) && (
+                            <div className="space-y-1">
+                                {canViewPersonal && (
+                                    <button onClick={() => onNavigate('personal')} className="w-full flex items-center h-14 group/personal relative">
+                                        {currentView === 'personal' && <div className="absolute left-0 h-8 w-1 bg-purple-500 rounded-r opacity-0 group-hover:opacity-100 transition-opacity" />}
+                                        <div className="min-w-[70px] flex items-center justify-center">
+                                            <div className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 ${currentView === 'personal' ? 'bg-purple-900/50 text-purple-500' : 'text-slate-400 group-hover/personal:text-purple-500'}`}>
+                                                <User size={20} />
+                                            </div>
+                                        </div>
+                                        <span className={`whitespace-nowrap overflow-hidden text-sm font-medium transition-all duration-300 ${currentView === 'personal' ? 'text-white' : 'text-slate-400 group-hover/personal:text-white'} w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 group-hover:ml-1`}>Pessoal</span>
+                                    </button>
+                                )}
+
+                                {permissions.canViewTimesheet && (
+                                    <button onClick={() => onNavigate('timesheet')} className="w-full flex items-center h-14 group/timesheet relative">
+                                        {currentView === 'timesheet' && <div className="absolute left-0 h-8 w-1 bg-gold-500 rounded-r opacity-0 group-hover:opacity-100 transition-opacity" />}
+                                        <div className="min-w-[70px] flex items-center justify-center">
+                                            <div className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 ${currentView === 'timesheet' ? 'bg-navy-900 text-gold-500 shadow-[0_0_15px_-5px_#ca8a04]' : 'text-slate-400 group-hover/timesheet:text-gold-500'}`}>
+                                                <Clock size={20} />
+                                            </div>
+                                        </div>
+                                        <span className={`whitespace-nowrap overflow-hidden text-sm font-medium transition-all duration-300 ${currentView === 'timesheet' ? 'text-white' : 'text-slate-400 group-hover/timesheet:text-white'} w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 group-hover:ml-1`}>Folha de Ponto</span>
+                                    </button>
+                                )}
+                            </div>
                         )}
 
                         {!(window as any).electronAPI?.isDesktop && (
@@ -485,6 +502,7 @@ const Sidebar: React.FC = () => {
             canViewRetirements: checkPerm('access_retirements'),
             canViewExpertise: checkPerm('access_expertise'),
             canViewEvents: checkPerm('access_events'),
+            canViewTimesheet: checkPerm('access_timesheet'),
         };
     }, [user]);
 

@@ -471,6 +471,18 @@ export interface AppNotification {
   status: 'unread' | 'read';
 }
 
+export interface TimesheetEntry {
+  id: string;
+  user_id: string;
+  date: string;
+  entry_1: string | null;
+  exit_1: string | null;
+  entry_2: string | null;
+  exit_2: string | null;
+  notes: string | null;
+  user_name?: string; // Para visualização ADM
+}
+
 export interface Chat {
   id: UUID;
   client_id: UUID;
@@ -514,6 +526,7 @@ export type ViewState =
   | 'whatsapp'
   | 'personal'
   | 'download'
+  | 'timesheet'
   | 'events';
 
 export interface BrasilApiCompany {
@@ -665,6 +678,7 @@ export interface UserPermission {
   access_tool_docs?: boolean;
   access_tool_cep?: boolean;
   access_robots?: boolean;
+  access_timesheet?: boolean;
 }
 
 export interface User {

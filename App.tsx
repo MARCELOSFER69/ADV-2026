@@ -29,6 +29,7 @@ const Robots = React.lazy(() => import('./views/Tools/Robots'));
 const CepFacil = React.lazy(() => import('./views/Tools/CepFacil'));
 const DownloadPage = React.lazy(() => import('./views/DownloadPage'));
 const Permissions = React.lazy(() => import('./views/Permissions'));
+const Timesheet = React.lazy(() => import('./views/Timesheet'));
 
 // Importação adaptada para Named Export (pois criamos export function Personal)
 const Personal = React.lazy(() => import('./views/Personal').then(module => ({ default: module.Personal })));
@@ -298,6 +299,10 @@ const AppContent: React.FC = () => {
 
           <View id="permissions" activeView={currentView} isLowPerformance={isLowPerformance}>
             <Permissions />
+          </View>
+
+          <View id="timesheet" activeView={currentView} isLowPerformance={isLowPerformance}>
+            <Timesheet />
           </View>
 
           <View id="download" activeView={currentView} isLowPerformance={isLowPerformance}>
