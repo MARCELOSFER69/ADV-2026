@@ -608,6 +608,30 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         return undefined;
     }, []);
 
+    const ensureUserExists = useCallback(async (sessionUser: any) => {
+        if (!sessionUser) return;
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .select('id')
+                .eq('id', sessionUser.id)
+                .single();
+
+            if (error && (error.code === 'PGRST116' || error.message.includes('not found'))) {
+                console.log("Sincronizando usuário com a tabela pública...");
+                const meta = sessionUser.user_metadata || {};
+                await supabase.from('users').upsert({
+                    id: sessionUser.id,
+                    email: sessionUser.email,
+                    full_name: meta.name || 'Usuário',
+                    role: 'admin' // Padrão seguro para o Marcelo, ou 'advogado'
+                }, { onConflict: 'id' });
+            }
+        } catch (err) {
+            console.error("Erro na sincronização automática de usuário:", err);
+        }
+    }, []);
+
     useEffect(() => {
         const interval = setInterval(() => {
             setIsStatusBlinking(true);
@@ -621,6 +645,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session?.user) {
+                    await ensureUserExists(session.user);
                     const meta = session.user.user_metadata || {};
                     const permissions = await fetchUserPermissions(session.user.email || '');
 
@@ -647,6 +672,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
             if (session?.user) {
                 if (_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION') {
+                    await ensureUserExists(session.user);
                     if (!user) {
                         const meta = session.user.user_metadata || {};
                         let permissions = await fetchUserPermissions(session.user.email || '');
