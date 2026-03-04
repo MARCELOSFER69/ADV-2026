@@ -42,6 +42,33 @@ SELECT
     
     COALESCE(cardinality(c.pendencias), 0) AS pendencias_count,
 
+    -- Nova coluna: is_entrevista (Cidades da Lista CML)
+    (
+        unaccent(upper(c.cidade)) IN (
+            'ANAJATUBA', 'ARAIOSES', 'BACABAL', 'BOM JARDIM', 'ICATU', 
+            'MAGALHAES DE ALMEIDA', 'MATINHA', 'PACO DO LUMIAR', 
+            'PEDRO DO ROSARIO', 'PINDARE-MIRIM', 'PINHEIRO', 'PIO XII', 
+            'RAPOSA', 'SANTA INES', 'SANTA LUZIA DO PARUA', 
+            'SANTA QUITERIA DO MARANHAO', 'SAO BERNARDO', 'SAO JOAO BATISTA', 
+            'SAO JOSE DE RIBAMAR', 'SAO LUIS', 'TUTOIA', 'URBANO SANTOS', 
+            'VIANA', 'ZE DOCA'
+        )
+    ) AS is_entrevista,
+
+    -- Títulos dos casos agregados para exibição simplificada
+    (
+        SELECT string_agg(cs.titulo, ', ') 
+        FROM cases cs 
+        WHERE cs.client_id = c.id
+        AND cs.status != 'Arquivado'
+    ) AS casos_titulos,
+    (
+        SELECT unaccent(COALESCE(string_agg(cs.titulo, ', '), ''))
+        FROM cases cs 
+        WHERE cs.client_id = c.id
+        AND cs.status != 'Arquivado'
+    ) AS casos_titulos_unaccent,
+
     -- Nova coluna para Situação GPS (Cálculo no Banco)
     (
         SELECT 
