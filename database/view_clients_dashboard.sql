@@ -1,15 +1,14 @@
 -- view_clients_dashboard
 -- Otimização para o sistema jurídico ADV-2026
--- Esta view centraliza o cálculo de status e pendências no banco de dados,
--- evitando o download massivo de processos pelo frontend.
--- Updated 2026-02-10: Added import_source to pick up bulk import tracking.
+
+DROP VIEW IF EXISTS view_clients_dashboard CASCADE;
 
 CREATE OR REPLACE VIEW view_clients_dashboard AS
 SELECT 
     c.*,
     unaccent(c.nome_completo) AS nome_completo_unaccent,
     CASE 
-        -- Status 'Ativo': Pelo menos um processo em andamento ou explicitamente 'Ativo'
+        -- Status 'Ativo': Pelo menos um processo em andamento
         WHEN EXISTS (
             SELECT 1 FROM cases cs 
             WHERE cs.client_id = c.id 
@@ -29,8 +28,15 @@ SELECT
             WHERE cs.client_id = c.id 
             AND cs.status = 'Concluído (Concedido)'
         ) THEN 'Concedido'
+
+        -- Status 'Indeferido': Se não houver ativos nem concedidos, verifica se há algum indeferido
+        WHEN EXISTS (
+            SELECT 1 FROM cases cs 
+            WHERE cs.client_id = c.id 
+            AND cs.status = 'Concluído (Indeferido)'
+        ) THEN 'Indeferido'
         
-        -- Status 'Inativo': Todos arquivados ou cliente sem nenhum processo
+        -- Status 'Inativo': O cliente existe mas não possui NENHUM processo cadastrado
         ELSE 'Inativo'
     END AS status_calculado,
     
