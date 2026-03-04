@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, SortAsc, ChevronDown, ChevronUp, Filter, Settings, LayoutGrid, LayoutList, ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ArrowRight, Snowflake } from 'lucide-react';
+import { Search, X, SortAsc, ChevronDown, ChevronUp, Filter, Settings, LayoutGrid, LayoutList, ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ArrowRight, Snowflake, BookOpen } from 'lucide-react';
 import { Branch, ColumnConfig, Client, CaseStatus } from '../../types';
 import SizeScaler from '../ui/SizeScaler';
+import CustomSelect from '../ui/CustomSelect';
+import { getProcessTypes } from '../../services/casesService';
 
 interface ClientFiltersProps {
     searchTerm: string;
@@ -53,6 +55,28 @@ const ClientFilters: React.FC<ClientFiltersProps> = ({
     isFilterFrozen,
     setIsFilterFrozen
 }) => {
+    const [processTypes, setProcessTypes] = useState<string[]>([]);
+    const [isLoadingTypes, setIsLoadingTypes] = useState(false);
+
+    useEffect(() => {
+        const fetchTypes = async () => {
+            setIsLoadingTypes(true);
+            try {
+                const types = await getProcessTypes();
+                setProcessTypes(types);
+            } catch (error) {
+                console.error("Erro ao buscar tipos de processo:", error);
+            } finally {
+                setIsLoadingTypes(false);
+            }
+        };
+        fetchTypes();
+    }, []);
+
+    const processOptions = [
+        { label: 'Todos os Processos', value: 'all' },
+        ...processTypes.map(type => ({ label: type, value: type }))
+    ];
     const [showSort, setShowSort] = useState(false);
 
     return (
@@ -377,12 +401,14 @@ const ClientFilters: React.FC<ClientFiltersProps> = ({
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">Nome do Processo</label>
-                                    <input
-                                        className="w-full bg-navy-900 text-white px-3 py-2 border border-white/10 rounded-lg text-sm outline-none focus:border-gold-500"
-                                        placeholder="Filtrar por nome do processo"
-                                        value={activeFilters.casos_titulos || ''}
-                                        onChange={(e) => setActiveFilters({ ...activeFilters, casos_titulos: e.target.value })}
+                                    <CustomSelect
+                                        label="Nome do Processo"
+                                        placeholder="Selecione o processo"
+                                        value={activeFilters.casos_titulos || 'all'}
+                                        onChange={(val) => setActiveFilters({ ...activeFilters, casos_titulos: val === 'all' ? '' : val })}
+                                        options={processOptions}
+                                        icon={BookOpen}
+                                        disabled={isLoadingTypes}
                                     />
                                 </div>
 

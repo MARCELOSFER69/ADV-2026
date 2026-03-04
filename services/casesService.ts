@@ -113,6 +113,25 @@ export const fetchKanbanCases = async (search?: string, filters?: any) => {
     }
 };
 
+export const getProcessTypes = async (): Promise<string[]> => {
+    try {
+        const { data, error } = await supabase
+            .from('cases')
+            .select('tipo')
+            .neq('status', 'Arquivado')
+            .order('tipo');
+
+        if (error) throw error;
+
+        // Extrair tipos únicos e remover nulos/vazios
+        const types = Array.from(new Set(data?.map(c => c.tipo).filter(Boolean)));
+        return types as string[];
+    } catch (error) {
+        console.error("Erro getProcessTypes:", error);
+        return [];
+    }
+};
+
 export const fetchCaseById = async (id: string) => {
     try {
         const { data, error } = await supabase
