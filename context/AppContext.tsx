@@ -543,9 +543,17 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                     if (remindersData) setReminders(remindersData);
                 }
 
-                const { data: globalPrefsData } = await supabase.from('system_settings').select('value').eq('key', 'global_preferences').single();
-                if (globalPrefsData && globalPrefsData.value) {
-                    setGlobalPreferences(globalPrefsData.value);
+                // Timeout de segurança para system_settings (evita travar em erro 406/RLS)
+                try {
+                    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject("timeout"), 3000));
+                    const dbPromise = supabase.from('system_settings').select('value').eq('key', 'global_preferences').single();
+                    const { data: globalPrefsData } = await Promise.race([dbPromise, timeoutPromise]) as any;
+
+                    if (globalPrefsData && globalPrefsData.value) {
+                        setGlobalPreferences(globalPrefsData.value);
+                    }
+                } catch (e) {
+                    console.error("Erro ao buscar global_preferences (timeout ou 406):", e);
                 }
 
                 const { data: chatsData } = await supabase.from('chats')
@@ -645,7 +653,9 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session?.user) {
-                    await ensureUserExists(session.user);
+                    // Sincroniza usuário em background para não travar o carregamento
+                    ensureUserExists(session.user);
+
                     const meta = session.user.user_metadata || {};
                     const permissions = await fetchUserPermissions(session.user.email || '');
 
@@ -658,7 +668,19 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                         preferences: meta.preferences || {},
                         permissions: permissions
                     });
-                    await loadData(session.user.id);
+
+                    // Timeout de segurança para o loadData
+                    const loadTimeout = setTimeout(() => {
+                        console.warn("loadData demorando muito, liberando loading...");
+                        setIsLoading(false);
+                        isLoadingRef.current = false;
+                    }, 10000);
+
+                    try {
+                        await loadData(session.user.id);
+                    } finally {
+                        clearTimeout(loadTimeout);
+                    }
                 } else {
                     setIsLoading(false);
                 }
@@ -672,7 +694,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
             if (session?.user) {
                 if (_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION') {
-                    await ensureUserExists(session.user);
+                    ensureUserExists(session.user);
                     if (!user) {
                         const meta = session.user.user_metadata || {};
                         let permissions = await fetchUserPermissions(session.user.email || '');
