@@ -198,9 +198,21 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
 
     const togglePendencia = (option: string) => {
         const current = editedClient.pendencias || [];
-        const updated = current.includes(option)
-            ? current.filter(p => p !== option)
-            : [...current, option];
+
+        // Normalização robusta (case e acento insensitivo)
+        const normalize = (p: string) => {
+            const low = p.toLowerCase().trim();
+            if (low.startsWith('nível') || low.startsWith('nivel')) return 'Nível da Conta (Bronze)';
+            return p;
+        };
+
+        const normalizedCurrent = Array.from(new Set(current.map(normalize)));
+        const normalizedOption = normalize(option);
+
+        const updated = normalizedCurrent.includes(normalizedOption)
+            ? normalizedCurrent.filter(p => p !== normalizedOption)
+            : [...normalizedCurrent, normalizedOption];
+
         setEditedClient({ ...editedClient, pendencias: updated });
     };
 
@@ -243,7 +255,15 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
                         </h4>
                         {client.pendencias && client.pendencias.length > 0 && (
                             <div className="flex flex-wrap gap-2 mt-3">
-                                {client.pendencias.map(p => (<span key={p} className="text-[10px] font-bold bg-red-500/20 text-red-300 px-2 py-1 rounded border border-red-500/30">{p}</span>))}
+                                {Array.from(new Set(client.pendencias.map(p => {
+                                    const low = p.toLowerCase().trim();
+                                    if (low.startsWith('nível') || low.startsWith('nivel')) return 'Nível da Conta (Bronze)';
+                                    return p;
+                                }))).map(p => (
+                                    <span key={p} className="text-[10px] font-bold bg-red-500/20 text-red-300 px-2 py-1 rounded border border-red-500/30">
+                                        {p}
+                                    </span>
+                                ))}
                             </div>
                         )}
                     </div>
@@ -448,7 +468,28 @@ const ClientInfoTab: React.FC<ClientInfoTabProps> = ({
                         </div>
                     </div>
                     <div className="md:col-span-3 border-t border-white/5 pt-4 mt-2"><h5 className="text-sm font-bold text-red-500 mb-3 font-serif">Pendências</h5></div>
-                    <div className="md:col-span-3 flex flex-wrap gap-2">{PENDING_OPTIONS.map(option => { const isSelected = editedClient.pendencias?.includes(option); return (<button key={option} type="button" onClick={() => togglePendencia(option)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${isSelected ? 'bg-red-500/20 border-red-500 text-red-400' : 'bg-[#18181b] border-white/10 text-slate-400 hover:text-white'}`}>{option}</button>); })}</div>
+                    <div className="md:col-span-3 flex flex-wrap gap-2">
+                        {PENDING_OPTIONS.map(option => {
+                            const normalize = (p: string) => {
+                                const low = p.toLowerCase().trim();
+                                if (low.startsWith('nível') || low.startsWith('nivel')) return 'Nível da Conta (Bronze)';
+                                return p;
+                            };
+                            const normalizedOption = normalize(option);
+                            const isSelected = (editedClient.pendencias || []).some(p => normalize(p) === normalizedOption);
+
+                            return (
+                                <button
+                                    key={option}
+                                    type="button"
+                                    onClick={() => togglePendencia(option)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${isSelected ? 'bg-red-500/20 border-red-500 text-red-400' : 'bg-[#18181b] border-white/10 text-slate-400 hover:text-white'}`}
+                                >
+                                    {option}
+                                </button>
+                            );
+                        })}
+                    </div>
                     <div className="md:col-span-3 border-t border-white/5 pt-4 mt-2">
                         <div className="md:col-span-3 border-t border-white/5 pt-4 mt-2">
                             <label className="block text-xs font-bold text-slate-500 mb-1">Anotações do Cliente</label>

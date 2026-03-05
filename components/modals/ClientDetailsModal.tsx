@@ -561,7 +561,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                         {activeTab === 'info' && (
                             <>
                                 <ClientInfoTab
-                                    client={client}
+                                    client={activeClient}
                                     editedClient={editedClient}
                                     isEditMode={isEditMode}
                                     setEditedClient={setEditedClient}

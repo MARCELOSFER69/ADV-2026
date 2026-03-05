@@ -795,7 +795,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 'id', 'nome_completo', 'cpf_cnpj', 'data_nascimento', 'sexo', 'telefone', 'email',
                 'rg', 'orgao_emissor', 'profissao', 'estado_civil', 'nacionalidade',
                 'cep', 'endereco', 'numero_casa', 'bairro', 'cidade', 'uf',
-                'interviewStatus', 'interviewDate', 'filial', 'captador',
+                'interview_status', 'interview_date', 'filial', 'captador',
                 'representante_nome', 'representante_cpf', 'pendencias',
                 'observacao', 'foto', 'status', 'senha_gov', 'senha_inss',
                 'motivo_arquivamento', 'rgp_status', 'reap_status', 'reap_ano_base', 'reap_history', 'documentos',
@@ -804,7 +804,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
             const payload: any = {};
             validKeys.forEach(key => {
-                const value = (newClient as any)[key];
+                let value = (newClient as any)[key];
+
+                // Mapeamento De -> Para (Frontend -> Banco)
+                if (key === 'interview_status') value = (newClient as any).interviewStatus;
+                if (key === 'interview_date') value = (newClient as any).interviewDate;
+
                 if (value !== undefined) {
                     // Sanitização: String vazia vira null (evita erro de sintaxe em colunas DATE)
                     payload[key] = (typeof value === 'string' && value.trim() === '') ? null : value;
@@ -836,7 +841,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 'nome_completo', 'cpf_cnpj', 'data_nascimento', 'sexo', 'telefone', 'email',
                 'rg', 'orgao_emissor', 'profissao', 'estado_civil', 'nacionalidade',
                 'cep', 'endereco', 'numero_casa', 'bairro', 'cidade', 'uf',
-                'interviewStatus', 'interviewDate', 'filial', 'captador',
+                'interview_status', 'interview_date', 'filial', 'captador',
                 'representante_nome', 'representante_cpf', 'pendencias',
                 'observacao', 'foto', 'status', 'senha_gov', 'senha_inss',
                 'motivo_arquivamento', 'rgp_status', 'reap_status', 'reap_ano_base', 'reap_history', 'documentos',
@@ -848,7 +853,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             };
 
             validKeys.forEach(key => {
-                const value = (client as any)[key];
+                let value = (client as any)[key];
+
+                // Mapeamento De -> Para (Frontend -> Banco)
+                if (key === 'interview_status') value = (client as any).interviewStatus;
+                if (key === 'interview_date') value = (client as any).interviewDate;
+
                 if (value !== undefined) {
                     // Sanitização: String vazia vira null (evita erro de sintaxe em colunas DATE)
                     payload[key] = (typeof value === 'string' && value.trim() === '') ? null : value;
