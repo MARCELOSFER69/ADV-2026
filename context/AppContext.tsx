@@ -876,6 +876,19 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 throw error;
             }
 
+            // --- AUTO-ARCHIVE CASES IF CLIENT IS ARCHIVED ---
+            if (payload.status === 'arquivado') {
+                try {
+                    console.log(`Arquivando processos do cliente ${client.id} automaticamente...`);
+                    await supabase.from('cases').update({ 
+                        status: 'Arquivado',
+                        motivo_arquivamento: payload.motivo_arquivamento || 'Cliente foi arquivado'
+                    }).eq('client_id', client.id);
+                } catch (autoArchiveErr) {
+                    console.error("Erro ao arquivar processos do cliente automaticamente:", autoArchiveErr);
+                }
+            }
+
             // 3. Invalidação em cascata (Pre-fixo garante que todos os 'case' e 'client' individuais atualizem)
             queryClient.invalidateQueries({ queryKey: ['clients'] });
             queryClient.invalidateQueries({ queryKey: ['client'] });
@@ -1039,7 +1052,13 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             if (!payload.status) payload.status = oldCase?.status || 'Análise';
 
             // 4. Salvar no Supabase
-            const { error: updateError } = await supabase.from('cases').update(payload).eq('id', updatedCase.id);
+            // 4. Salvar no Supabase com .select() para obter o objeto final e atualizar cache
+            const { data: updatedDbCase, error: updateError } = await supabase
+                .from('cases')
+                .update(payload)
+                .eq('id', updatedCase.id)
+                .select()
+                .single();
 
             if (updateError) {
                 console.error("Erro Supabase (UpdateCase):", JSON.stringify(updateError, null, 2));
@@ -1047,33 +1066,40 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 throw updateError;
             }
 
+            // --- ATUALIZAÇÃO IMEDIATA DO CACHE ---
+            // Isso evita que a UI "volte" ao estado antigo enquanto o re-fetch em background não termina
+            if (updatedDbCase) {
+                queryClient.setQueryData(['case', updatedCase.id], updatedDbCase);
+            }
+
             // 5. Histórico (com sua própria proteção)
-            if (reason || (oldCase && oldCase.status !== updatedCase.status)) {
+            if (reason || (oldCase && oldCase.status !== updatedDbCase?.status)) {
                 try {
                     await supabase.from('case_history').insert([{
                         id: crypto.randomUUID(),
                         case_id: updatedCase.id,
                         user_id: user?.id,
                         action: 'Atualização',
-                        details: reason || `Status alterado de ${oldCase?.status} para ${updatedCase.status}`,
+                        details: reason || `Status alterado de ${oldCase?.status} para ${updatedDbCase?.status}`,
                         old_value: oldCase?.status,
-                        new_value: updatedCase.status,
-                        is_bot_update: false
+                        new_value: updatedDbCase?.status,
+                        is_bot_update: false,
+                        raw_data_json: updatedDbCase
                     }]);
                 } catch (historyErr) {
-                    console.warn("Aviso: Falha ao salvar histórico (Gatilho deve resolver), mas o processo foi salvo.");
+                    console.warn("Aviso: Falha ao salvar histórico (ignorado para não travar UI)", historyErr);
                 }
             }
 
             queryClient.invalidateQueries({ queryKey: ['cases'] });
-            queryClient.invalidateQueries({ queryKey: ['clients'] });
-            queryClient.invalidateQueries({ queryKey: ['case'] }); // Invalida todos para garantir sync
+            queryClient.invalidateQueries({ queryKey: ['case', updatedCase.id] });
 
             showToast('success', 'Processo atualizado!');
         } catch (err: any) {
             console.error("Erro final updateCase:", err);
             const msg = err.message || JSON.stringify(err);
             showToast('error', `Erro ao salvar: ${msg}`);
+            throw err;
         }
     }, [queryClient, showToast, user?.id]);
 
