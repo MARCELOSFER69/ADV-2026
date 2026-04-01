@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { FinancialRecord, FinancialType, GPS, FinancialReceiver } from '../types';
+import { getGlobalTenant } from './tenantContext';
 
 export interface FinancialFilters {
     type?: string;
@@ -36,6 +37,7 @@ export const fetchFinancialRecords = async (
                 clients (nome_completo, cpf_cnpj, filial)
             )
         `)
+        .eq('tenant_id', getGlobalTenant())
         .gte('data_vencimento', startDate)
         .lte('data_vencimento', endDate);
 
@@ -116,6 +118,7 @@ export const fetchFinancialRecords = async (
             let gpsQuery = supabase
                 .from('cases')
                 .select('id, gps_lista, client_id, titulo, numero_processo, clients(nome_completo, cpf_cnpj, filial)')
+                .eq('tenant_id', getGlobalTenant())
                 .not('gps_lista', 'is', null);
 
             if (filters.filial && filters.filial !== 'all') {
@@ -228,7 +231,8 @@ export const fetchFinancialSummary = async (startDate: string, endDate: string) 
     try {
         const { data, error } = await supabase.rpc('get_financial_summary', {
             p_start_date: startDate,
-            p_end_date: endDate
+            p_end_date: endDate,
+            p_tenant_id: getGlobalTenant()
         });
 
         if (error) throw error;
@@ -363,6 +367,7 @@ export const fetchUniqueAccounts = async (): Promise<{ recebedor: string, conta:
         const { data, error } = await supabase
             .from('financial_records')
             .select('recebedor, conta')
+            .eq('tenant_id', getGlobalTenant())
             .not('conta', 'is', null);
 
         if (error) throw error;

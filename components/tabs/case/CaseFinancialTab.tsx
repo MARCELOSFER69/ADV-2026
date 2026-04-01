@@ -473,6 +473,18 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
         }
     };
 
+    const [isUpdatingSelection, setIsUpdatingSelection] = useState(false);
+
+    const handleUpdateSelection = async (mode: 'Completo' | 'Parcelado') => {
+        if (!caseItem.id || isUpdatingSelection) return;
+        setIsUpdatingSelection(true);
+        try {
+            await onUpdateCase({ ...caseItem, forma_recebimento: mode });
+        } finally {
+            setIsUpdatingSelection(false);
+        }
+    };
+
     const handleGenerate = async () => {
         await generateInstallments(caseItem.id, parcelStartDate);
         setIsGeneratingParcels(false);
@@ -497,22 +509,24 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
 
                     <div className={`flex bg-black/40 p-1 rounded-xl border border-white/5 w-full md:w-auto ${caseItem.status !== CaseStatus.CONCLUIDO_CONCEDIDO ? 'pointer-events-none' : ''}`}>
                         <button
-                            onClick={() => onUpdateCase({ ...caseItem, forma_recebimento: 'Completo' })}
+                            onClick={() => handleUpdateSelection('Completo')}
+                            disabled={isUpdatingSelection}
                             className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${caseItem.forma_recebimento === 'Completo'
                                 ? 'bg-gold-500 text-black shadow-lg shadow-gold-500/20'
                                 : 'text-slate-500 hover:text-slate-300'
-                                }`}
+                                } ${isUpdatingSelection ? 'opacity-50 cursor-wait' : ''}`}
                         >
-                            Pagamento Completo
+                            {isUpdatingSelection && caseItem.forma_recebimento !== 'Completo' ? '...' : 'Pagamento Completo'}
                         </button>
                         <button
-                            onClick={() => onUpdateCase({ ...caseItem, forma_recebimento: 'Parcelado' })}
+                            onClick={() => handleUpdateSelection('Parcelado')}
+                            disabled={isUpdatingSelection}
                             className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${caseItem.forma_recebimento === 'Parcelado'
                                 ? 'bg-gold-500 text-black shadow-lg shadow-gold-500/20'
                                 : 'text-slate-500 hover:text-slate-300'
-                                }`}
+                                } ${isUpdatingSelection ? 'opacity-50 cursor-wait' : ''}`}
                         >
-                            Parcelamento
+                            {isUpdatingSelection && caseItem.forma_recebimento !== 'Parcelado' ? '...' : 'Parcelamento'}
                         </button>
                     </div>
                 </div>
@@ -542,7 +556,10 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                     <input
                                         className="text-3xl font-serif bg-transparent border-b border-white/10 text-white outline-none focus:border-gold-500 w-48"
                                         value={formatCurrencyInput((caseItem.valor_causa || 0).toFixed(2))}
-                                        onChange={(e) => onUpdateCase({ ...caseItem, valor_causa: parseCurrencyToNumber(e.target.value) })}
+                                        onChange={(e) => {
+                                            if (!caseItem.id) return;
+                                            onUpdateCase({ ...caseItem, valor_causa: parseCurrencyToNumber(e.target.value) });
+                                        }}
                                     />
                                 </div>
                                 <p className="text-xs text-zinc-500 mt-1">Valor definido no contrato</p>
@@ -556,7 +573,10 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                             caseItem.status_pagamento === 'Parcial' ? 'text-yellow-500' : 'text-zinc-400'
                                             }`}
                                         value={caseItem.status_pagamento || 'Pendente'}
-                                        onChange={(e) => onUpdateCase({ ...caseItem, status_pagamento: e.target.value as any })}
+                                        onChange={(e) => {
+                                            if (!caseItem.id) return;
+                                            onUpdateCase({ ...caseItem, status_pagamento: e.target.value as any });
+                                        }}
                                     >
                                         <option value="Pendente">Pendente</option>
                                         <option value="Parcial">Parcial</option>

@@ -1,11 +1,17 @@
 import { supabase } from './supabaseClient';
 import { Client, CaseStatus, ClientNote } from '../types';
 import { auditService } from './auditService';
+import { getGlobalTenant } from './tenantContext';
 
 export const fetchClientsData = async (page: number, perPage: number, search?: string, filters?: any) => {
     try {
         // Usamos a VIEW customizada para performance máxima
         let query = supabase.from('view_clients_dashboard').select('*', { count: 'exact' });
+        
+        const tenant = getGlobalTenant();
+        if (tenant) {
+            query = query.eq('tenant_id', tenant);
+        }
 
         // Filtro de Busca (Search) com Unaccent suporte
         if (search) {
@@ -20,6 +26,7 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
 
         // Filtros Granulares (Database-side)
         if (filters) {
+            if (filters.tenant_id) query = query.eq('tenant_id', filters.tenant_id);
             if (filters.filial && filters.filial !== 'all') query = query.eq('filial', filters.filial);
             if (filters.captador && filters.captador !== '') query = query.ilike('captador', `%${filters.captador}%`);
             if (filters.city && filters.city !== '') query = query.ilike('cidade', `%${filters.city}%`);
@@ -158,6 +165,11 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
 export const fetchAllFilteredClientsData = async (search?: string, filters?: any): Promise<Client[]> => {
     try {
         let query = supabase.from('view_clients_dashboard').select('*');
+        
+        const tenant = getGlobalTenant();
+        if (tenant) {
+            query = query.eq('tenant_id', tenant);
+        }
 
         // Filtro de Busca (Search) com Unaccent suporte
         if (search) {
@@ -172,6 +184,7 @@ export const fetchAllFilteredClientsData = async (search?: string, filters?: any
 
         // Filtros Granulares
         if (filters) {
+            if (filters.tenant_id) query = query.eq('tenant_id', filters.tenant_id);
             if (filters.filial && filters.filial !== 'all') query = query.eq('filial', filters.filial);
             if (filters.captador && filters.captador !== '') query = query.ilike('captador', `%${filters.captador}%`);
             if (filters.city && filters.city !== '') query = query.ilike('cidade', `%${filters.city}%`);
@@ -264,7 +277,13 @@ export const fetchAllFilteredClientsData = async (search?: string, filters?: any
             if (error) throw error;
             if (!data || data.length === 0) break;
 
-            allData = [...allData, ...(data as Client[])];
+            const mappedData = data.map((c: any) => ({
+                ...c,
+                interviewStatus: c.interview_status || 'Pendente',
+                interviewDate: c.interview_date,
+            })) as Client[];
+
+            allData = [...allData, ...mappedData];
             if (data.length < PAGE_SIZE) break;
             page++;
         }
@@ -294,18 +313,24 @@ export const deleteClient = async (id: string, reason?: string) => {
     }
 };
 // ... existing code ...
-export const fetchAllClientsData = async (): Promise<Client[]> => {
+export const fetchAllClientsData = async (tenant_id?: string): Promise<Client[]> => {
     try {
         let allData: Client[] = [];
         let page = 0;
         const PAGE_SIZE = 1000;
 
         while (true) {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('clients')
                 .select('*')
-                .order('nome_completo', { ascending: true })
-                .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+                .order('nome_completo', { ascending: true });
+            
+            const tenant = getGlobalTenant();
+            if (tenant) query = query.eq('tenant_id', tenant);
+            
+            if (tenant_id) query = query.eq('tenant_id', tenant_id);
+
+            const { data, error } = await query.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
             if (error) throw error;
             if (!data || data.length === 0) break;
@@ -325,11 +350,17 @@ export const fetchAllClientsData = async (): Promise<Client[]> => {
 export const fetchClientById = async (id: string): Promise<Client | null> => {
     try {
         // Fetch client data
-        const { data: client, error } = await supabase
+        let query = supabase
             .from('view_clients_dashboard')
             .select('*')
-            .eq('id', id)
-            .single();
+            .eq('id', id);
+            
+        const tenant = getGlobalTenant();
+        if (tenant) {
+            query = query.eq('tenant_id', tenant);
+        }
+
+        const { data: client, error } = await query.single();
 
         if (error) throw error;
         if (!client) return null;
@@ -370,7 +401,7 @@ export const checkCpfExists = async (cpf: string, excludeId?: string): Promise<{
         // Try to find by raw digits or standard formatted version
         let query = supabase
             .from('clients')
-            .select('id, nome_completo')
+            .select('id, nome_completo, tenant_id')
             .or(`cpf_cnpj.eq.${digits},cpf_cnpj.eq.${formatted}`);
 
         if (excludeId) {

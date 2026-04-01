@@ -78,12 +78,13 @@ interface SidebarViewProps {
     onOpenSettings: () => void;
     isSettingsOpen: boolean;
     caseTypeFilter: string;
+    currentTenant: string;
 }
 
 const SidebarView = memo(({
     currentView, onNavigate, onLogout, user, mergedPreferences, unreadCount, waitingChatsCount,
     setIsAssistantOpen, onOpenProfile, onOpenNotifications, isNotificationsOpen, permissions,
-    onOpenSettings, isSettingsOpen, caseTypeFilter
+    onOpenSettings, isSettingsOpen, caseTypeFilter, currentTenant
 }: SidebarViewProps) => {
 
     // Local State for Accordions (UI logic only)
@@ -190,7 +191,7 @@ const SidebarView = memo(({
                         <div className="w-full h-full flex items-center justify-center px-2 group-hover:px-4 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
                             {BRAND_CONFIG.logoBase64 ? (
                                 <div className="relative w-full h-full flex items-center justify-center">
-                                    <img src={BRAND_CONFIG.logoBase64} alt={BRAND_CONFIG.sidebarName} className="max-h-10 group-hover:max-h-12 w-auto object-contain transition-all duration-500 rounded-xl" style={{ filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.3))' }} />
+                                    <img src={currentTenant === 'parceiros' ? BRAND_CONFIG.hmLogoBase64 : BRAND_CONFIG.logoBase64} alt={BRAND_CONFIG.sidebarName} className="max-h-10 group-hover:max-h-12 w-auto object-contain transition-all duration-500 rounded-xl" style={{ filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.3))' }} />
                                 </div>
                             ) : (
                                 <div className="w-10 h-10 border-2 border-gold-500 transform rotate-45 flex items-center justify-center rounded-xl bg-navy-900/50 backdrop-blur-sm"><Scale className="text-gold-500 transform -rotate-45" size={20} /></div>
@@ -461,7 +462,8 @@ const Sidebar: React.FC = () => {
         currentView, setCurrentView, logout, user, updateUserProfile,
         notifications, mergedPreferences, saveUserPreferences,
         isAssistantOpen, setIsAssistantOpen,
-        waitingChatsCount, setCaseTypeFilter, caseTypeFilter
+        waitingChatsCount, setCaseTypeFilter, caseTypeFilter,
+        currentTenant, setCurrentTenant
     } = useApp();
 
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -581,6 +583,7 @@ const Sidebar: React.FC = () => {
                 onOpenSettings={() => setIsSettingsOpen(true)}
                 isSettingsOpen={isSettingsOpen}
                 caseTypeFilter={caseTypeFilter}
+                currentTenant={currentTenant}
             />
 
             <NotificationsPanel isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} notifications={notifications} />
@@ -621,6 +624,22 @@ const Sidebar: React.FC = () => {
                                     <button onClick={() => setEditTheme('white')} className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all active-scale ${editTheme === 'white' ? 'bg-slate-100 border-gold-500 text-gold-600' : 'bg-[#0f1014] border-zinc-800 text-zinc-500'}`}><Sun size={20} /><span className="text-[10px] font-bold uppercase">White</span></button>
                                 </div>
                             </div>
+                            {(permissions.isAdmin || user?.tenant_id === 'parceiros') && (
+                                <div className="mt-4 border-t border-zinc-800 pt-4 cursor-pointer">
+                                    <label className="block text-xs font-medium text-zinc-400 uppercase mb-3">Ambiente de Operação {permissions.isAdmin ? '(Admin)' : '(Permitido)'}</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button onClick={() => setCurrentTenant('principal')} className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all active-scale ${currentTenant === 'principal' ? 'bg-navy-900 border-gold-500 text-gold-500 shadow-lg shadow-gold-500/10' : 'bg-[#0f1014] border-zinc-800 text-zinc-500 hover:text-white hover:border-zinc-700'}`}>
+                                            <Building size={20} />
+                                            <span className="text-[10px] font-bold uppercase tracking-widest">JNM</span>
+                                        </button>
+                                        <button onClick={() => setCurrentTenant('parceiros')} className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all active-scale ${currentTenant === 'parceiros' ? 'bg-zinc-900 border-gold-500 text-gold-500 shadow-lg shadow-gold-500/10' : 'bg-[#0f1014] border-zinc-800 text-zinc-500 hover:text-white hover:border-zinc-700'}`}>
+                                            <Briefcase size={20} />
+                                            <span className="text-[10px] font-bold uppercase tracking-widest">HM</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
                         <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-zinc-800">
                             <button onClick={() => setIsProfileModalOpen(false)} className="px-4 py-2 text-zinc-400 hover:text-white rounded-lg" disabled={isSaving}>Cancelar</button>

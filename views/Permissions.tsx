@@ -6,7 +6,7 @@ import {
     UserCog, Plus, Trash2, Check, X, Loader2, Search, ChevronDown,
     Shield, Gavel, FileText, Briefcase, Calculator, FileScan, User,
     LayoutDashboard, Users, DollarSign, MessageCircle, Hourglass,
-    Stethoscope, CalendarCheck, HandCoins, Building, MapPin, Cpu
+    Stethoscope, CalendarCheck, HandCoins, Building, MapPin, Cpu, Clock
 } from 'lucide-react';
 
 const Permissions: React.FC = () => {
@@ -39,6 +39,7 @@ const Permissions: React.FC = () => {
             email: newEmail.trim(),
             nome: newName,
             role: 'colaborador',
+            tenant_id: 'principal',
             // Padrões iniciais
             access_dashboard: true,
             access_clients: true,
@@ -66,7 +67,8 @@ const Permissions: React.FC = () => {
             access_tool_gps: true,
             access_tool_docs: true,
             access_tool_cep: true,
-            access_robots: false
+            access_robots: false,
+            access_timesheet: false
         };
 
         const { error } = await supabase.from('user_permissions').insert([newUser]);
@@ -91,6 +93,22 @@ const Permissions: React.FC = () => {
             // Reverte em caso de erro
             setUsersList(prev => prev.map(u => u.id === id ? { ...u, [field]: currentValue } : u));
             showToast('error', 'Erro ao salvar permissão.');
+        }
+    };
+
+    const handleToggleTenant = async (id: string, currentTenant: string | undefined) => {
+        const newTenant = currentTenant === 'parceiros' ? 'principal' : 'parceiros';
+        
+        // Atualização Otimista
+        setUsersList(prev => prev.map(u => u.id === id ? { ...u, tenant_id: newTenant } : u));
+        
+        // Atualização no Banco
+        const { error } = await supabase.from('user_permissions').update({ tenant_id: newTenant }).eq('id', id);
+        
+        if (error) {
+            // Reverte
+            setUsersList(prev => prev.map(u => u.id === id ? { ...u, tenant_id: currentTenant } : u));
+            showToast('error', 'Erro ao alterar sistema do usuário.');
         }
     };
 
@@ -208,6 +226,11 @@ const Permissions: React.FC = () => {
                                     <div className="flex flex-col items-center">
                                         <span className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Financeiro</span>
                                         <ToggleSwitch checked={u.access_financial} onChange={() => handleTogglePermission(u.id, 'access_financial', !!u.access_financial)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-emerald-600" />
+                                    </div>
+                                    <div className="w-px h-8 bg-zinc-800 mx-2 hidden md:block"></div>
+                                    <div className="flex flex-col items-center" title="Dar acesso ao sistema Secundário (HM)">
+                                        <span className="text-[9px] text-purple-400 uppercase font-bold mb-1">Acesso HM</span>
+                                        <ToggleSwitch checked={u.tenant_id === 'parceiros'} onChange={() => handleToggleTenant(u.id, u.tenant_id)} colorClass="peer-checked:bg-purple-600" />
                                     </div>
                                 </div>
 
@@ -343,8 +366,8 @@ const Permissions: React.FC = () => {
                                                 <ToggleSwitch checked={u.access_tool_cep} onChange={() => handleTogglePermission(u.id, 'access_tool_cep', !!u.access_tool_cep)} colorClass="peer-checked:bg-pink-600" />
                                             </div>
                                             <div className="flex justify-between items-center p-2 rounded hover:bg-zinc-900/50">
-                                                <span className="text-sm text-zinc-300 flex items-center gap-2"><Cpu size={14} className="text-pink-500" /> Robôs / IA</span>
-                                                <ToggleSwitch checked={u.access_robots} onChange={() => handleTogglePermission(u.id, 'access_robots', !!u.access_robots)} colorClass="peer-checked:bg-pink-600" />
+                                                <span className="text-sm text-zinc-300 flex items-center gap-2"><Clock size={14} className="text-pink-500" /> Folha de Ponto</span>
+                                                <ToggleSwitch checked={u.access_timesheet} onChange={() => handleTogglePermission(u.id, 'access_timesheet', !!u.access_timesheet)} colorClass="peer-checked:bg-pink-600" />
                                             </div>
                                         </div>
                                     </div>

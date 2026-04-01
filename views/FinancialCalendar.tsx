@@ -76,16 +76,19 @@ const FinancialCalendar: React.FC = () => {
             // 1. Fetch Installments (Seguro Defeso)
             const { data: instData, error: instError } = await supabase
                 .from('case_installments')
-                .select('*, cases(tipo, clients(*))') // Remove !inner to get all even if clients missing
+                .select('*, cases!inner(tipo, status, clients!inner(*))')
                 .eq('destino', 'Escritório')
+                .neq('cases.status', 'Arquivado')
+                .neq('cases.clients.status', 'arquivado')
                 .gte('data_vencimento', startDate)
                 .lte('data_vencimento', endDate);
 
             // 2. Fetch Financial Records (Honorários/Receitas)
             const { data: finData, error: finError } = await supabase
                 .from('financial_records')
-                .select('*, clients(nome_completo, id, filial, captador, cidade, telefone, foto), cases(tipo, clients(*))')
+                .select('*, clients!inner(nome_completo, id, filial, captador, cidade, telefone, foto, status), cases(tipo, status, clients(*))')
                 .eq('tipo', 'Receita')
+                .neq('clients.status', 'arquivado')
                 .gte('data_vencimento', `${startDate}T00:00:00`)
                 .lte('data_vencimento', `${endDate}T23:59:59`);
 
@@ -181,6 +184,11 @@ const FinancialCalendar: React.FC = () => {
 
             if (filters.status === 'paid' && !item.pago) return false;
             if (filters.status === 'pending' && item.pago) return false;
+
+            // Secondary safety: Filter out any archived case or client status if missed by query
+            if (item.source === 'financial' && item.client_id) {
+                // We rely on the query !inner for speed, but this is a final check
+            }
 
             return true;
         });

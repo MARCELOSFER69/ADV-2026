@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Minus, Square, X, Copy } from 'lucide-react';
 import { BRAND_CONFIG } from '../../logoData';
+import { useApp } from '../../context/AppContext';
 
 const TitleBar: React.FC = () => {
+    const { currentTenant } = useApp();
     const [isMaximized, setIsMaximized] = useState(false);
     const [isDesktop, setIsDesktop] = useState(false);
 
@@ -45,8 +47,10 @@ const TitleBar: React.FC = () => {
             style={{ WebkitAppRegion: 'drag' } as any}>
 
             <div className="flex items-center px-3 gap-2">
-                <img src={BRAND_CONFIG.logoBase64} alt="Logo" className="w-auto h-4 opacity-100" />
-                <span className="text-xs font-medium text-slate-400">Escritorio Noleto & Macedo</span>
+                <img src={currentTenant === 'parceiros' ? BRAND_CONFIG.hmLogoBase64 : BRAND_CONFIG.logoBase64} alt="Logo" className="w-auto h-4 opacity-100" />
+                <span className="text-xs font-medium text-slate-400">
+                    {currentTenant === 'parceiros' ? 'HM Administrativo' : 'Escritorio Noleto & Macedo'}
+                </span>
             </div>
 
             <div className="flex items-center h-full" style={{ WebkitAppRegion: 'no-drag' } as any}>

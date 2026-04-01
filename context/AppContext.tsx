@@ -12,6 +12,7 @@ import { listClientFilesFromR2, uploadFileToR2 } from '../services/storageServic
 import { whatsappService } from '../services/whatsappService';
 import { deleteClient as deleteClientService } from '../services/clientsService';
 import { encryptData, decryptData } from '../utils/cryptoUtils';
+import { setGlobalTenant, getGlobalTenant } from '../services/tenantContext';
 
 // Chave para salvar permissões no cache local
 const PERMISSIONS_KEY = 'app_user_permissions';
@@ -46,6 +47,8 @@ interface AppContextType {
     setCaseTypeFilter: (filter: string | 'all') => void;
     globalBranchFilter: Branch | 'all';
     setGlobalBranchFilter: (branch: Branch | 'all') => void;
+    currentTenant: string;
+    setCurrentTenant: (tenant: string) => Promise<void>;
     clientToView: string | null;
     setClientToView: (id: string | null, tab?: 'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp') => void;
     clientDetailTab: 'visao360' | 'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp';
@@ -288,6 +291,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const [currentView, setCurrentView] = useState<ViewState>('dashboard');
     const [caseTypeFilter, setCaseTypeFilter] = useState<string | 'all'>('all');
     const [globalBranchFilter, _setGlobalBranchFilter] = useState<Branch | 'all'>('all');
+    const [currentTenant, _setCurrentTenant] = useState<string>('principal');
     const [isAssistantOpen, setIsAssistantOpen] = useState(false);
     const [clientToView, _setClientToView] = useState<string | null>(null);
     const [clientDetailTab, setClientDetailTab] = useState<'visao360' | 'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp'>('visao360');
@@ -444,12 +448,12 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                     { data: credsData }
                 ] = await Promise.all([
                     // supabase.from('financial_records').select('*'), // REMOVED
-                    supabase.from('events').select('*').order('data_hora', { ascending: true }),
-                    supabase.from('tasks').select('*'),
-                    supabase.from('office_expenses').select('*').order('data_despesa', { ascending: false }),
-                    supabase.from('office_balances').select('*').order('data_entrada', { ascending: false }),
-                    supabase.from('captadores').select('*'),
-                    supabase.from('commission_receipts').select('*').order('data_geracao', { ascending: false }),
+                    supabase.from('events').select('*').eq('tenant_id', currentTenant).order('data_hora', { ascending: true }),
+                    supabase.from('tasks').select('*').eq('tenant_id', currentTenant),
+                    supabase.from('office_expenses').select('*').eq('tenant_id', currentTenant).order('data_despesa', { ascending: false }),
+                    supabase.from('office_balances').select('*').eq('tenant_id', currentTenant).order('data_entrada', { ascending: false }),
+                    supabase.from('captadores').select('*').eq('tenant_id', currentTenant),
+                    supabase.from('commission_receipts').select('*').eq('tenant_id', currentTenant).order('data_geracao', { ascending: false }),
                     supabase.from('personal_credentials').select('*').order('created_at', { ascending: false })
                 ]);
 
@@ -473,6 +477,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 const { data: nearDueFinancial } = await supabase
                     .from('financial_records')
                     .select('*, clients(nome_completo)')
+                    .eq('tenant_id', currentTenant)
                     .eq('status_pagamento', false)
                     .gte('data_vencimento', today)
                     .lte('data_vencimento', nextWeekStr)
@@ -496,6 +501,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 const { data: nearDueEvents } = await supabase
                     .from('events')
                     .select('*, cases(titulo, client_id, clients(nome_completo))')
+                    .eq('tenant_id', currentTenant)
                     .gte('data_hora', today)
                     .lte('data_hora', nextWeekStr)
                     .limit(20);
@@ -585,7 +591,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             setIsLoading(false);
             isLoadingRef.current = false;
         }
-    }, [usingDb]);
+    }, [usingDb, currentTenant]);
 
     const reloadData = useCallback(async () => {
         if (user?.id) {
@@ -666,7 +672,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                         role: permissions?.role || meta.role || 'colaborador',
                         avatar: meta.avatar || '',
                         preferences: meta.preferences || {},
-                        permissions: permissions
+                        permissions: permissions,
+                        tenant_id: permissions?.tenant_id || 'principal'
                     });
 
                     // Timeout de segurança para o loadData
@@ -705,7 +712,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                             role: permissions?.role || meta.role || 'colaborador',
                             avatar: meta.avatar || '',
                             preferences: meta.preferences || {},
-                            permissions: permissions
+                            permissions: permissions,
+                            tenant_id: permissions?.tenant_id || 'principal'
                         });
                     }
                     if (!isDataLoaded.current) {
@@ -773,12 +781,30 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         setGlobalPreferences(prefs);
     }, []);
 
-    // Sincroniza filial quando usuario carrega
+    // Sincroniza filial e tenant de forma segura quando o usuario carrega
     useEffect(() => {
         if (user?.preferences?.selectedBranch) {
             _setGlobalBranchFilter(user.preferences.selectedBranch);
         }
-    }, [user?.preferences?.selectedBranch]);
+
+        // Segurança: Determinar quem tem acesso a múltiplos tenants
+        const canSwitchTenant = user?.role === 'admin' || user?.tenant_id === 'parceiros';
+
+        if (canSwitchTenant && user?.preferences?.selectedTenant) {
+            // Se usuário tem acesso ao HM/JNM e já escolheu um sistema na sessão passada
+            _setCurrentTenant(user.preferences.selectedTenant);
+            setGlobalTenant(user.preferences.selectedTenant);
+        } else if (canSwitchTenant && user?.tenant_id) {
+            // Tem acesso duplo, mas nunca clicou em nenhum, pega o original de cadastro
+            _setCurrentTenant(user.tenant_id);
+            setGlobalTenant(user.tenant_id);
+        } else if (!canSwitchTenant && user?.tenant_id) {
+            // Se NÃO tem acesso duplo, obriga a ser sempre o 'principal' 
+            // impedindo qualquer burla via cache
+            _setCurrentTenant(user.tenant_id);
+            setGlobalTenant(user.tenant_id);
+        }
+    }, [user?.preferences?.selectedBranch, user?.preferences?.selectedTenant, user?.tenant_id, user?.role]);
 
     const setGlobalBranchFilter = useCallback(async (branch: Branch | 'all') => {
         _setGlobalBranchFilter(branch);
@@ -787,6 +813,18 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             await saveUserPreferences(updatedPrefs);
         }
     }, [user, saveUserPreferences]);
+
+    const setCurrentTenant = useCallback(async (tenant: string) => {
+        _setCurrentTenant(tenant);
+        setGlobalTenant(tenant);
+        queryClient.clear(); // Limpa todo o cache do React Query ao trocar de tenant para evitar vazamento
+        if (user?.id) {
+            const updatedPrefs = { ...(user.preferences || {}), selectedTenant: tenant };
+            await saveUserPreferences(updatedPrefs);
+            // Salvar para o recarregamento capturar
+            // reloadData handles currentTenant internally
+        }
+    }, [user, saveUserPreferences, queryClient]);
 
     const addClient = useCallback(async (newClient: Client) => {
         try {
@@ -802,7 +840,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 'import_source', 'data_cadastro'
             ];
 
-            const payload: any = {};
+            const payload: any = { tenant_id: getGlobalTenant() };
             validKeys.forEach(key => {
                 let value = (newClient as any)[key];
 
@@ -984,7 +1022,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                 'data_parto', 'cid', 'data_incapacidade', 'gps_lista'
             ];
 
-            const payload: any = {};
+            const payload: any = { tenant_id: getGlobalTenant() };
             validKeys.forEach(key => {
                 const value = (newCase as any)[key];
                 if (value !== undefined) {
@@ -1162,7 +1200,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
 
 
     const addEvent = useCallback(async (newEvent: Event) => {
-        const { error } = await supabase.from('events').insert([newEvent]);
+        const payload = { ...newEvent, tenant_id: getGlobalTenant() };
+        const { error } = await supabase.from('events').insert([payload]);
         queryClient.invalidateQueries({ queryKey: ['events'] });
         if (newEvent.case_id) queryClient.invalidateQueries({ queryKey: ['case_events', newEvent.case_id] });
         showToast('success', 'Evento adicionado!');
@@ -1185,7 +1224,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }, [showToast]);
 
     const addTask = useCallback(async (newTask: Task) => {
-        const { error } = await supabase.from('tasks').insert([newTask]);
+        const payload = { ...newTask, tenant_id: getGlobalTenant() };
+        const { error } = await supabase.from('tasks').insert([payload]);
         if (error) throw error;
         setTasks(prev => [...prev, newTask]);
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -1227,7 +1267,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             'forma_pagamento', 'recebedor', 'tipo_conta', 'conta', 'tipo_movimentacao', 'is_honorary', 'observacao'
         ];
 
-        const payload: any = {};
+        const payload: any = { tenant_id: getGlobalTenant() };
         validKeys.forEach(key => {
             const value = (record as any)[key];
             if (value !== undefined) {
@@ -1313,7 +1353,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }, [showToast]);
 
     const addOfficeExpense = useCallback(async (expense: OfficeExpense) => {
-        const { error } = await supabase.from('office_expenses').insert([expense]);
+        const payload = { ...expense, tenant_id: getGlobalTenant() };
+        const { error } = await supabase.from('office_expenses').insert([payload]);
         if (error) throw error;
         setOfficeExpenses(prev => [...prev, expense]);
         showToast('success', 'Despesa fixa adicionada!');
@@ -1342,7 +1383,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }, [officeExpenses]);
 
     const addOfficeBalance = useCallback(async (balance: OfficeBalance) => {
-        const { error } = await supabase.from('office_balances').insert([balance]);
+        const payload = { ...balance, tenant_id: getGlobalTenant() };
+        const { error } = await supabase.from('office_balances').insert([payload]);
         if (error) throw error;
         setOfficeBalances(prev => [...prev, balance]);
     }, []);
@@ -1362,7 +1404,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const addCaptador = useCallback(async (nome: string, filial: string) => {
         try {
             const upperNome = nome.toUpperCase();
-            const newC = { id: crypto.randomUUID(), nome: upperNome, filial };
+            const newC = { id: crypto.randomUUID(), nome: upperNome, filial, tenant_id: getGlobalTenant() };
             const { error } = await supabase.from('captadores').insert([newC]);
             if (error) throw error;
             setCaptadores(prev => [...prev, newC as any]);
@@ -1381,7 +1423,8 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }, []);
 
     const createCommissionReceipt = useCallback(async (receipt: CommissionReceipt, recordIds: string[]) => {
-        const { error } = await supabase.from('commission_receipts').insert([receipt]);
+        const payload = { ...receipt, tenant_id: getGlobalTenant() };
+        const { error } = await supabase.from('commission_receipts').insert([payload]);
         if (error) throw error;
         await supabase.from('financial_records').update({ receipt_id: receipt.id }).in('id', recordIds);
 
@@ -1646,7 +1689,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         globalPreferences, mergedPreferences, saveGlobalPreferences,
         reloadData,
         financial, officeExpenses, officeBalances, personalCredentials, events, tasks, captadores, commissionReceipts, reminders, notifications,
-        currentView, setCurrentView, caseTypeFilter, setCaseTypeFilter, globalBranchFilter, setGlobalBranchFilter, clientToView, setClientToView, clientDetailTab, setClientDetailTab,
+        currentView, setCurrentView, caseTypeFilter, setCaseTypeFilter, globalBranchFilter, setGlobalBranchFilter, currentTenant, setCurrentTenant, clientToView, setClientToView, clientDetailTab, setClientDetailTab,
         addClient, updateClient, deleteClient, syncClientDocuments, addCase, updateCase, deleteCase, getCaseHistory, getClientHistory, getUnifiedClientHistory,
         addEvent, updateEvent, deleteEvent, addTask, toggleTask, deleteTask,
         addFinancialRecord, addReceiver, deleteReceiver, deleteFinancialRecord, addRetirementCalculation, promoteCalculationToCase, addOfficeExpense, updateOfficeExpense, deleteOfficeExpense, toggleOfficeExpenseStatus, addOfficeBalance,
@@ -1662,7 +1705,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     }), [
         user, globalPreferences, mergedPreferences, reloadData,
         financial, officeExpenses, officeBalances, personalCredentials, events, tasks, captadores, commissionReceipts, reminders, notifications,
-        currentView, caseTypeFilter, globalBranchFilter, clientToView, clientDetailTab, toasts, isLoading, isNewCaseModalOpen, isNewClientModalOpen, newCaseParams, caseToView,
+        currentView, caseTypeFilter, globalBranchFilter, currentTenant, clientToView, clientDetailTab, toasts, isLoading, isNewCaseModalOpen, isNewClientModalOpen, newCaseParams, caseToView,
         chats, chatMessages, waitingChatsCount, isAssistantOpen, isStatusBlinking, isLowPerformance, togglePerformanceMode,
         confirmCustom, confirmState, receivers, deleteReceiver
     ]);

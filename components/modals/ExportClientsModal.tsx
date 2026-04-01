@@ -34,6 +34,7 @@ const REPORT_COLUMNS = [
     { id: 'captador', label: 'Captador', default: true },
     { id: 'gps', label: 'Situação GPS', default: false },
     { id: 'profissao', label: 'Profissão', default: false },
+    { id: 'entrevista_inicial', label: 'Entrevista Inicial', default: false },
     { id: 'pendencias', label: 'Pendências Detalhadas', default: true },
     { id: 'reap_summary', label: 'Histórico REAP (Resumo)', default: false },
 ];
@@ -286,6 +287,12 @@ const ExportClientsModal: React.FC<ExportClientsModalProps> = ({
                                     c.gps_status_calculado === 'regular' ? 'Regular' : 'N/A';
                             break;
                         case 'profissao': value = c.profissao || 'N/A'; break;
+                        case 'entrevista_inicial':
+                            value = c.interviewStatus || 'N/A';
+                            if (c.interviewStatus === 'Agendada' && c.interviewDate) {
+                                value += ` (${formatDateDisplay(c.interviewDate)})`;
+                            }
+                            break;
                         case 'pendencias':
                             value = Array.isArray(c.pendencias) ? c.pendencias.join(', ') : 'N/A';
                             break;

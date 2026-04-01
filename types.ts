@@ -77,6 +77,7 @@ export interface Captador {
   id: string;
   nome: string;
   filial: string;
+  tenant_id?: string;
 }
 
 export interface Client {
@@ -140,6 +141,7 @@ export interface Client {
   casos_titulos_unaccent?: string;
   casos_status?: string;
   casos_status_unaccent?: string;
+  tenant_id?: string;
 }
 
 export interface Task {
@@ -147,6 +149,7 @@ export interface Task {
   case_id: UUID;
   titulo: string;
   concluido: boolean;
+  tenant_id?: string;
 }
 
 export interface SystemAccess {
@@ -262,6 +265,7 @@ export interface Case {
   registered_by?: string;
   updated_by?: string;
   updated_at?: string;
+  tenant_id?: string;
 }
 
 export interface CaseInstallment {
@@ -327,6 +331,7 @@ export interface CommissionReceipt {
   arquivo_url?: string;
   status: 'pending' | 'signed';
   status_assinatura?: 'pendente' | 'assinado';
+  tenant_id?: string;
 }
 
 export interface FinancialRecord {
@@ -359,6 +364,7 @@ export interface FinancialRecord {
   };
   filial?: Branch;
   observacao?: string;
+  tenant_id?: string;
 }
 
 export interface FinancialReceiver {
@@ -391,6 +397,7 @@ export interface OfficeExpense {
   recebedor?: string;
   paid_with_balance_id?: string;
   filial?: string;
+  tenant_id?: string;
 }
 
 export interface OfficeBalance {
@@ -403,6 +410,7 @@ export interface OfficeBalance {
   conta?: string;
   forma_pagamento?: string;
   created_at?: string;
+  tenant_id?: string;
 }
 
 // --- NOVA INTERFACE: Credencial Pessoal ---
@@ -423,6 +431,7 @@ export interface Event {
   data_hora: string;
   tipo: EventType | string;
   cidade?: string;
+  tenant_id?: string;
 }
 
 export type FieldType = 'text' | 'image';
@@ -499,6 +508,7 @@ export interface Chat {
   last_message?: string;
   last_message_at: string;
   unread_count: number;
+  tenant_id?: string;
 }
 
 export interface ChatMessage {
@@ -509,6 +519,7 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   read: boolean;
+  tenant_id?: string;
 }
 
 export type ViewState =
@@ -645,6 +656,7 @@ export interface UserPreferences {
   lowPerformanceMode?: boolean;
   estimatedFeePercentage?: number;
   selectedBranch?: Branch | 'all';
+  selectedTenant?: string;
 }
 
 export interface UserPermission {
@@ -652,6 +664,7 @@ export interface UserPermission {
   email: string;
   nome: string;
   role: 'admin' | 'colaborador';
+  tenant_id?: string;
 
   // Permissões Macro
   access_dashboard: boolean;
@@ -691,6 +704,7 @@ export interface User {
   name: string;
   email: string;
   role?: string;
+  tenant_id?: string;
   avatar?: string;
   preferences?: UserPreferences;
   permissions?: UserPermission;

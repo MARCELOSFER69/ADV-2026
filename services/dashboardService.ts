@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { getGlobalTenant } from './tenantContext';
 
 export const dashboardService = {
     // 1. KPIs Simples (Contagens) - USANDO HEAD: TRUE PARA PERFORMANCE
@@ -8,6 +9,7 @@ export const dashboardService = {
         let query = supabase
             .from('cases')
             .select('*', { count: 'exact', head: true })
+            .eq('tenant_id', getGlobalTenant())
             .neq('status', 'Arquivado')
             .not('status', 'ilike', '%Concluído%')
             .lt('data_abertura', limitDate.toISOString());
@@ -26,6 +28,7 @@ export const dashboardService = {
         let query = supabase
             .from('cases')
             .select('*', { count: 'exact', head: true })
+            .eq('tenant_id', getGlobalTenant())
             .neq('status', 'Arquivado');
 
         if (filial && filial !== 'all') {
@@ -41,6 +44,7 @@ export const dashboardService = {
         let query = supabase
             .from('clients')
             .select('*', { count: 'exact', head: true })
+            .eq('tenant_id', getGlobalTenant())
             .neq('status', 'arquivado');
 
         if (filial && filial !== 'all') {
@@ -57,6 +61,7 @@ export const dashboardService = {
         let query = supabase
             .from('clients')
             .select('*', { count: 'exact', head: true })
+            .eq('tenant_id', getGlobalTenant())
             .eq('status', 'pendencia'); // Exemplo, ajustar conforme regra de negócio
 
         if (filial && filial !== 'all') {
@@ -78,6 +83,7 @@ export const dashboardService = {
             let q = supabase
                 .from('financial_records')
                 .select('valor, clients!inner(filial)')
+                .eq('tenant_id', getGlobalTenant())
                 .eq('tipo', tipo)
                 .eq('status_pagamento', paga)
                 .gte('data_vencimento', startOfMonth)
@@ -110,6 +116,7 @@ export const dashboardService = {
         let futureIncomeQuery = supabase
             .from('financial_records')
             .select('valor, clients!inner(filial)')
+            .eq('tenant_id', getGlobalTenant())
             .eq('tipo', 'Receita')
             .eq('status_pagamento', false)
             .gte('data_vencimento', today.toISOString())
@@ -127,6 +134,7 @@ export const dashboardService = {
         let yearFlowQuery = supabase
             .from('financial_records')
             .select('valor, tipo, clients!inner(filial)')
+            .eq('tenant_id', getGlobalTenant())
             .eq('status_pagamento', true)
             .gte('data_vencimento', startYear);
 
@@ -153,6 +161,7 @@ export const dashboardService = {
         let query = supabase
             .from('financial_records')
             .select('id, titulo, valor, data_vencimento, client_id, case_id, clients!inner(filial)')
+            .eq('tenant_id', getGlobalTenant())
             .eq('status_pagamento', false)
             .eq('tipo', 'Receita')
             .ilike('titulo', '%Seguro Defeso%')
@@ -173,6 +182,7 @@ export const dashboardService = {
         let query = supabase
             .from('financial_records')
             .select('id, titulo, valor, data_vencimento, client_id, case_id, clients!inner(filial)')
+            .eq('tenant_id', getGlobalTenant())
             .eq('status_pagamento', false)
             .eq('tipo', 'Receita');
 

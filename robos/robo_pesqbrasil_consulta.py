@@ -20,6 +20,7 @@ import undetected_chromedriver as uc
 def enviar_para_erp(case_number, status_text, raw_data_json=None):
     """
     Envia atualização de status para o Webhook do ERP.
+    Silencia erros se o ERP não estiver rodando (Modo Solo).
     """
     url = "http://localhost:3000/api/webhook/bot-update"
     payload = {
@@ -28,11 +29,19 @@ def enviar_para_erp(case_number, status_text, raw_data_json=None):
         "raw_data_json": raw_data_json
     }
     try:
-        response = requests.post(url, json=payload, timeout=10)
+        # Timeout curto para não travar o robô se o ERP estiver desligado
+        response = requests.post(url, json=payload, timeout=2)
         response.raise_for_status()
-        print(f"   [WEBHOOK] Sucesso: {case_number} -> {status_text}")
+        print(f"   [ERP] Atualizado: {case_number}")
+    except requests.exceptions.ConnectionError:
+        # Silencia erro de conexão recusada (sistema fechado)
+        pass
     except Exception as e:
-        print(f"   [WEBHOOK] Erro ao enviar para ERP ({case_number}): {e}")
+        # Outros erros aparecem como aviso discreto
+        print(f"   [!] Nota: ERP offline ou ocupado.")
+
+def log_debug(msg):
+    print(f"[{time.strftime('%H:%M:%S')}] {msg}")
 
 COR_TEMA = "#2c3e50"
 ROBO_PARADO = False
@@ -350,6 +359,90 @@ def consultar_unico_cpf(cpf_limpo, headless=True):
                 pass # Ignora erro de processo zumbi no Windows
             except Exception:
                 pass
+
+def processar_consulta(caminho_planilha, root_tk):
+    """
+    Processa uma planilha Excel, consulta cada CPF e salva o resultado.
+    """
+    log_debug(f"📂 Abrindo planilha: {caminho_planilha}")
+    try:
+        df = pd.read_excel(caminho_planilha)
+    except Exception as e:
+        messagebox.showerror("Erro", f"Não foi possível ler a planilha:\n{e}")
+        return
+
+    # Tenta encontrar a coluna de CPF
+    col_cpf = None
+    for col in df.columns:
+        if 'CPF' in str(col).upper():
+            col_cpf = col
+            break
+    
+    if not col_cpf:
+        messagebox.showerror("Erro", "Coluna 'CPF' não encontrada na planilha!")
+        return
+
+    total = len(df)
+    log_debug(f"📊 Total de registros para processar: {total}")
+
+    resultados = []
+    
+    # Janela de Stop
+    stop_win = FloatingStopWindow(root_tk)
+    
+    for index, row in df.iterrows():
+        if ROBO_PARADO:
+            log_debug("🛑 Interrupção solicitada pelo usuário.")
+            break
+            
+        cpf_bruto = str(row[col_cpf])
+        cpf_limpo = re.sub(r'\D', '', cpf_bruto)
+        
+        if not cpf_limpo or len(cpf_limpo) != 11:
+            log_debug(f"⚠️ CPF Inválido na linha {index+1}: {cpf_bruto}")
+            resultados.append({"CPF": cpf_bruto, "STATUS": "CPF INVÁLIDO", "DETALHES": ""})
+            continue
+
+        log_debug(f"🔍 Consultando ({index+1}/{total}): {cpf_limpo}")
+        res = consultar_unico_cpf(cpf_limpo, headless=True)
+        
+        if res.get("success"):
+            dados = res["data"]
+            log_debug(f"✅ Sucesso: {dados['MUNICIPIO']} | {dados['SITUACAO_RGP']}")
+            resultados.append({
+                "CPF": cpf_limpo,
+                "STATUS": "SUCESSO",
+                "MUNICIPIO": dados["MUNICIPIO"],
+                "SITUACAO_RGP": dados["SITUACAO_RGP"],
+                "DATA_1_RGP": dados["DATA_PRIMEIRO_RGP"],
+                "LOCAL": dados["LOCAL_DE_EXERCICIO"],
+                "NUMERO_RGP": dados["NUMERO_RGP"]
+            })
+            # Opcional: Enviar para ERP se estiver em modo integrado
+            enviar_para_erp(cpf_limpo, "OK", res)
+        else:
+            err = res.get("error", "Erro desconhecido")
+            log_debug(f"❌ Falha: {err}")
+            resultados.append({"CPF": cpf_limpo, "STATUS": f"ERRO: {err}", "DETALHES": err})
+            enviar_para_erp(cpf_limpo, f"ERRO: {err}", res)
+
+        # Pequena pausa entre consultas para evitar bloqueios
+        time.sleep(1)
+
+    # Salva Resultado
+    if resultados:
+        df_res = pd.DataFrame(resultados)
+        output_path = caminho_planilha.replace(".xlsx", "_RESULTADO.xlsx")
+        try:
+            df_res.to_excel(output_path, index=False)
+            log_debug(f"💾 Resultado salvo em: {output_path}")
+            messagebox.showinfo("Concluído", f"Processamento finalizado!\n\nArquivo salvo:\n{output_path}")
+        except Exception as e:
+            log_debug(f"❌ Erro ao salvar Excel: {e}")
+            messagebox.showerror("Erro", f"Erro ao salvar resultado:\n{e}")
+
+    stop_win.fechar()
+    root_tk.quit()
 
 if __name__ == "__main__":
     import sys

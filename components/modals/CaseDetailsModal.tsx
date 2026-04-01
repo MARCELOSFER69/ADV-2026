@@ -85,11 +85,11 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
     const [localCaseData, setLocalCaseData] = useState<Case>(liveCase);
     const [hasChanges, setHasChanges] = useState(false);
 
-    // Sincroniza estado local quando o caseID muda ou quando editMode é ativado
+    // Sincroniza estado local quando o liveCase muda (importante para mudanças oriundas de tabs ou server)
     React.useEffect(() => {
         setLocalCaseData(liveCase);
         setHasChanges(false);
-    }, [liveCase.id]);
+    }, [liveCase]);
 
     const handleLocalChange = (updates: Partial<Case>) => {
         setLocalCaseData(prev => ({ ...prev, ...updates }));
@@ -97,6 +97,10 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
     };
 
     const handleSaveClick = async () => {
+        if (!localCaseData.id) {
+            showToast('error', 'Erro interno: ID do processo não encontrado.');
+            return;
+        }
         await updateCase(localCaseData, 'Atualização via Modal');
         setHasChanges(false);
     };

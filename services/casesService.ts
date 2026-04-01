@@ -1,8 +1,10 @@
 import { supabase } from './supabaseClient';
 import { Case, CaseNote } from '../types';
 import { normalizeCompetence } from './formatters';
+import { getGlobalTenant } from './tenantContext';
 
 const applyCaseFilters = (query: any, search?: string, filters?: any) => {
+    query = query.eq('tenant_id', getGlobalTenant());
     if (search) {
         const normalizedSearch = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         query = query.or(`titulo_unaccent.ilike.%${normalizedSearch}%,numero_processo.ilike.%${search}%,client_name_unaccent.ilike.%${normalizedSearch}%,client_cpf.ilike.%${search}%`);
@@ -82,7 +84,7 @@ export const fetchCasesData = async (page: number, perPage: number, search?: str
 export const fetchAllCasesData = async () => {
     try {
         console.warn("PERFORMANCE WARNING: fetchAllCasesData called. This should be avoided.");
-        const { data, error } = await supabase.from('view_cases_dashboard').select('*');
+        const { data, error } = await supabase.from('view_cases_dashboard').select('*').eq('tenant_id', getGlobalTenant());
         if (error) throw error;
         return (data || []) as unknown as Case[];
     } catch (error) {
@@ -118,6 +120,7 @@ export const getProcessTypes = async (): Promise<string[]> => {
         const { data, error } = await supabase
             .from('cases')
             .select('tipo')
+            .eq('tenant_id', getGlobalTenant())
             .neq('status', 'Arquivado')
             .order('tipo');
 
