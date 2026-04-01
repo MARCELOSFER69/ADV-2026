@@ -46,11 +46,18 @@ export const useClients = ({ page, perPage, filters }: UseClientsProps) => {
 
 // ... existing code ...
 export const useAllClients = () => {
-    return useQuery({
+    const { data, isLoading, error, refetch } = useQuery({
         queryKey: ['clients', 'all'],
-        queryFn: fetchAllClientsData,
+        queryFn: () => fetchAllClientsData(),
         staleTime: 1000 * 60 * 10, // 10 minutes
     });
+
+    return {
+        data: (data as Client[]) || [],
+        isLoading,
+        error,
+        refetch
+    };
 };
 
 export const useClient = (id: string | undefined) => {
