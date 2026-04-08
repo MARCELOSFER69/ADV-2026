@@ -32,7 +32,7 @@ const REPORT_COLUMNS = [
     { id: 'endereco', label: 'Endereço Completo', default: false },
     { id: 'filial', label: 'Filial', default: true },
     { id: 'captador', label: 'Captador', default: true },
-    { id: 'gps', label: 'Situação GPS', default: false },
+    { id: 'gps', label: 'Situação GPS', default: true },
     { id: 'profissao', label: 'Profissão', default: false },
     { id: 'entrevista_inicial', label: 'Entrevista Inicial', default: false },
     { id: 'pendencias', label: 'Pendências Detalhadas', default: true },

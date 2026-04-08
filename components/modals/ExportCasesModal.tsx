@@ -34,6 +34,7 @@ const REPORT_COLUMNS = [
     { id: 'cidade', label: 'Cidade', default: true },
     { id: 'filial', label: 'Filial', default: true },
     { id: 'captador', label: 'Captador', default: true },
+    { id: 'gps', label: 'Situação GPS', default: true },
     // Retirement specific
     { id: 'proj_tempo', label: 'Projeção (Tempo)', default: false },
     { id: 'proj_modalidade', label: 'Modalidade (Incluso no Card)', default: false },
@@ -310,6 +311,17 @@ const ExportCasesModal: React.FC<ExportCasesModalProps> = ({
                         case 'cidade': value = c.client_city || 'N/A'; break;
                         case 'filial': value = c.filial || 'N/A'; break;
                         case 'captador': value = c.captador || 'N/A'; break;
+                        case 'gps': {
+                            const gpsList: any[] = (c as any).gps_lista || [];
+                            if (!gpsList || gpsList.length === 0) {
+                                value = 'N/A';
+                            } else {
+                                const hasPendente = gpsList.some(g => g.status === 'Pendente' || g.status?.toLowerCase() === 'pendente');
+                                const hasPuxada = gpsList.some(g => g.status === 'Puxada' || g.status?.toLowerCase() === 'puxada');
+                                value = hasPendente ? 'Pendente' : (hasPuxada ? 'Puxada' : 'Regular/Paga');
+                            }
+                            break;
+                        }
                         // Simplified Retirement Specific
                         case 'proj_tempo': {
                             const birthDate = c.client_birth_date || (c as any).data_nascimento;

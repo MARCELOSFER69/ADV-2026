@@ -13,15 +13,36 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
             query = query.eq('tenant_id', tenant);
         }
 
+        // Dois passos: primeiro busca no cases se o usuário estiver buscando por nome do processo
+        let additionalSearchClientIds: string[] = [];
+        if (search) {
+            const normalizedSearch = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const { data: casesBySearch } = await supabase
+                .from('cases')
+                .select('client_id')
+                .or(`titulo.ilike.%${normalizedSearch}%,numero_processo.ilike.%${search}%`)
+                .limit(800);
+            if (casesBySearch && casesBySearch.length > 0) {
+                additionalSearchClientIds = casesBySearch.map(c => c.client_id);
+            }
+        }
+
         // Filtro de Busca (Search) com Unaccent suporte
         if (search) {
             const normalizedSearch = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const cleanSearch = search.replace(/\D/g, '');
+            
+            let queryOrStr = `nome_completo_unaccent.ilike.%${normalizedSearch}%`;
+            
             if (cleanSearch.length > 0) {
-                query = query.or(`nome_completo_unaccent.ilike.%${normalizedSearch}%,cpf_cnpj.ilike.%${search}%,cpf_cnpj.ilike.%${cleanSearch}%,casos_titulos_unaccent.ilike.%${normalizedSearch}%`);
-            } else {
-                query = query.or(`nome_completo_unaccent.ilike.%${normalizedSearch}%,casos_titulos_unaccent.ilike.%${normalizedSearch}%`);
+                queryOrStr += `,cpf_cnpj.ilike.%${search}%,cpf_cnpj.ilike.%${cleanSearch}%`;
             }
+            
+            if (additionalSearchClientIds.length > 0) {
+                 queryOrStr += `,id.in.(${additionalSearchClientIds.join(',')})`;
+            }
+            
+            query = query.or(queryOrStr);
         }
 
         // Filtros Granulares (Database-side)
@@ -98,16 +119,23 @@ export const fetchClientsData = async (page: number, perPage: number, search?: s
                 query = query.lte('data_cadastro', filters.dateEnd);
             }
 
-            // Filtro de Status Específico do Processo (Usando a coluna agregada da View)
-            if (filters.case_status && filters.case_status !== 'all') {
-                const normalizedStatus = filters.case_status.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                query = query.ilike('casos_status_unaccent', `%${normalizedStatus}%`);
-            }
-
-            // Filtro por Nome do Processo
-            if (filters.casos_titulos && filters.casos_titulos !== '') {
-                const normalizedProcess = filters.casos_titulos.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                query = query.ilike('casos_titulos_unaccent', `%${normalizedProcess}%`);
+            // Filtro por Processo (Status ou Título do Caso)
+            if ((filters.case_status && filters.case_status !== 'all') || (filters.casos_titulos && filters.casos_titulos !== '')) {
+                let caseQuery = supabase.from('cases').select('client_id');
+                if (filters.case_status && filters.case_status !== 'all') {
+                    caseQuery = caseQuery.ilike('status', `%${filters.case_status}%`);
+                }
+                if (filters.casos_titulos && filters.casos_titulos !== '') {
+                    caseQuery = caseQuery.or(`tipo.ilike.%${filters.casos_titulos}%,titulo.ilike.%${filters.casos_titulos}%`);
+                }
+                
+                const { data: casesData } = await caseQuery.limit(2000);
+                const matchedClientIds = casesData && casesData.length > 0 
+                  ? casesData.map(c => c.client_id) 
+                  : ['00000000-0000-0000-0000-000000000000']; // se n achar ngm, força retornar vazio
+                
+                // Aplicar limit para não sobrecarregar querystring
+                query = query.in('id', matchedClientIds.slice(0, 1000));
             }
 
             // Filtro de Entrevista (CML)
@@ -171,15 +199,36 @@ export const fetchAllFilteredClientsData = async (search?: string, filters?: any
             query = query.eq('tenant_id', tenant);
         }
 
+        // Dois passos: primeiro busca no cases se o usuário estiver buscando por nome do processo
+        let additionalSearchClientIds: string[] = [];
+        if (search) {
+            const normalizedSearch = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const { data: casesBySearch } = await supabase
+                .from('cases')
+                .select('client_id')
+                .or(`titulo.ilike.%${normalizedSearch}%,numero_processo.ilike.%${search}%`)
+                .limit(800);
+            if (casesBySearch && casesBySearch.length > 0) {
+                additionalSearchClientIds = casesBySearch.map(c => c.client_id);
+            }
+        }
+
         // Filtro de Busca (Search) com Unaccent suporte
         if (search) {
             const normalizedSearch = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const cleanSearch = search.replace(/\D/g, '');
+            
+            let queryOrStr = `nome_completo_unaccent.ilike.%${normalizedSearch}%`;
+            
             if (cleanSearch.length > 0) {
-                query = query.or(`nome_completo_unaccent.ilike.%${normalizedSearch}%,cpf_cnpj.ilike.%${search}%,cpf_cnpj.ilike.%${cleanSearch}%,casos_titulos_unaccent.ilike.%${normalizedSearch}%`);
-            } else {
-                query = query.or(`nome_completo_unaccent.ilike.%${normalizedSearch}%,casos_titulos_unaccent.ilike.%${normalizedSearch}%`);
+                queryOrStr += `,cpf_cnpj.ilike.%${search}%,cpf_cnpj.ilike.%${cleanSearch}%`;
             }
+            
+            if (additionalSearchClientIds.length > 0) {
+                 queryOrStr += `,id.in.(${additionalSearchClientIds.join(',')})`;
+            }
+            
+            query = query.or(queryOrStr);
         }
 
         // Filtros Granulares
@@ -244,16 +293,22 @@ export const fetchAllFilteredClientsData = async (search?: string, filters?: any
                 query = query.lte('data_cadastro', filters.dateEnd);
             }
 
-            // Filtro de Status Específico do Processo (Usando a coluna agregada da View para evitar lista de IDs na URL)
-            if (filters.case_status && filters.case_status !== 'all') {
-                const normalizedStatus = filters.case_status.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                query = query.ilike('casos_status_unaccent', `%${normalizedStatus}%`);
-            }
-
-            // Filtro por Nome do Processo
-            if (filters.casos_titulos && filters.casos_titulos !== '') {
-                const normalizedProcess = filters.casos_titulos.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                query = query.ilike('casos_titulos_unaccent', `%${normalizedProcess}%`);
+            // Filtro por Processo (Status ou Título do Caso)
+            if ((filters.case_status && filters.case_status !== 'all') || (filters.casos_titulos && filters.casos_titulos !== '')) {
+                let caseQuery = supabase.from('cases').select('client_id');
+                if (filters.case_status && filters.case_status !== 'all') {
+                    caseQuery = caseQuery.ilike('status', `%${filters.case_status}%`);
+                }
+                if (filters.casos_titulos && filters.casos_titulos !== '') {
+                    caseQuery = caseQuery.or(`tipo.ilike.%${filters.casos_titulos}%,titulo.ilike.%${filters.casos_titulos}%`);
+                }
+                
+                const { data: casesData } = await caseQuery.limit(2000);
+                const matchedClientIds = casesData && casesData.length > 0 
+                  ? casesData.map(c => c.client_id) 
+                  : ['00000000-0000-0000-0000-000000000000'];
+                
+                query = query.in('id', matchedClientIds.slice(0, 1000));
             }
 
             // Filtro de Entrevista (CML)
