@@ -6,6 +6,7 @@ import { formatCPFOrCNPJ, formatCurrencyInput, parseCurrencyToNumber } from '../
 import { fetchCaseNotes, addCaseNote, deleteCaseNote, updateCaseNote } from '../../../services/casesService';
 import CustomSelect from '../../ui/CustomSelect';
 import ConfirmModal from '../../ui/ConfirmModal';
+import PendencyIndicator from '../../ui/PendencyIndicator';
 
 interface CaseInfoTabProps {
     caseItem: Case;
@@ -218,9 +219,11 @@ const CaseInfoTab: React.FC<CaseInfoTabProps> = ({
                         </div>
                     ) : client ? (
                         <div className="flex items-start gap-4">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-zinc-800 to-black border border-white/10 flex items-center justify-center text-lg font-serif text-gold-500">
-                                {client.nome_completo.charAt(0)}
-                            </div>
+                            <PendencyIndicator pendencies={client.pendencias} align="left">
+                                <div className={`w-12 h-12 rounded-full border flex items-center justify-center text-lg font-serif transition-colors ${client.pendencias?.length ? 'bg-red-600 border-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-gradient-to-br from-zinc-800 to-black border-white/10 text-gold-500'}`}>
+                                    {client.nome_completo.charAt(0)}
+                                </div>
+                            </PendencyIndicator>
                             <div className="flex-1">
                                 <h4 className="text-xl font-medium text-white group-hover:text-gold-500 transition-colors cursor-pointer" onClick={() => onViewClient?.(client.id)}>
                                     {client.nome_completo}

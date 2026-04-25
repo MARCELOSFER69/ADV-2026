@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { formatCurrencyInput, parseCurrencyToNumber } from '../services/formatters';
 import BranchSelector from '../components/Layout/BranchSelector';
+import PendencyIndicator from '../components/ui/PendencyIndicator';
 
 interface UnifiedReceipt {
     id: string;
@@ -41,6 +42,7 @@ interface UnifiedReceipt {
     telefone: string;
     foto?: string;
     emitida?: boolean;
+    client_pendencias?: string[];
 }
 
 const FinancialCalendar: React.FC = () => {
@@ -87,7 +89,7 @@ const FinancialCalendar: React.FC = () => {
             // 2. Fetch Financial Records (Honorários/Receitas)
             const { data: finData, error: finError } = await supabase
                 .from('financial_records')
-                .select('*, clients!inner(nome_completo, id, filial, captador, cidade, telefone, foto, status), cases(tipo, status, clients(*))')
+                .select('*, clients!inner(nome_completo, id, filial, captador, cidade, telefone, foto, status, pendencias), cases(tipo, status, clients(*))')
                 .eq('tipo', 'Receita')
                 .neq('clients.status', 'arquivado')
                 .gte('data_vencimento', `${startDate}T00:00:00`)
@@ -116,7 +118,8 @@ const FinancialCalendar: React.FC = () => {
                     cidade: client?.cidade || '',
                     telefone: client?.telefone || '',
                     foto: client?.foto,
-                    emitida: i.emitida
+                    emitida: i.emitida,
+                    client_pendencias: client?.pendencias
                 };
             });
 
@@ -148,7 +151,8 @@ const FinancialCalendar: React.FC = () => {
                         captador: client?.captador || '',
                         cidade: client?.cidade || '',
                         telefone: client?.telefone || '',
-                        foto: client?.foto
+                        foto: client?.foto,
+                        client_pendencias: client?.pendencias
                     };
                 });
 
@@ -475,9 +479,11 @@ Podemos confirmar o recebimento?`;
                             >
                                 <div className="flex justify-between items-start mb-2">
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${receipt.pago ? 'bg-emerald-500 text-black' : 'bg-zinc-700 text-zinc-300'}`}>
-                                            {receipt.client_name.substring(0, 1)}
-                                        </div>
+                                        <PendencyIndicator pendencies={receipt.client_pendencias} align="left">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-colors ${receipt.client_pendencias?.length ? 'bg-red-600 text-white shadow-[0_0_10px_rgba(239,68,68,0.3)]' : (receipt.pago ? 'bg-emerald-500 text-black' : 'bg-zinc-700 text-zinc-300')}`}>
+                                                {receipt.client_name.substring(0, 1)}
+                                            </div>
+                                        </PendencyIndicator>
                                         <div>
                                             <h4
                                                 onClick={() => {

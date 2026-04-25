@@ -105,7 +105,7 @@ const CaseKanbanCard: React.FC<CaseKanbanCardProps> = ({ caseItem, client, onCli
     const hasPendencias = client?.pendencias && client.pendencias.length > 0;
 
     const avatarClass = hasPendencias
-        ? 'bg-rose-600 text-white shadow-[0_0_10px_rgba(225,29,72,0.2)]'
+        ? 'bg-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.3)] ring-1 ring-red-500/50'
         : 'bg-zinc-300 text-zinc-900';
 
     return (

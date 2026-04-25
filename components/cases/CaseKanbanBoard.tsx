@@ -359,7 +359,8 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
                                                 // Real client data from view_cases_dashboard
                                                 const client = {
                                                     id: caseItem.client_id,
-                                                    nome_completo: caseItem.client_name || 'Desconhecido'
+                                                    nome_completo: caseItem.client_name || 'Desconhecido',
+                                                    pendencias: caseItem.client_pendencias
                                                 } as any;
                                                 return (
                                                     <CaseKanbanCard

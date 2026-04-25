@@ -261,6 +261,7 @@ export interface Case {
   client_birth_date?: string;
   client_sexo?: 'Masculino' | 'Feminino';
   client_city?: string;
+  client_pendencias?: string[];
 
   registered_by?: string;
   updated_by?: string;

@@ -76,7 +76,7 @@ export const fetchCasesData = async (page: number, perPage: number, search?: str
             if (clientIds.length > 0) {
                 const { data: clientsData, error: clientsError } = await supabase
                     .from('clients')
-                    .select('id, captador, cidade, sexo, data_nascimento')
+                    .select('id, captador, cidade, sexo, data_nascimento, pendencias')
                     .in('id', clientIds);
                 
                 if (!clientsError && clientsData) {
@@ -91,6 +91,7 @@ export const fetchCasesData = async (page: number, perPage: number, search?: str
                             c.client_city = c.client_city || clientMap[c.client_id].cidade;
                             if (!c.client_birth_date) c.client_birth_date = clientMap[c.client_id].data_nascimento;
                             if (!c.client_sexo) c.client_sexo = clientMap[c.client_id].sexo;
+                            c.client_pendencias = clientMap[c.client_id].pendencias;
                         }
                     });
                 }
@@ -146,7 +147,7 @@ export const fetchKanbanCases = async (search?: string, filters?: any) => {
             if (clientIds.length > 0) {
                 const { data: clientsData, error: clientsError } = await supabase
                     .from('clients')
-                    .select('id, captador, cidade, sexo, data_nascimento')
+                    .select('id, captador, cidade, sexo, data_nascimento, pendencias')
                     .in('id', clientIds);
                 
                 if (!clientsError && clientsData) {
@@ -161,6 +162,7 @@ export const fetchKanbanCases = async (search?: string, filters?: any) => {
                             c.client_city = c.client_city || clientMap[c.client_id].cidade;
                             if (!c.client_birth_date) c.client_birth_date = clientMap[c.client_id].data_nascimento;
                             if (!c.client_sexo) c.client_sexo = clientMap[c.client_id].sexo;
+                            if (!c.client_pendencias) c.client_pendencias = clientMap[c.client_id].pendencias;
                         }
                     });
                 }
@@ -202,8 +204,24 @@ export const fetchCaseById = async (id: string) => {
             .eq('id', id)
             .single();
 
-        if (error) throw error;
-        return data as Case;
+        if (data) {
+            const caseData = data as unknown as Case;
+            const { data: clientData } = await supabase
+                .from('clients')
+                .select('pendencias, captador, cidade, sexo, data_nascimento')
+                .eq('id', caseData.client_id)
+                .single();
+            
+            if (clientData) {
+                caseData.client_pendencias = clientData.pendencias;
+                caseData.captador = caseData.captador || clientData.captador;
+                caseData.client_city = caseData.client_city || clientData.cidade;
+                if (!caseData.client_birth_date) caseData.client_birth_date = clientData.data_nascimento;
+                if (!caseData.client_sexo) caseData.client_sexo = clientData.sexo;
+            }
+            return caseData;
+        }
+        return data as unknown as Case;
     } catch (error) {
         // ... existing code ...
         console.error(`Erro fetchCaseById (${id}):`, error);
@@ -280,7 +298,7 @@ export const fetchAllFilteredCasesData = async (search?: string, filters?: any) 
             if (clientIds.length > 0) {
                 const { data: clientsData, error: clientsError } = await supabase
                     .from('clients')
-                    .select('id, captador, cidade, sexo, data_nascimento')
+                    .select('id, captador, cidade, sexo, data_nascimento, pendencias')
                     .in('id', clientIds);
                 
                 if (!clientsError && clientsData) {
@@ -295,6 +313,7 @@ export const fetchAllFilteredCasesData = async (search?: string, filters?: any) 
                             c.client_city = c.client_city || clientMap[c.client_id].cidade;
                             if (!c.client_birth_date) c.client_birth_date = clientMap[c.client_id].data_nascimento;
                             if (!c.client_sexo) c.client_sexo = clientMap[c.client_id].sexo;
+                            c.client_pendencias = clientMap[c.client_id].pendencias;
                         }
                     });
                 }
