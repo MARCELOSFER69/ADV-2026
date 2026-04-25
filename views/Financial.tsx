@@ -688,7 +688,6 @@ const Financial: React.FC = () => {
                     onClose={() => setSelectedCase(null)}
                     onViewClient={(clientId) => {
                         setClientToView(clientId);
-                        setCurrentView('clients');
                         setSelectedCase(null);
                     }}
                 />

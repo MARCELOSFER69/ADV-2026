@@ -34,10 +34,18 @@ const Cases: React.FC = () => {
         updateCase, updateClient, deleteCase, deleteFinancialRecord,
         showToast, user, saveUserPreferences, isNewCaseModalOpen, setIsNewCaseModalOpen,
         caseToView, setCaseToView, currentView, mergedPreferences, setClientToView,
-        financial, setCurrentView, caseTypeFilter, globalBranchFilter
+        financial, setCurrentView, caseTypeFilter, globalBranchFilter,
+        lastInteractedItemId, setLastInteractedItemId
     } = useApp();
 
     const [selectedCase, setSelectedCase] = useState<Case | null>(null);
+
+    // Sync highlight with selected case (modal open)
+    useEffect(() => {
+        if (selectedCase) {
+            setLastInteractedItemId(selectedCase.id);
+        }
+    }, [selectedCase, setLastInteractedItemId]);
 
     // View State
     const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
@@ -533,8 +541,16 @@ const Cases: React.FC = () => {
                     cases={displayedCases}
                     columns={activeKanbanColumns}
                     onCaseDrop={onCaseDrop}
-                    onCardClick={setSelectedCase}
+                    onCardClick={(c) => {
+                        setSelectedCase(c);
+                        setLastInteractedItemId(c.id);
+                    }}
                     onArchiveClick={setCaseToArchive}
+                    lastViewedCaseId={lastInteractedItemId}
+                    onRowClick={(c) => {
+                        setSelectedCase(c);
+                        setLastInteractedItemId(c.id);
+                    }}
                     onProjectionClick={handleOpenRetirementDetails}
                     columnWidth={kanbanColumnWidth}
                     setColumnWidth={(w) => { setKanbanColumnWidth(w); saveUserPreferences({ kanbanColumnWidth: w }); }}
@@ -562,6 +578,11 @@ const Cases: React.FC = () => {
                     totalCases={totalCases}
                     itemsPerPage={ITEMS_PER_PAGE}
                     isFetching={isFetching}
+                    lastInteractedItemId={lastInteractedItemId}
+                    onRowClick={(c) => {
+                        setSelectedCase(c);
+                        setLastInteractedItemId(c.id);
+                    }}
                 />
             )}
 
@@ -576,7 +597,6 @@ const Cases: React.FC = () => {
                         onSelectCase={setSelectedCase}
                         onViewClient={(clientId) => {
                             setClientToView(clientId, 'info');
-                            setCurrentView('clients');
                             setSelectedCase(null);
                             setCaseToView(null);
                         }}
@@ -681,7 +701,6 @@ const Cases: React.FC = () => {
                     onWhatsAppClick={handleWhatsAppClick}
                     onViewFullProfile={(clientId) => {
                         setClientToView(clientId, 'info');
-                        setCurrentView('clients');
                         setRetirementCandidateToView(null);
                     }}
                 />

@@ -24,6 +24,8 @@ interface CaseListProps {
     totalCases: number;
     itemsPerPage: number;
     isFetching: boolean;
+    lastInteractedItemId?: string | null;
+    onRowClick?: (c: Case) => void;
 }
 
 const CaseList: React.FC<CaseListProps> = ({
@@ -43,7 +45,9 @@ const CaseList: React.FC<CaseListProps> = ({
     setCurrentPage,
     totalCases,
     itemsPerPage,
-    isFetching
+    isFetching,
+    lastInteractedItemId,
+    onRowClick
 }) => {
 
     const getClientName = (clientId: string, caseItem: Case) => {
@@ -110,11 +114,14 @@ const CaseList: React.FC<CaseListProps> = ({
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ duration: 0.3, delay: index * 0.03 }}
                                     key={caseItem.id}
-                                    className={`group transition-colors cursor-pointer border-l-2 ${selectedCaseIds.includes(caseItem.id)
+                                    className={`group transition-colors cursor-pointer border-l-2 ${caseItem.id === lastInteractedItemId ? 'pulse-yellow' : (selectedCaseIds.includes(caseItem.id)
                                         ? 'bg-gold-500/10 border-gold-500 hover:bg-gold-500/15'
-                                        : 'hover:bg-white/5 border-transparent'
+                                        : 'hover:bg-white/5 border-transparent')
                                         }`}
-                                    onClick={() => setSelectedCase(caseItem)}
+                                    onClick={() => {
+                                        setSelectedCase(caseItem);
+                                        if (onRowClick) onRowClick(caseItem);
+                                    }}
                                 >
                                     <td className="py-4 px-6 align-middle" onClick={(e) => { e.stopPropagation(); handleToggleSelectCase(caseItem.id); }}>
                                         <div className="relative flex items-center justify-center w-5 h-5">

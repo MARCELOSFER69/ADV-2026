@@ -1,6 +1,6 @@
 import React, { memo, useState } from 'react';
 import { Client } from '../../types';
-import { Lock, Check, Eye, EyeOff } from 'lucide-react';
+import { Lock, Check, Eye, EyeOff, Copy } from 'lucide-react';
 
 interface ClientCredentialsTabProps {
     client: Client;
@@ -19,6 +19,25 @@ const ClientCredentialsTab: React.FC<ClientCredentialsTabProps> = ({
     const [showGovPassword, setShowGovPassword] = useState(false);
     const [showInssPassword, setShowInssPassword] = useState(false);
     const [decryptedPasswords, setDecryptedPasswords] = useState({ gov: '', inss: '' });
+    const [copiedField, setCopiedField] = useState<string | null>(null);
+
+    const handleCopy = (text: string, type: string, message: string) => {
+        navigator.clipboard.writeText(text);
+        showToast('success', message);
+        setCopiedField(type);
+        setTimeout(() => setCopiedField(null), 2000);
+    };
+
+    const formatCpfCnpj = (val: string | undefined | null) => {
+        if (!val) return 'Não informado';
+        const digits = val.replace(/\D/g, '');
+        if (digits.length === 11) {
+            return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+        } else if (digits.length === 14) {
+            return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+        }
+        return val;
+    };
 
     // --- DESCIPTOGRAFIA LAZY LOADING ---
     React.useEffect(() => {
@@ -58,9 +77,13 @@ const ClientCredentialsTab: React.FC<ClientCredentialsTabProps> = ({
                 <div className="grid grid-cols-1 gap-6 max-w-md">
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">CPF (Login)</label>
-                        <div className="bg-[#131418] border border-white/5 rounded-lg px-4 py-3 text-white font-mono flex justify-between items-center">
-                            <span>{client.cpf_cnpj}</span>
-                            <button onClick={() => { navigator.clipboard.writeText(client.cpf_cnpj); showToast('success', 'CPF Copiado'); }} className="text-zinc-500 hover:text-white" title="Copiar"><Check size={14} /></button>
+                        <div className="bg-[#131418] border border-white/5 rounded-lg px-4 py-3 text-white font-mono flex justify-between items-center group/copy">
+                            <span>{formatCpfCnpj(client.cpf_cnpj)}</span>
+                            {client.cpf_cnpj && (
+                                <button onClick={() => handleCopy(client.cpf_cnpj!, 'cpf', 'CPF Copiado')} className="text-zinc-500 hover:text-white transition-colors" title="Copiar">
+                                    {copiedField === 'cpf' ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -93,22 +116,21 @@ const ClientCredentialsTab: React.FC<ClientCredentialsTabProps> = ({
                                 </span>
                                 <div className="flex gap-2">
                                     {client.senha_gov && (
-                                        <button onClick={() => setShowGovPassword(!showGovPassword)} className="text-zinc-500 hover:text-white">
+                                        <button onClick={() => setShowGovPassword(!showGovPassword)} className="text-zinc-500 hover:text-white transition-colors">
                                             {showGovPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                         </button>
                                     )}
                                     <button
                                         onClick={() => {
                                             if (decryptedPasswords.gov) {
-                                                navigator.clipboard.writeText(decryptedPasswords.gov);
-                                                showToast('success', 'Senha copiada');
+                                                handleCopy(decryptedPasswords.gov, 'gov', 'Senha copiada');
                                             } else {
                                                 showToast('error', 'Sem senha para copiar');
                                             }
                                         }}
-                                        className="text-zinc-500 hover:text-white"
+                                        className="text-zinc-500 hover:text-white transition-colors"
                                     >
-                                        <Check size={14} />
+                                        {copiedField === 'gov' ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
                                     </button>
                                 </div>
                             </div>
@@ -152,7 +174,7 @@ const ClientCredentialsTab: React.FC<ClientCredentialsTabProps> = ({
                                 </span>
                                 <div className="flex gap-2">
                                     {client.senha_inss && (
-                                        <button onClick={() => setShowInssPassword(!showInssPassword)} className="text-zinc-500 hover:text-white">
+                                        <button onClick={() => setShowInssPassword(!showInssPassword)} className="text-zinc-500 hover:text-white transition-colors">
                                             {showInssPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                         </button>
                                     )}
@@ -160,15 +182,14 @@ const ClientCredentialsTab: React.FC<ClientCredentialsTabProps> = ({
                                         onClick={() => {
                                             const pass = decryptedPasswords.inss || decryptedPasswords.gov;
                                             if (pass) {
-                                                navigator.clipboard.writeText(pass);
-                                                showToast('success', 'Senha copiada');
+                                                handleCopy(pass, 'inss', 'Senha copiada');
                                             } else {
                                                 showToast('error', 'Sem senha para copiar');
                                             }
                                         }}
-                                        className="text-zinc-500 hover:text-white"
+                                        className="text-zinc-500 hover:text-white transition-colors"
                                     >
-                                        <Check size={14} />
+                                        {copiedField === 'inss' ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
                                     </button>
                                 </div>
                             </div>

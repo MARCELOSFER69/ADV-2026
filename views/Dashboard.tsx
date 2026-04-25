@@ -273,7 +273,7 @@ const Dashboard: React.FC = () => {
 
     const handleDeadlineClick = (caseId: string) => { if (!isEditMode) { setCaseToView(caseId); setCurrentView('cases'); } };
     const handleCollection = (e: React.MouseEvent, record: any) => { e.stopPropagation(); const client = clients.find(c => c.id === (record.client_id || cases.find(ca => ca.id === record.case_id)?.client_id)); if (client?.telefone) { window.open(`https://wa.me/55${client.telefone.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá ${client.nome_completo}, referente a: ${record.descricao}...`)}`, '_blank'); } else showToast('error', 'Sem telefone.'); };
-    const handleNavigateToClient = (clientId: string) => { setClientToView(clientId); setCurrentView('clients'); };
+    const handleNavigateToClient = (clientId: string) => { setClientToView(clientId); };
 
     // NEW: Handle Reminder Add
     const handleAddReminder = async () => {

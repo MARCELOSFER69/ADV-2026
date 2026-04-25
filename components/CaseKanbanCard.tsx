@@ -17,6 +17,8 @@ interface CaseKanbanCardProps {
     onProjectionClick?: (candidate: RetirementCandidate) => void;
     onUpdateClient?: (updatedClient: Client) => Promise<void>;
     onUpdateCase?: (updatedCase: Case) => Promise<void>;
+    isLastViewed?: boolean;
+    onRowClick?: (caseItem: Case) => void;
 }
 
 const getStatusProgress = (status: CaseStatus): number => {
@@ -64,7 +66,7 @@ const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 };
 
-const CaseKanbanCard: React.FC<CaseKanbanCardProps> = ({ caseItem, client, onClick, onArchiveClick, onProjectionClick, onUpdateClient, onUpdateCase }) => {
+const CaseKanbanCard: React.FC<CaseKanbanCardProps> = ({ caseItem, client, onClick, onArchiveClick, onProjectionClick, onUpdateClient, onUpdateCase, isLastViewed, onRowClick }) => {
     const {
         attributes,
         listeners,
@@ -112,9 +114,14 @@ const CaseKanbanCard: React.FC<CaseKanbanCardProps> = ({ caseItem, client, onCli
             style={style}
             {...attributes}
             {...listeners}
-            onClick={() => onClick(caseItem)}
+            onPointerDown={(e) => {
+                if (onRowClick) onRowClick(caseItem);
+            }}
+            onClick={() => {
+                onClick(caseItem);
+            }}
             whileHover={{ scale: 1.05, zIndex: 40, borderColor: 'rgba(113, 113, 122, 0.5)' }}
-            className={`kanban-card group relative flex flex-col bg-[#0f1014] border border-zinc-800/50 hover:border-zinc-700 rounded-xl p-4 transition-all duration-300 shadow-sm hover:shadow-2xl cursor-grab active:cursor-grabbing`}
+            className={`kanban-card group relative flex flex-col bg-[#0f1014] ${isLastViewed ? 'pulse-yellow ring-2 ring-gold-500' : 'border border-zinc-800/50 hover:border-zinc-700'} rounded-xl p-4 transition-[transform,shadow,border-color] duration-200 shadow-sm hover:shadow-2xl cursor-grab active:cursor-grabbing`}
         >
             {/* Animated Progress Border */}
             {progress > 0 && (

@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import NewCaseModal from './components/modals/NewCaseModal';
 import CommandPalette from './components/ui/CommandPalette';
 import ConfirmModal from './components/ui/ConfirmModal';
+import GlobalClientModal from './components/modals/GlobalClientModal';
 // Removed Enum import to prevent crash
 // import { CaseType } from './types'; 
 import { supabase } from './services/supabaseClient';
@@ -311,6 +312,7 @@ const AppContent: React.FC = () => {
 
           <NewCaseModal isOpen={isNewCaseModalOpen} onClose={() => setIsNewCaseModalOpen(false)} forcedType={getForcedType()} />
           <CommandPalette isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+          <GlobalClientModal />
 
           {/* Custom Global Confirm/Alert Modal */}
           {confirmState && (

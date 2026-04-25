@@ -68,7 +68,36 @@ export const fetchCasesData = async (page: number, perPage: number, search?: str
 
         if (error) throw error;
 
-        return { data: (data || []) as unknown as Case[], count: count || 0 };
+        const cases = (data || []) as unknown as Case[];
+        
+        // Enrich missing client information (captador, cidade, sexo, data_nascimento)
+        if (cases.length > 0) {
+            const clientIds = [...new Set(cases.map(c => c.client_id))].filter(Boolean);
+            if (clientIds.length > 0) {
+                const { data: clientsData, error: clientsError } = await supabase
+                    .from('clients')
+                    .select('id, captador, cidade, sexo, data_nascimento')
+                    .in('id', clientIds);
+                
+                if (!clientsError && clientsData) {
+                    const clientMap = clientsData.reduce((acc: any, client: any) => {
+                        acc[client.id] = client;
+                        return acc;
+                    }, {});
+
+                    cases.forEach(c => {
+                        if (clientMap[c.client_id]) {
+                            c.captador = c.captador || clientMap[c.client_id].captador;
+                            c.client_city = c.client_city || clientMap[c.client_id].cidade;
+                            if (!c.client_birth_date) c.client_birth_date = clientMap[c.client_id].data_nascimento;
+                            if (!c.client_sexo) c.client_sexo = clientMap[c.client_id].sexo;
+                        }
+                    });
+                }
+            }
+        }
+
+        return { data: cases, count: count || 0 };
     } catch (error) {
         console.error("Erro fetchCasesData:", error);
         throw error;
@@ -108,7 +137,37 @@ export const fetchKanbanCases = async (search?: string, filters?: any) => {
         const { data, error } = await query;
 
         if (error) throw error;
-        return (data || []) as unknown as Case[];
+        
+        const cases = (data || []) as unknown as Case[];
+        
+        // Enrich missing client information (captador, cidade, sexo, data_nascimento)
+        if (cases.length > 0) {
+            const clientIds = [...new Set(cases.map(c => c.client_id))].filter(Boolean);
+            if (clientIds.length > 0) {
+                const { data: clientsData, error: clientsError } = await supabase
+                    .from('clients')
+                    .select('id, captador, cidade, sexo, data_nascimento')
+                    .in('id', clientIds);
+                
+                if (!clientsError && clientsData) {
+                    const clientMap = clientsData.reduce((acc: any, client: any) => {
+                        acc[client.id] = client;
+                        return acc;
+                    }, {});
+
+                    cases.forEach(c => {
+                        if (clientMap[c.client_id]) {
+                            c.captador = c.captador || clientMap[c.client_id].captador;
+                            c.client_city = c.client_city || clientMap[c.client_id].cidade;
+                            if (!c.client_birth_date) c.client_birth_date = clientMap[c.client_id].data_nascimento;
+                            if (!c.client_sexo) c.client_sexo = clientMap[c.client_id].sexo;
+                        }
+                    });
+                }
+            }
+        }
+
+        return cases;
     } catch (error) {
         console.error("Erro fetchKanbanCases:", error);
         throw error;
@@ -213,7 +272,36 @@ export const fetchAllFilteredCasesData = async (search?: string, filters?: any) 
 
         if (error) throw error;
 
-        return (data || []) as unknown as Case[];
+        const cases = (data || []) as unknown as Case[];
+        
+        // Enrich missing client information (captador, cidade, sexo, data_nascimento)
+        if (cases.length > 0) {
+            const clientIds = [...new Set(cases.map(c => c.client_id))].filter(Boolean);
+            if (clientIds.length > 0) {
+                const { data: clientsData, error: clientsError } = await supabase
+                    .from('clients')
+                    .select('id, captador, cidade, sexo, data_nascimento')
+                    .in('id', clientIds);
+                
+                if (!clientsError && clientsData) {
+                    const clientMap = clientsData.reduce((acc: any, client: any) => {
+                        acc[client.id] = client;
+                        return acc;
+                    }, {});
+
+                    cases.forEach(c => {
+                        if (clientMap[c.client_id]) {
+                            c.captador = c.captador || clientMap[c.client_id].captador;
+                            c.client_city = c.client_city || clientMap[c.client_id].cidade;
+                            if (!c.client_birth_date) c.client_birth_date = clientMap[c.client_id].data_nascimento;
+                            if (!c.client_sexo) c.client_sexo = clientMap[c.client_id].sexo;
+                        }
+                    });
+                }
+            }
+        }
+
+        return cases;
     } catch (error) {
         console.error("Erro fetchAllFilteredCasesData:", error);
         throw error;

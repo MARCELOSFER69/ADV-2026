@@ -680,7 +680,7 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                             ) : (
                                 <div className="grid grid-cols-1 gap-2">
                                     {installments.map(inst => (
-                                        <div key={inst.id} className={`p-4 rounded-xl border transition-all ${inst.pago ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-[#131418] border-white/5 hover:border-gold-500/20'}`}>
+                                        <div key={inst.id} className={`p-4 rounded-xl border transition-all ${inst.pago ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-[#131418] border-white/5 hover:border-gold-500/20'} ${inst.emitida ? 'ring-2 ring-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.2)] animate-pulse' : ''}`}>
                                             <div className="flex flex-col md:flex-row items-center gap-4">
                                                 <div className="flex items-center gap-4 flex-1">
                                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${inst.pago ? 'bg-emerald-500 text-black' : 'bg-white/5 text-zinc-400'}`}>
@@ -690,15 +690,44 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                                         <div>
                                                             <label className="text-[10px] text-zinc-500 uppercase block mb-1">Vencimento</label>
                                                             <div className="flex flex-col gap-1 w-full">
-                                                                <div className="relative group/date">
+                                                                <div className="relative group/date" key={`date-${inst.id}-${inst.data_vencimento}`}>
                                                                     <input
-                                                                        type="date"
-                                                                        className="bg-[#131418] border border-white/5 rounded px-2 py-1 text-sm text-white font-medium outline-none focus:border-gold-500/50 transition-colors cursor-pointer w-full appearance-none"
-                                                                        value={inst.data_vencimento}
-                                                                        onChange={e => updateInstallment({ ...inst, data_vencimento: e.target.value }, client?.nome_completo || 'Cliente')}
-                                                                        onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                                                                        type="text"
+                                                                        className="bg-[#131418] border border-white/5 rounded px-2 py-1 flex-1 text-sm text-white font-medium outline-none focus:border-gold-500/50 transition-colors w-full pr-8 font-mono"
+                                                                        defaultValue={inst.data_vencimento ? inst.data_vencimento.split('-').reverse().join('/') : ''}
+                                                                        placeholder="DD/MM/AAAA"
+                                                                        maxLength={10}
+                                                                        onBlur={(e) => {
+                                                                            const val = e.target.value;
+                                                                            if (val.length === 10) {
+                                                                               const parts = val.split('/');
+                                                                               const isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                                                                               if (!isNaN(new Date(isoDate).getTime()) && isoDate !== inst.data_vencimento) {
+                                                                                   updateInstallment({ ...inst, data_vencimento: isoDate }, client?.nome_completo || 'Cliente');
+                                                                               }
+                                                                            }
+                                                                        }}
+                                                                        onChange={(e) => {
+                                                                            let val = e.target.value.replace(/\D/g, "");
+                                                                            if (val.length > 2) val = val.slice(0, 2) + "/" + val.slice(2);
+                                                                            if (val.length > 5) val = val.slice(0, 5) + "/" + val.slice(5, 9);
+                                                                            e.target.value = val;
+                                                                        }}
                                                                     />
-                                                                    <Calendar size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none group-hover/date:text-gold-500 transition-colors" />
+                                                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 cursor-pointer z-10 flex items-center justify-center">
+                                                                        <input 
+                                                                            type="date" 
+                                                                            className="absolute opacity-0 inset-0 cursor-pointer pointer-events-auto z-10"
+                                                                            value={inst.data_vencimento || ''}
+                                                                            onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                                                                            onChange={e => {
+                                                                                if(e.target.value && e.target.value.length === 10) {
+                                                                                    updateInstallment({ ...inst, data_vencimento: e.target.value }, client?.nome_completo || 'Cliente');
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                        <Calendar size={14} className="text-zinc-500 group-hover/date:text-gold-500 transition-colors pointer-events-none relative z-0" />
+                                                                    </div>
                                                                 </div>
                                                                 {inst.pago && inst.data_pagamento && (
                                                                     <span className="text-[9px] text-emerald-500 font-bold flex items-center gap-1">
@@ -734,7 +763,27 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                                                                 <option value="Escritório" className="bg-[#131418]">Escritório</option>
                                                             </select>
                                                         </div>
-                                                        <div className="flex items-center justify-end md:justify-start">
+                                                        <div className="flex items-center justify-end md:justify-start gap-4">
+                                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                                <div className={`relative flex items-center justify-center w-[18px] h-[18px] rounded-[4px] border transition-all ${
+                                                                    inst.emitida 
+                                                                        ? 'bg-yellow-500 border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.4)]' 
+                                                                        : 'bg-black/20 border-white/10 group-hover:border-white/30'
+                                                                }`}>
+                                                                    <input 
+                                                                        type="checkbox" 
+                                                                        checked={inst.emitida || false}
+                                                                        onChange={(e) => updateInstallment({ ...inst, emitida: e.target.checked }, client?.nome_completo || 'Cliente')}
+                                                                        className="opacity-0 absolute inset-0 cursor-pointer m-0 p-0"
+                                                                    />
+                                                                    {inst.emitida && <Check strokeWidth={4} className="w-3 h-3 text-black" />}
+                                                                </div>
+                                                                <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${
+                                                                    inst.emitida ? 'text-yellow-500' : 'text-zinc-500 group-hover:text-zinc-300'
+                                                                }`}>
+                                                                    Emitida
+                                                                </span>
+                                                            </label>
                                                             <button
                                                                 onClick={() => handleToggleInstallment(inst, client?.nome_completo || 'Cliente')}
                                                                 className={`px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest transition-all ${inst.pago ? 'bg-emerald-500 text-black' : 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20'}`}

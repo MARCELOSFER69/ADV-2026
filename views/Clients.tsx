@@ -78,7 +78,8 @@ const Clients: React.FC = () => {
         captadores, addCaptador, mergedPreferences,
         isNewClientModalOpen, setIsNewClientModalOpen,
         clientDetailTab, setClientDetailTab,
-        globalBranchFilter, openNewCaseWithParams
+        globalBranchFilter, openNewCaseWithParams,
+        lastInteractedItemId, setLastInteractedItemId
     } = useAppContext();
 
     // State
@@ -416,17 +417,6 @@ const Clients: React.FC = () => {
             setColumns(merged.sort((a, b) => a.order - b.order));
         }
     }, [user]);
-
-    useEffect(() => {
-        if (clientToView) {
-            const fetchClient = async () => {
-                const { data, error } = await supabase.from('clients').select('*, cases(*)').eq('id', clientToView).single();
-                if (data) setSelectedClient(data as Client);
-                setClientToView(null);
-            };
-            fetchClient();
-        }
-    }, [clientToView, setClientToView]);
 
     // Helpers
     const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -49,7 +49,6 @@ const PendenciasOverviewWidget: React.FC<PendenciasOverviewWidgetProps> = ({
                             key={client.id}
                             onClick={() => {
                                 setClientToView(client.id);
-                                setCurrentView('clients');
                             }}
                             className="p-3 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-red-500/30 hover:bg-zinc-800 cursor-pointer group transition-all"
                         >

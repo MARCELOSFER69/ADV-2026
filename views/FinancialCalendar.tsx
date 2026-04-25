@@ -40,10 +40,11 @@ interface UnifiedReceipt {
     cidade: string;
     telefone: string;
     foto?: string;
+    emitida?: boolean;
 }
 
 const FinancialCalendar: React.FC = () => {
-    const { toggleInstallmentPaid, showToast, captadores, globalBranchFilter, addFinancialRecord, setClientToView, setCurrentView } = useApp();
+    const { toggleInstallmentPaid, showToast, captadores, globalBranchFilter, addFinancialRecord, setClientToView, setCurrentView, lastInteractedItemId, setLastInteractedItemId } = useApp();
 
     // Date State
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -114,7 +115,8 @@ const FinancialCalendar: React.FC = () => {
                     captador: client?.captador || '',
                     cidade: client?.cidade || '',
                     telefone: client?.telefone || '',
-                    foto: client?.foto
+                    foto: client?.foto,
+                    emitida: i.emitida
                 };
             });
 
@@ -466,7 +468,11 @@ Podemos confirmar o recebimento?`;
 
                     <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-3">
                         {selectedDayReceipts.length > 0 ? selectedDayReceipts.map(receipt => (
-                            <div key={receipt.id} className={`p-4 rounded-xl border transition-all ${receipt.pago ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'}`}>
+                            <div 
+                                key={receipt.id} 
+                                onClick={() => setLastInteractedItemId(receipt.id)}
+                                className={`p-4 rounded-xl border transition-all ${receipt.id === lastInteractedItemId ? 'pulse-yellow' : (receipt.pago ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700')}`}
+                            >
                                 <div className="flex justify-between items-start mb-2">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${receipt.pago ? 'bg-emerald-500 text-black' : 'bg-zinc-700 text-zinc-300'}`}>
@@ -476,7 +482,6 @@ Podemos confirmar o recebimento?`;
                                             <h4
                                                 onClick={() => {
                                                     setClientToView(receipt.client_id);
-                                                    setCurrentView('clients');
                                                 }}
                                                 className={`text-sm font-bold cursor-pointer hover:underline transition-all ${receipt.pago ? 'text-emerald-400' : 'text-white'}`}
                                             >
@@ -490,6 +495,14 @@ Podemos confirmar o recebimento?`;
                                                 <div className="px-1.5 py-0.5 bg-gold-500/10 border border-gold-500/20 rounded text-[9px] font-black text-gold-500 uppercase tracking-tighter">
                                                     {receipt.case_type}
                                                 </div>
+                                                {receipt.emitida && (
+                                                    <>
+                                                        <div className="w-1 h-1 bg-zinc-700 rounded-full" />
+                                                        <div className="px-1.5 py-0.5 bg-yellow-500/10 border border-yellow-500/20 rounded text-[9px] font-black text-yellow-500 uppercase tracking-tighter">
+                                                            Emitida
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

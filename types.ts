@@ -284,6 +284,7 @@ export interface CaseInstallment {
   tipo_conta?: 'PF' | 'PJ';
   conta?: string;
   observacao?: string;
+  emitida?: boolean;
 }
 
 export interface CaseHistory {

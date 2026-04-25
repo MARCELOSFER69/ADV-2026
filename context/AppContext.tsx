@@ -100,6 +100,9 @@ interface AppContextType {
     updateInstallment: (installment: CaseInstallment, clientName: string) => Promise<void>;
     toggleInstallmentPaid: (installment: CaseInstallment, clientName: string, paymentDetails?: any) => Promise<void>;
 
+    lastInteractedItemId: string | null;
+    setLastInteractedItemId: (id: string | null) => void;
+
     updateGPS: (caseId: string, gpsList: GPS[]) => Promise<void>;
 
     addReminder: (reminder: Reminder) => Promise<void>;
@@ -294,6 +297,16 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const [currentTenant, _setCurrentTenant] = useState<string>('principal');
     const [isAssistantOpen, setIsAssistantOpen] = useState(false);
     const [clientToView, _setClientToView] = useState<string | null>(null);
+    const [lastInteractedItemId, setLastInteractedItemId] = useState<string | null>(null);
+
+    const prevViewRef = useRef<ViewState>(currentView);
+    // Reset last view on screen change
+    useEffect(() => {
+        if (prevViewRef.current !== currentView) {
+            setLastInteractedItemId(null);
+            prevViewRef.current = currentView;
+        }
+    }, [currentView]);
     const [clientDetailTab, setClientDetailTab] = useState<'visao360' | 'info' | 'docs' | 'credentials' | 'history' | 'cnis' | 'rgp'>('visao360');
     const [isStatusBlinking, setIsStatusBlinking] = useState(false);
 
@@ -1690,6 +1703,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         reloadData,
         financial, officeExpenses, officeBalances, personalCredentials, events, tasks, captadores, commissionReceipts, reminders, notifications,
         currentView, setCurrentView, caseTypeFilter, setCaseTypeFilter, globalBranchFilter, setGlobalBranchFilter, currentTenant, setCurrentTenant, clientToView, setClientToView, clientDetailTab, setClientDetailTab,
+        lastInteractedItemId, setLastInteractedItemId,
         addClient, updateClient, deleteClient, syncClientDocuments, addCase, updateCase, deleteCase, getCaseHistory, getClientHistory, getUnifiedClientHistory,
         addEvent, updateEvent, deleteEvent, addTask, toggleTask, deleteTask,
         addFinancialRecord, addReceiver, deleteReceiver, deleteFinancialRecord, addRetirementCalculation, promoteCalculationToCase, addOfficeExpense, updateOfficeExpense, deleteOfficeExpense, toggleOfficeExpenseStatus, addOfficeBalance,

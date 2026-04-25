@@ -1,14 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LayoutDashboard, FileText, Calendar, CheckCircle, Lock, MessageCircle, ArchiveRestore, Info, Shield, Clock, History, UploadCloud, Edit2, Check } from 'lucide-react';
+import { X, LayoutDashboard, FileText, Calendar, CheckCircle, Archive, Scale, Shield, Users, Briefcase, Building2, AlertTriangle, Eye, Lock, Copy, Check, EyeOff, MessageCircle, ArchiveRestore, Info, Clock, History, UploadCloud, Edit2 } from 'lucide-react';
 
 import { useApp } from '../../context/AppContext';
 import { useCase } from '../../hooks/useCases';
 import { useClient } from '../../hooks/useClients';
 import { useCaseRelatedData } from '../../hooks/useCaseRelatedData';
 import { useLockBodyScroll } from '../../hooks/useLockBodyScroll';
-import { getTodayBrasilia } from '../../utils/dateUtils';
+import { getTodayBrasilia, formatDateDisplay } from '../../utils/dateUtils';
+import { decryptData } from '../../utils/cryptoUtils';
+import { formatCPFOrCNPJ } from '../../services/formatters';
 
 import { Case, CaseStatus, CaseType, GPS, FinancialType } from '../../types';
 import WhatsAppModal from './WhatsAppModal';
@@ -73,6 +75,23 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
     const [isEditMode, setIsEditMode] = useState(initialEditMode);
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [isActionDisabled, setIsActionDisabled] = useState(false);
+    const [decryptedPasswords, setDecryptedPasswords] = useState({ gov: '', inss: '' });
+    const [showPasswords, setShowPasswords] = useState({ gov: false, inss: false });
+
+    // Decrypt passwords if tab is 'access'
+    useEffect(() => {
+        let mounted = true;
+        const load = async () => {
+            if (activeTab === 'access' && client) {
+                const gov = client.senha_gov ? await decryptData(client.senha_gov) : '';
+                const inss = client.senha_inss ? await decryptData(client.senha_inss) : '';
+                if (mounted) setDecryptedPasswords({ gov, inss });
+            }
+        };
+        load();
+        return () => { mounted = false; };
+    }, [activeTab, client?.senha_gov, client?.senha_inss]);
 
     // Restore Modal
     const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
@@ -122,6 +141,27 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
     const caseDocsCount = useMemo(() => {
         return (client?.documentos || []).filter(d => d.case_id === liveCase.id).length;
     }, [client?.documentos, liveCase.id]);
+
+    const [copiedField, setCopiedField] = useState<string | null>(null);
+
+    const handleCopy = (text: string, fieldName: string) => {
+        if (!text || text === 'Não informado' || text === 'Não informada') return;
+        navigator.clipboard.writeText(text);
+        setCopiedField(fieldName);
+        showToast('success', 'Copiado para a área de transferência');
+        setTimeout(() => setCopiedField(null), 2000);
+    };
+
+    const formatCpfCnpj = (val: string | undefined | null) => {
+        if (!val) return 'Não informado';
+        const digits = val.replace(/\D/g, '');
+        if (digits.length === 11) {
+            return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+        } else if (digits.length === 14) {
+            return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+        }
+        return val;
+    };
 
 
     // --- HANDLERS: UPDATES ---
@@ -525,10 +565,82 @@ const CaseDetailsModal: React.FC<CaseDetailsModalProps> = ({ caseItem, onClose, 
                             )}
 
                             {activeTab === 'access' && (
-                                <div className="text-center py-12 text-zinc-500">
-                                    <Shield size={48} className="mx-auto mb-4 opacity-50" />
-                                    <p>Gerenciamento de Acessos (Em Breve)</p>
-                                    <p className="text-xs">Visualize senhas e logins neste painel.</p>
+                                <div className="bg-[#18181b] p-6 rounded-xl border border-white/5 relative overflow-hidden">
+                                    <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-6">
+                                        <Lock size={20} className="text-gold-500" />
+                                        Credenciais do Cliente
+                                    </h3>
+                                    
+                                    {client ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="bg-[#131418] p-4 rounded-lg border border-white/5 group">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">CPF</label>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-lg font-mono text-white select-all">{formatCPFOrCNPJ(client.cpf_cnpj)}</span>
+                                                    {client.cpf_cnpj && (
+                                                        <button onClick={() => handleCopy(client.cpf_cnpj, 'cpf')} className="p-1.5 rounded-md hover:bg-white/10 text-zinc-600 hover:text-white transition-colors opacity-0 group-hover:opacity-100" title="Copiar CPF">
+                                                            {copiedField === 'cpf' ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="bg-[#131418] p-4 rounded-lg border border-white/5 group">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Senha GOV.BR</label>
+                                                <div className="flex items-center justify-between gap-2 overflow-hidden">
+                                                    <span className="text-lg font-mono text-white truncate">
+                                                        {client.senha_gov ? (showPasswords.gov ? decryptedPasswords.gov : '••••••••') : 'Não informada'}
+                                                    </span>
+                                                    <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        {client.senha_gov && (
+                                                            <>
+                                                                <button 
+                                                                    onClick={() => setShowPasswords(prev => ({ ...prev, gov: !prev.gov }))} 
+                                                                    className="p-1.5 rounded-md hover:bg-white/10 text-zinc-500 hover:text-white"
+                                                                >
+                                                                    {showPasswords.gov ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => handleCopy(decryptedPasswords.gov, 'senha_gov')} 
+                                                                    className="p-1.5 rounded-md hover:bg-white/10 text-zinc-500 hover:text-white"
+                                                                >
+                                                                    {copiedField === 'senha_gov' ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {client.senha_inss && (
+                                                <div className="bg-[#131418] p-4 rounded-lg border border-white/5 group">
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Senha Meu INSS</label>
+                                                    <div className="flex items-center justify-between gap-2 overflow-hidden">
+                                                        <span className="text-lg font-mono text-white truncate">
+                                                            {showPasswords.inss ? decryptedPasswords.inss : '••••••••'}
+                                                        </span>
+                                                        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button 
+                                                                onClick={() => setShowPasswords(prev => ({ ...prev, inss: !prev.inss }))} 
+                                                                className="p-1.5 rounded-md hover:bg-white/10 text-zinc-500 hover:text-white"
+                                                            >
+                                                                {showPasswords.inss ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleCopy(decryptedPasswords.inss, 'senha_inss')} 
+                                                                className="p-1.5 rounded-md hover:bg-white/10 text-zinc-500 hover:text-white"
+                                                            >
+                                                                {copiedField === 'senha_inss' ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                         <div className="text-center py-12 text-zinc-500">
+                                            <Shield size={48} className="mx-auto mb-4 opacity-50" />
+                                            <p>Nenhum cliente associado ou dados indisponíveis.</p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

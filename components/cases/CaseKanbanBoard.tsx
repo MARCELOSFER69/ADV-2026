@@ -36,14 +36,18 @@ interface CaseKanbanBoardProps {
     onUpdateCase?: (updatedCase: Case) => Promise<void>;
     situationFilters?: string[];
     activeTypeFilter?: string;
+    lastViewedCaseId?: string | null;
+    onRowClick?: (caseItem: Case) => void;
 }
 
 const KanbanColumn: React.FC<{
     status: CaseStatus;
     columnWidth: number;
     onColumnResizeDown: (e: React.MouseEvent) => void;
+    lastViewedCaseId?: string | null;
+    onRowClick?: (caseItem: Case) => void;
     children: React.ReactNode;
-}> = ({ status, columnWidth, onColumnResizeDown, children }) => {
+}> = ({ status, columnWidth, onColumnResizeDown, children, lastViewedCaseId, onRowClick }) => {
     const { setNodeRef } = useDroppable({
         id: status,
     });
@@ -81,7 +85,9 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
     onUpdateClient,
     onUpdateCase,
     situationFilters = [],
-    activeTypeFilter = 'all'
+    activeTypeFilter = 'all',
+    lastViewedCaseId,
+    onRowClick
 }) => {
     const [activeDragCase, setActiveDragCase] = useState<Case | null>(null);
     const [protocolarFilter, setProtocolarFilter] = useState<{ eligible: boolean, notEligible: boolean }>({
@@ -105,6 +111,13 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
     const [startX, setStartX] = useState(0);
     const [scrollLeft, setScrollLeft] = useState(0);
     const [isResizing, setIsResizing] = useState(false);
+    const [expandedColumns, setExpandedColumns] = useState<CaseStatus[]>([]);
+
+    const toggleColumnExpand = (status: CaseStatus) => {
+        setExpandedColumns(prev => 
+            prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]
+        );
+    };
 
     // --- SCROLLING LOGIC ---
     useEffect(() => {
@@ -273,7 +286,8 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
 
                         // Performance optimization: limit rendered cards to 50
                         const RENDER_LIMIT = 50;
-                        const visibleCases = columnCases.slice(0, RENDER_LIMIT);
+                        const isExpanded = expandedColumns.includes(status);
+                        const visibleCases = isExpanded ? columnCases : columnCases.slice(0, RENDER_LIMIT);
 
                         return (
                             <KanbanColumn
@@ -281,6 +295,8 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
                                 status={status}
                                 columnWidth={columnWidth}
                                 onColumnResizeDown={handleColumnResizeDown}
+                                lastViewedCaseId={lastViewedCaseId}
+                                onRowClick={onRowClick}
                             >
                                 {/* PREMIUM HEADER */}
                                 <div className="mb-4 px-1 relative group/header">
@@ -355,12 +371,21 @@ const CaseKanbanBoard: React.FC<CaseKanbanBoardProps> = ({
                                                         onProjectionClick={onProjectionClick}
                                                         onUpdateClient={onUpdateClient}
                                                         onUpdateCase={onUpdateCase}
+                                                        isLastViewed={caseItem.id === lastViewedCaseId}
+                                                        onRowClick={onRowClick}
                                                     />
                                                 );
                                             })}
                                             {columnCases.length > RENDER_LIMIT && (
-                                                <div className="text-center py-4 text-zinc-500 text-[10px] uppercase tracking-widest opacity-60">
-                                                    + {columnCases.length - RENDER_LIMIT} processos ocultos (vistos na Lista)
+                                                <div 
+                                                    onClick={() => toggleColumnExpand(status)}
+                                                    className="text-center mt-2 py-4 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 cursor-pointer rounded-lg transition-colors text-[10px] uppercase tracking-widest opacity-80 font-bold"
+                                                >
+                                                    {isExpanded ? (
+                                                        'OCULTAR PROCESSOS EXCEDENTES'
+                                                    ) : (
+                                                        `+ ${columnCases.length - RENDER_LIMIT} PROCESSOS OCULTOS (CLIQUE PARA EXIBIR)`
+                                                    )}
                                                 </div>
                                             )}
                                             {columnCases.length === 0 && <div className="text-center py-12 text-zinc-600 text-xs italic opacity-50">Sem processos</div>}
