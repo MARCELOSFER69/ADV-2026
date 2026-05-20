@@ -381,8 +381,7 @@ const Cases: React.FC = () => {
 
         if (activeCategory === 'Seguro Defeso' || activeCategory === 'Administrativo') {
             return commonColumns.filter(status =>
-                status !== CaseStatus.AGUARDANDO_AUDIENCIA &&
-                status !== CaseStatus.EM_RECURSO
+                status !== CaseStatus.AGUARDANDO_AUDIENCIA
             );
         }
 
