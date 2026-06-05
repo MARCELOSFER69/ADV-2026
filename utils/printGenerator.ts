@@ -125,13 +125,6 @@ const getDeclaracaoHtml = (client: Client) => {
 
 // FUNÇÃO PRINCIPAL DE IMPRESSÃO (LIMPA)
 export const printDocuments = (client: Client, selectedDocs: { declaracao: boolean; procuracao: boolean }) => {
-  const printWindow = window.open('', '_blank', 'width=900,height=800');
-
-  if (!printWindow) {
-    alert('Por favor, permita pop-ups para imprimir.');
-    return;
-  }
-
   let contentHtml = '';
 
   // Lógica simplificada: Só gera Declaração se solicitado. Ignora "procuracao" se vier true.
@@ -189,6 +182,38 @@ export const printDocuments = (client: Client, selectedDocs: { declaracao: boole
     </html>
   `;
 
-  printWindow.document.write(finalHtml);
-  printWindow.document.close();
+  // Use a hidden iframe to prevent popup blocker issues
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+
+  const iframeDoc = iframe.contentWindow?.document;
+  if (!iframeDoc) {
+    alert('Erro ao iniciar a impressão.');
+    return;
+  }
+
+  iframeDoc.write(finalHtml);
+  iframeDoc.close();
+
+  const handleAfterPrint = () => {
+    try {
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  if (iframe.contentWindow) {
+    iframe.contentWindow.addEventListener('afterprint', handleAfterPrint);
+  } else {
+    setTimeout(handleAfterPrint, 60000);
+  }
 };

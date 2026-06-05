@@ -1,8 +1,9 @@
 import { Client } from '../types';
 
 // Helper: Substituição de Variáveis
-export const replaceVariables = (text: string, client?: Client) => {
+export const replaceVariables = (text: string, client?: Client, feePercentage: number = 30) => {
     if (!text) return '';
+    
     let data: any = {
         nome_completo: 'JOÃO DA SILVA EXEMPLO',
         cpf_cnpj: '000.000.000-00',
@@ -17,12 +18,31 @@ export const replaceVariables = (text: string, client?: Client) => {
         cidade: 'CIDADE EXEMPLO',
         uf: 'UF',
         cep: '00000-000',
-        data_atual: new Date().toLocaleDateString('pt-BR')
+        data_atual: new Date().toLocaleDateString('pt-BR'),
+        beneficio_pretendido: 'APOSENTADORIA POR IDADE RURAL',
+        valor_demanda: '12.120,00',
+        porcentagem_adm: String(feePercentage),
+        porcentagem_jud: String(feePercentage)
     };
 
     if (client) {
         const today = new Date().toLocaleDateString('pt-BR');
-        data = { ...client, data_atual: today };
+        
+        // Find most recent case
+        const activeCase = client.cases && client.cases.length > 0
+            ? [...client.cases].sort((a, b) => new Date(b.data_abertura).getTime() - new Date(a.data_abertura).getTime())[0]
+            : null;
+
+        data = { 
+            ...client, 
+            data_atual: today,
+            beneficio_pretendido: activeCase ? (activeCase.tipo || activeCase.titulo || '') : '',
+            valor_demanda: activeCase && typeof activeCase.valor_causa === 'number'
+                ? activeCase.valor_causa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : '',
+            porcentagem_adm: String(feePercentage),
+            porcentagem_jud: String(feePercentage)
+        };
     }
 
     return text.replace(/\{([a-zA-Z0-9_]+)\}|\[([a-zA-Z0-9_]+)\]/gi, (match, key1, key2) => {

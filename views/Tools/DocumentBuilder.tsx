@@ -51,8 +51,9 @@ const base64ToFile = (dataurl: string, filename: string) => {
 }
 
 const DocumentBuilder: React.FC = () => {
-    const { showToast } = useApp();
+    const { showToast, user } = useApp();
     const { data: clients = [] } = useAllClients();
+    const feePercentage = user?.preferences?.estimatedFeePercentage ?? 30;
 
     // Base State
     const [baseType, setBaseType] = useState<'pdf' | 'html'>('pdf');
@@ -82,10 +83,29 @@ const DocumentBuilder: React.FC = () => {
 
     // Preview State
     const [previewClientId, setPreviewClientId] = useState<string>('');
+    const [previewClientWithCases, setPreviewClientWithCases] = useState<Client | null>(null);
 
     const previewClient = useMemo(() => {
         return clients.find(c => c.id === previewClientId);
     }, [clients, previewClientId]);
+
+    useEffect(() => {
+        const loadClientCases = async () => {
+            if (!previewClientId) {
+                setPreviewClientWithCases(null);
+                return;
+            }
+            try {
+                const { fetchClientById } = await import('../../services/clientsService');
+                const fullClient = await fetchClientById(previewClientId);
+                setPreviewClientWithCases(fullClient);
+            } catch (err) {
+                console.error("Erro ao carregar casos para preview:", err);
+                setPreviewClientWithCases(previewClient || null);
+            }
+        };
+        loadClientCases();
+    }, [previewClientId, previewClient]);
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -385,13 +405,14 @@ const DocumentBuilder: React.FC = () => {
                         handleMouseMove={handleMouseMove}
                         handleMouseUp={handleMouseUp}
                         isPreviewMode={isPreviewMode}
-                        previewClient={previewClient}
+                        previewClient={previewClientWithCases || undefined}
                         fields={fields}
                         selectedFieldId={selectedFieldId}
                         handleMouseDown={handleMouseDown}
                         removeField={removeField}
                         setSelectedFieldId={setSelectedFieldId}
                         setHtmlContent={setHtmlContent}
+                        feePercentage={feePercentage}
                     />
                 </div>
 

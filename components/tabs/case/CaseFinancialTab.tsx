@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FinancialRecord, FinancialType, Case, CaseStatus, GPS, Client, OfficeExpense, CaseInstallment, CaseType } from '../../../types';
-import { BadgeDollarSign, Plus, Trash2, AlertTriangle, Check, DollarSign, Wallet, FileText, Calendar, User, Building, MessageCircle, Clock, UserPlus, X } from 'lucide-react';
+import { BadgeDollarSign, Plus, Trash2, AlertTriangle, Check, DollarSign, Wallet, FileText, Calendar, User, Building, MessageCircle, Clock, UserPlus, X, Printer, Upload, Eye, Receipt } from 'lucide-react';
 import { formatCurrencyInput, parseCurrencyToNumber } from '../../../services/formatters';
 import { formatDateDisplay, getTodayBrasilia, cleanFinancialTitle } from '../../../utils/dateUtils';
 import CustomSelect from '../../ui/CustomSelect';
 import { useApp } from '../../../context/AppContext';
+import { useQueryClient } from '@tanstack/react-query';
 import ReceiverFormModal from '../../modals/ReceiverFormModal';
+import { printReceipt, ReceiptData } from '../../../utils/receiptGenerator';
 
 interface CaseFinancialTabProps {
     financials: FinancialRecord[];
@@ -211,7 +213,8 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
     existingReceivers,
     existingAccounts
 }) => {
-    const { generateInstallments, updateInstallment, toggleInstallmentPaid, showToast, addReceiver, receivers } = useApp();
+    const { generateInstallments, updateInstallment, toggleInstallmentPaid, generateBenefitInstallments, deleteBenefitInstallment, uploadInstallmentReceipt, showToast, addReceiver, receivers } = useApp();
+    const queryClient = useQueryClient();
     const [isReceiverModalOpen, setIsReceiverModalOpen] = useState(false);
     const [receiverSetter, setReceiverSetter] = useState<((val: string) => void) | null>(null);
     // STATE: ADD FINANCIAL
@@ -250,6 +253,12 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
     const [isGeneratingParcels, setIsGeneratingParcels] = useState(false);
     const [parcelStartDate, setParcelStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [editingInstallmentId, setEditingInstallmentId] = useState<string | null>(null);
+
+    // STATE: BENEFIT PARCELAMENTO (non-seguro-defeso)
+    const [isGeneratingBenefitParcels, setIsGeneratingBenefitParcels] = useState(false);
+    const [benefitValorTotal, setBenefitValorTotal] = useState('');
+    const [benefitQtdParcelas, setBenefitQtdParcelas] = useState(3);
+    const [benefitStartDate, setBenefitStartDate] = useState(new Date().toISOString().split('T')[0]);
 
     // STATE: INSTALLMENT CONFIRMATION
     const [isConfirmingInstallment, setIsConfirmingInstallment] = useState<CaseInstallment | null>(null);
@@ -490,10 +499,114 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
         setIsGeneratingParcels(false);
     };
 
+    // --- HANDLERS: BENEFIT INSTALLMENTS ---
+    const handleGenerateBenefitParcels = async () => {
+        const total = parseCurrencyToNumber(benefitValorTotal);
+        if (total <= 0) {
+            showToast('error', 'Informe o valor total dos honorários.');
+            return;
+        }
+        await generateBenefitInstallments(caseItem.id, total, benefitQtdParcelas, benefitStartDate);
+        // Salvar o valor_causa
+        if (caseItem.valor_causa !== total) {
+            await onUpdateCase({ ...caseItem, valor_causa: total });
+        }
+        setIsGeneratingBenefitParcels(false);
+    };
+
+    const handleAddBenefitInstallment = async () => {
+        const maxNum = installments.length > 0 ? Math.max(...installments.map(i => i.parcela_numero)) : 0;
+        const lastDate = installments.length > 0
+            ? installments[installments.length - 1].data_vencimento
+            : new Date().toISOString().split('T')[0];
+        const nextDate = new Date(lastDate);
+        nextDate.setMonth(nextDate.getMonth() + 1);
+
+        const newInst = {
+            id: crypto.randomUUID(),
+            case_id: caseItem.id,
+            parcela_numero: maxNum + 1,
+            data_vencimento: nextDate.toISOString().split('T')[0],
+            valor: 0,
+            pago: false,
+            destino: 'Escritório' as const
+        };
+
+        // Direct insert
+        const { supabase } = await import('../../../services/supabaseClient');
+        const { error } = await supabase.from('case_installments').insert([newInst]);
+        if (!error) {
+            showToast('success', 'Parcela adicionada!');
+            queryClient.invalidateQueries({ queryKey: ['case_installments', caseItem.id] });
+        } else {
+            showToast('error', 'Erro ao adicionar parcela: ' + error.message);
+        }
+    };
+
+    const handleDeleteBenefitInstallment = async (inst: CaseInstallment) => {
+        await deleteBenefitInstallment(inst.id, caseItem.id);
+    };
+
+    const handleGenerateReceipt = async (inst: CaseInstallment) => {
+        const receiptData: ReceiptData = {
+            clientName: client?.nome_completo || 'Cliente',
+            clientCpf: client?.cpf_cnpj || '',
+            clientAddress: client?.endereco ? `${client.endereco}${client.cidade ? ', ' + client.cidade : ''}${client.uf ? ' - ' + client.uf : ''}` : undefined,
+            parcelaNumero: inst.parcela_numero,
+            totalParcelas: installments.length,
+            valorParcela: inst.valor,
+            valorTotal: caseItem.valor_causa || installments.reduce((a, i) => a + i.valor, 0),
+            processoTitulo: caseItem.titulo || '',
+            processoNumero: caseItem.numero_processo || '',
+            dataGeracao: new Date().toISOString().split('T')[0]
+        };
+        printReceipt(receiptData);
+        // Marcar recibo como gerado
+        await updateInstallment({ ...inst, recibo_gerado: true }, client?.nome_completo || 'Cliente');
+    };
+
+    const handleMarkReceiptSigned = async (inst: CaseInstallment) => {
+        await updateInstallment({ ...inst, recibo_assinado: true }, client?.nome_completo || 'Cliente');
+        showToast('success', 'Recibo marcado como assinado!');
+    };
+
+    const handleUploadReceipt = async (inst: CaseInstallment, e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        await uploadInstallmentReceipt(inst.id, caseItem.id, file);
+    };
+
+    const handleViewReceipt = (inst: CaseInstallment) => {
+        const receiptData: ReceiptData = {
+            clientName: client?.nome_completo || 'Cliente',
+            clientCpf: client?.cpf_cnpj || '',
+            clientAddress: client?.endereco ? `${client.endereco}${client.cidade ? ', ' + client.cidade : ''}${client.uf ? ' - ' + client.uf : ''}` : undefined,
+            parcelaNumero: inst.parcela_numero,
+            totalParcelas: installments.length,
+            valorParcela: inst.valor,
+            valorTotal: caseItem.valor_causa || installments.reduce((a, i) => a + i.valor, 0),
+            processoTitulo: caseItem.titulo || '',
+            processoNumero: caseItem.numero_processo || '',
+            dataGeracao: new Date().toISOString().split('T')[0]
+        };
+        printReceipt(receiptData);
+    };
+
+    const handleToggleBenefitInstallment = async (inst: CaseInstallment, clientName: string) => {
+        if (inst.pago) {
+            await toggleInstallmentPaid(inst, clientName, undefined, caseItem.titulo || 'Honorários');
+            return;
+        }
+        setIsConfirmingInstallment(inst);
+    };
+
+    const benefitParcelasTotal = installments.reduce((acc, i) => acc + (i.valor || 0), 0);
+    const benefitValorDiff = benefitParcelasTotal - (caseItem.valor_causa || 0);
+
     return (
         <div className="space-y-8">
-            {/* 0. ESCOLHA DE MODALIDADE (Sempre visível para Seguro Defeso, mas bloqueada se não concedido) */}
-            {caseItem.tipo === CaseType.SEGURO_DEFESO && (
+            {/* 0. ESCOLHA DE MODALIDADE */}
+            {caseItem.tipo === CaseType.SEGURO_DEFESO ? (
                 <div className={`bg-gold-500/5 border border-gold-500/20 p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in zoom-in duration-500 ${caseItem.status !== CaseStatus.CONCLUIDO_CONCEDIDO ? 'grayscale opacity-50 cursor-not-allowed' : ''}`}>
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-gold-500/20 rounded-lg text-gold-500">
@@ -530,13 +643,50 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                         </button>
                     </div>
                 </div>
+            ) : (
+                <div className="bg-[#18181b] border border-white/5 p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in zoom-in duration-500">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-gold-500/10 rounded-lg text-gold-500">
+                            <BadgeDollarSign size={20} />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-white uppercase tracking-tight">Forma de Recebimento</h4>
+                            <p className="text-[10px] text-slate-400 uppercase font-medium">
+                                Escolha entre pagamento completo ou parcelado
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 w-full md:w-auto">
+                        <button
+                            onClick={() => handleUpdateSelection('Completo')}
+                            disabled={isUpdatingSelection}
+                            className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${caseItem.forma_recebimento !== 'Parcelado'
+                                ? 'bg-gold-500 text-black shadow-lg shadow-gold-500/20'
+                                : 'text-slate-500 hover:text-slate-300'
+                                } ${isUpdatingSelection ? 'opacity-50 cursor-wait' : ''}`}
+                        >
+                            {isUpdatingSelection && caseItem.forma_recebimento !== 'Completo' ? '...' : 'Pagamento Completo'}
+                        </button>
+                        <button
+                            onClick={() => handleUpdateSelection('Parcelado')}
+                            disabled={isUpdatingSelection}
+                            className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${caseItem.forma_recebimento === 'Parcelado'
+                                ? 'bg-gold-500 text-black shadow-lg shadow-gold-500/20'
+                                : 'text-slate-500 hover:text-slate-300'
+                                } ${isUpdatingSelection ? 'opacity-50 cursor-wait' : ''}`}
+                        >
+                            {isUpdatingSelection && caseItem.forma_recebimento !== 'Parcelado' ? '...' : 'Parcelamento'}
+                        </button>
+                    </div>
+                </div>
             )}
 
             {/* 1. STATUS DOS HONORÁRIOS */}
             {(
-                caseItem.tipo !== CaseType.SEGURO_DEFESO ||
-                caseItem.status !== CaseStatus.CONCLUIDO_CONCEDIDO ||
-                caseItem.forma_recebimento === 'Completo'
+                caseItem.tipo !== CaseType.SEGURO_DEFESO
+                    ? caseItem.forma_recebimento !== 'Parcelado'
+                    : (caseItem.status !== CaseStatus.CONCLUIDO_CONCEDIDO || caseItem.forma_recebimento === 'Completo')
             ) && (
                     <div className={`bg-[#18181b] p-6 rounded-xl border border-white/5 relative overflow-hidden group animate-in fade-in slide-in-from-bottom-4 ${caseItem.tipo === CaseType.SEGURO_DEFESO && caseItem.status !== CaseStatus.CONCLUIDO_CONCEDIDO ? 'opacity-40 grayscale pointer-events-none' : ''
                         }`}>
@@ -801,6 +951,279 @@ const CaseFinancialTab: React.FC<CaseFinancialTabProps> = ({
                         </div>
                     </div>
                 )}
+
+            {/* 2.5 PARCELAMENTO DE HONORÁRIOS (Outros Benefícios) */}
+            {caseItem.tipo !== CaseType.SEGURO_DEFESO && caseItem.forma_recebimento === 'Parcelado' && (
+                <div className="bg-[#18181b] p-6 rounded-xl border border-white/5 relative group animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                            <Calendar size={20} className="text-gold-500" />
+                            Cronograma de Honorários
+                        </h3>
+
+                        {installments.length > 0 && (
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={handleAddBenefitInstallment}
+                                    className="text-xs font-bold text-gold-500 hover:text-gold-400 uppercase tracking-widest flex items-center gap-1.5"
+                                >
+                                    <Plus size={14} /> Adicionar Parcela
+                                </button>
+                                <div className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 uppercase">
+                                    Parcelamento Ativo
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {installments.length === 0 ? (
+                        <div className="bg-[#131418] p-5 rounded-xl border border-white/5 space-y-4 max-w-xl">
+                            <h4 className="text-sm font-bold text-white">Gerar Parcelas de Honorários</h4>
+                            <p className="text-xs text-zinc-400">Insira o valor total e o número de parcelas para gerar o cronograma.</p>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Valor Total</label>
+                                    <input
+                                        type="text"
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500 font-mono font-bold"
+                                        value={benefitValorTotal}
+                                        onChange={e => setBenefitValorTotal(formatCurrencyInput(e.target.value))}
+                                        placeholder="R$ 0,00"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Qtd. Parcelas</label>
+                                    <select
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500 font-bold"
+                                        value={benefitQtdParcelas}
+                                        onChange={e => setBenefitQtdParcelas(Number(e.target.value))}
+                                    >
+                                        {[...Array(12)].map((_, i) => (
+                                            <option key={i+1} value={i+1} className="bg-[#131418]">{i+1}x</option>
+                                        ))}
+                                        <option value={18} className="bg-[#131418]">18x</option>
+                                        <option value={24} className="bg-[#131418]">24x</option>
+                                        <option value={36} className="bg-[#131418]">36x</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">1ª Parcela</label>
+                                    <input
+                                        type="date"
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-gold-500"
+                                        value={benefitStartDate}
+                                        onChange={e => setBenefitStartDate(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button
+                                    onClick={handleGenerateBenefitParcels}
+                                    className="px-6 py-2.5 bg-gold-500 hover:bg-gold-600 text-black font-bold rounded-lg text-xs uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-gold-500/20"
+                                >
+                                    <Plus size={14} />
+                                    Gerar Parcelas
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {/* Alerta de diferença de valores se houver */}
+                            {Math.abs(benefitValorDiff) > 0.01 && (
+                                <div className="p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-red-500/10 border-red-500/20 text-red-400">
+                                    <div className="flex items-center gap-2 text-xs">
+                                        <AlertTriangle size={16} className="shrink-0" />
+                                        <span>
+                                            {benefitValorDiff > 0
+                                                ? `O valor total das parcelas (R$ ${benefitParcelasTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) supera o valor acordado (R$ ${(caseItem.valor_causa || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) em R$ ${benefitValorDiff.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`
+                                                : `O valor total das parcelas (R$ ${benefitParcelasTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) está abaixo do valor acordado (R$ ${(caseItem.valor_causa || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) em R$ ${Math.abs(benefitValorDiff).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`
+                                            }
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            if (installments.length > 0) {
+                                                const lastInst = installments[installments.length - 1];
+                                                const adjustment = (caseItem.valor_causa || 0) - (benefitParcelasTotal - lastInst.valor);
+                                                await updateInstallment({ ...lastInst, valor: Math.round(adjustment * 100) / 100 }, client?.nome_completo || 'Cliente');
+                                            }
+                                        }}
+                                        className="px-3 py-1 bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white rounded text-[10px] font-black uppercase tracking-wider transition-colors border border-red-500/30 self-start sm:self-center"
+                                    >
+                                        Ajustar última parcela
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-1 gap-2">
+                                {installments.map(inst => (
+                                    <div key={inst.id} className={`p-4 rounded-xl border transition-all ${inst.pago ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-[#131418] border-white/5 hover:border-gold-500/20'}`}>
+                                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                            <div className="flex items-center gap-4 flex-1">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${inst.pago ? 'bg-emerald-500 text-black' : 'bg-white/5 text-zinc-400'}`}>
+                                                    {inst.parcela_numero}º
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 flex-1">
+                                                    <div>
+                                                        <label className="text-[10px] text-zinc-500 uppercase block mb-1">Vencimento</label>
+                                                        <div className="relative group/date" key={`benefit-date-${inst.id}-${inst.data_vencimento}`}>
+                                                            <input
+                                                                type="text"
+                                                                className="bg-[#131418] border border-white/5 rounded px-2 py-1 flex-1 text-sm text-white font-medium outline-none focus:border-gold-500/50 transition-colors w-full pr-8 font-mono"
+                                                                defaultValue={inst.data_vencimento ? inst.data_vencimento.split('-').reverse().join('/') : ''}
+                                                                placeholder="DD/MM/AAAA"
+                                                                maxLength={10}
+                                                                onBlur={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val.length === 10) {
+                                                                        const parts = val.split('/');
+                                                                        const isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                                                                        if (!isNaN(new Date(isoDate).getTime()) && isoDate !== inst.data_vencimento) {
+                                                                            updateInstallment({ ...inst, data_vencimento: isoDate }, client?.nome_completo || 'Cliente');
+                                                                        }
+                                                                    }
+                                                                }}
+                                                                onChange={(e) => {
+                                                                    let val = e.target.value.replace(/\D/g, "");
+                                                                    if (val.length > 2) val = val.slice(0, 2) + "/" + val.slice(2);
+                                                                    if (val.length > 5) val = val.slice(0, 5) + "/" + val.slice(5, 9);
+                                                                    e.target.value = val;
+                                                                }}
+                                                            />
+                                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 cursor-pointer z-10 flex items-center justify-center">
+                                                                <input
+                                                                    type="date"
+                                                                    className="absolute opacity-0 inset-0 cursor-pointer pointer-events-auto z-10"
+                                                                    value={inst.data_vencimento || ''}
+                                                                    onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                                                                    onChange={e => {
+                                                                        if(e.target.value && e.target.value.length === 10) {
+                                                                            updateInstallment({ ...inst, data_vencimento: e.target.value }, client?.nome_completo || 'Cliente');
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <Calendar size={14} className="text-zinc-500 group-hover/date:text-gold-500 transition-colors pointer-events-none relative z-0" />
+                                                            </div>
+                                                        </div>
+                                                        {inst.pago && inst.data_pagamento && (
+                                                            <span className="text-[9px] text-emerald-500 font-bold flex items-center gap-1 mt-1">
+                                                                <Check size={8} /> Pago: {formatDateDisplay(inst.data_pagamento)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] text-zinc-500 uppercase block mb-1">Valor da Parcela</label>
+                                                        <input
+                                                            className="bg-[#131418] border border-white/5 px-2 py-1 text-sm text-white font-mono font-bold outline-none w-full hover:bg-white/5 focus:bg-white/10 rounded transition-colors"
+                                                            defaultValue={formatCurrencyInput((inst.valor || 0).toFixed(2))}
+                                                            onChange={e => {
+                                                                e.target.value = formatCurrencyInput(e.target.value);
+                                                            }}
+                                                            onBlur={e => {
+                                                                const newVal = parseCurrencyToNumber(e.target.value);
+                                                                if (newVal !== inst.valor) {
+                                                                    updateInstallment({ ...inst, valor: newVal }, client?.nome_completo || 'Cliente');
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => handleToggleInstallment(inst, client?.nome_completo || 'Cliente')}
+                                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${inst.pago ? 'bg-emerald-500 text-black' : 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20'}`}
+                                                        >
+                                                            {inst.pago ? 'Pago' : 'Pendente'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteBenefitInstallment(inst)}
+                                                            className="p-1.5 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
+                                                            title="Excluir Parcela"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Ações do Recibo */}
+                                            <div className="flex flex-wrap items-center gap-2 bg-black/20 p-2 rounded-lg border border-white/5 lg:self-center">
+                                                {/* Badge de status do recibo */}
+                                                {inst.recibo_url ? (
+                                                    <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 uppercase">
+                                                        Recibo Anexado
+                                                    </span>
+                                                ) : inst.recibo_assinado ? (
+                                                    <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20 uppercase">
+                                                        Recibo Assinado
+                                                    </span>
+                                                ) : inst.recibo_gerado ? (
+                                                    <span className="text-[9px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded border border-yellow-500/20 uppercase">
+                                                        Recibo Gerado
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[9px] font-bold text-zinc-500 bg-zinc-500/10 px-2 py-1 rounded border border-white/5 uppercase">
+                                                        Sem Recibo
+                                                    </span>
+                                                )}
+
+                                                {/* Ação 1: Gerar/Imprimir */}
+                                                <button
+                                                    onClick={() => handleGenerateReceipt(inst)}
+                                                    className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-zinc-300 rounded text-[10px] font-bold flex items-center gap-1.5 transition-colors border border-white/5"
+                                                    title="Imprimir recibo para assinatura do cliente"
+                                                >
+                                                    <Printer size={12} />
+                                                    {inst.recibo_gerado ? 'Reimprimir' : 'Gerar Recibo'}
+                                                </button>
+
+                                                {/* Ação 2: Marcar como Assinado */}
+                                                {inst.recibo_gerado && !inst.recibo_assinado && (
+                                                    <button
+                                                        onClick={() => handleMarkReceiptSigned(inst)}
+                                                        className="px-2.5 py-1 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 rounded text-[10px] font-bold flex items-center gap-1.5 transition-colors border border-yellow-500/20"
+                                                    >
+                                                        <Check size={12} />
+                                                        Assinado?
+                                                    </button>
+                                                )}
+
+                                                {/* Ação 3: Upload do Recibo Assinado */}
+                                                {inst.recibo_assinado && (
+                                                    <label className="px-2.5 py-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded text-[10px] font-bold flex items-center gap-1.5 transition-colors border border-blue-500/20 cursor-pointer">
+                                                        <Upload size={12} />
+                                                        {inst.recibo_url ? 'Substituir' : 'Anexar PDF'}
+                                                        <input
+                                                            type="file"
+                                                            accept="application/pdf,image/*"
+                                                            className="hidden"
+                                                            onChange={(e) => handleUploadReceipt(inst, e)}
+                                                        />
+                                                    </label>
+                                                )}
+
+                                                {/* Ação 4: Visualizar arquivo anexado */}
+                                                {inst.recibo_url && (
+                                                    <a
+                                                        href={inst.recibo_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded text-[10px] font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/20"
+                                                    >
+                                                        <Eye size={12} />
+                                                        Ver Arquivo
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* 3. LISTA FINANCEIRA (MOVIMENTAÇÕES) */}
             <div>

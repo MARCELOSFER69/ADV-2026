@@ -31,16 +31,36 @@ const formatDate = (dateValue: string | Date | undefined, format: string) => {
     return `${day}/${month}/${year}`;
 };
 
-const processTemplateString = (text: string, client: Client, dateFormat: string = 'default'): string => {
+const processTemplateString = (text: string, client: Client, dateFormat: string = 'default', feePercentage: number = 30): string => {
     if (!text) return '';
     let processed = text;
     const c = client as any;
     const today = new Date().toISOString().split('T')[0];
+
+    // Find most recent case
+    const activeCase = client.cases && client.cases.length > 0
+        ? [...client.cases].sort((a, b) => new Date(b.data_abertura).getTime() - new Date(a.data_abertura).getTime())[0]
+        : null;
+
     const map: Record<string, string> = {
         'data_atual': formatDate(today, dateFormat),
         'cidade_escritorio': 'Santa Inês',
         ...c
     };
+
+    if (activeCase) {
+        map['beneficio_pretendido'] = activeCase.tipo || activeCase.titulo || '';
+        map['valor_demanda'] = typeof activeCase.valor_causa === 'number'
+            ? activeCase.valor_causa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : '';
+        map['porcentagem_adm'] = String(feePercentage);
+        map['porcentagem_jud'] = String(feePercentage);
+    } else {
+        map['beneficio_pretendido'] = '';
+        map['valor_demanda'] = '';
+        map['porcentagem_adm'] = String(feePercentage);
+        map['porcentagem_jud'] = String(feePercentage);
+    }
 
     // --- ATUALIZAÇÃO GENIAL: SUPORTE A { } E [ ] ---
     // A Regex agora busca: \{var\} OU \[var\]
@@ -65,14 +85,14 @@ const processTemplateString = (text: string, client: Client, dateFormat: string 
         }
 
         // Se encontrou valor, retorna em MAIÚSCULO. Se não, mantém a tag original para o usuário ver que falhou.
-        return value ? String(value).toUpperCase() : match;
+        return value !== undefined && value !== null && value !== '' ? String(value).toUpperCase() : match;
     });
 
     return processed;
 };
 
 // Gera o HTML para um campo individual (Texto ou Imagem)
-const generateFieldHtml = (field: FieldMark, client: Client) => {
+const generateFieldHtml = (field: FieldMark, client: Client, feePercentage: number = 30) => {
     let transform = 'translate(0, -50%)';
     if (field.textAlign === 'center') transform = 'translate(-50%, -50%)';
     if (field.textAlign === 'right') transform = 'translate(-100%, -50%)';
@@ -95,7 +115,7 @@ const generateFieldHtml = (field: FieldMark, client: Client) => {
     }
 
     // Lógica de Texto (Campos Flutuantes)
-    const textContent = processTemplateString(field.template, client, field.dateFormat);
+    const textContent = processTemplateString(field.template, client, field.dateFormat, feePercentage);
     const fontWeight = field.isBold ? 'bold' : 'normal';
     const fontSize = `${field.fontSize}px`;
 
@@ -121,17 +141,17 @@ const generateFieldHtml = (field: FieldMark, client: Client) => {
     `;
 };
 
-export const printCustomTemplate = async (template: any, client: Client) => {
+export const printCustomTemplate = async (template: any, client: Client, feePercentage: number = 30) => {
     try {
         let pagesHtml = [];
 
         // --- MODO HTML (Importado) ---
         if (template.base_type === 'html') {
             // 1. Processa o HTML Base (substitui variáveis no texto corrido {var} ou [var])
-            const rawHtml = processTemplateString(template.html_content || '', client);
+            const rawHtml = processTemplateString(template.html_content || '', client, 'default', feePercentage);
 
             // 2. Gera os campos sobrepostos (caso o usuário tenha adicionado extras no editor)
-            const fieldsHtml = (template.campos_config || []).map((f: any) => generateFieldHtml(f, client)).join('');
+            const fieldsHtml = (template.campos_config || []).map((f: any) => generateFieldHtml(f, client, feePercentage)).join('');
 
             pagesHtml.push(`
             <div class="page-container html-mode">
@@ -157,7 +177,7 @@ export const printCustomTemplate = async (template: any, client: Client) => {
                 const imgData = canvas.toDataURL('image/jpeg', 0.85);
 
                 const fieldsOnPage = (template.campos_config || []).filter((f: any) => f.page === pageNum);
-                const fieldsHtml = fieldsOnPage.map((f: any) => generateFieldHtml(f, client)).join('');
+                const fieldsHtml = fieldsOnPage.map((f: any) => generateFieldHtml(f, client, feePercentage)).join('');
 
                 pagesHtml.push(`
                 <div class="page-container pdf-mode">
@@ -168,9 +188,23 @@ export const printCustomTemplate = async (template: any, client: Client) => {
             }
         }
 
-        const printWindow = window.open('', '_blank', 'width=1000,height=900');
-        if (printWindow) {
-            printWindow.document.write(`
+        // Use a hidden iframe to prevent popup blocker issues
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+
+        const iframeDoc = iframe.contentWindow?.document;
+        if (!iframeDoc) {
+            alert('Erro ao iniciar a impressão.');
+            return;
+        }
+
+        iframeDoc.write(`
           <html>
             <head>
               <title>${template.titulo}</title>
@@ -188,13 +222,42 @@ export const printCustomTemplate = async (template: any, client: Client) => {
                     overflow: hidden;
                 }
                 
+                .page-container.html-mode {
+                    height: auto;
+                    min-height: 297mm;
+                    overflow: visible;
+                }
+                
                 .html-mode { padding: 0; }
                 .html-content { width: 100%; height: 100%; }
+                .html-mode .html-content { height: auto; min-height: 100%; }
                 .pdf-bg { width: 100%; height: 100%; }
+
+                /* Override template styles to prevent cut-off */
+                .html-mode .page, .html-content .page, .page-container.html-mode .page {
+                    height: auto !important;
+                    min-height: 297mm !important;
+                    overflow: visible !important;
+                }
 
                 @media print {
                     body { background: white; display: block; }
                     .page-container { margin: 0; box-shadow: none; page-break-after: always; width: 100%; height: 100%; }
+                    .page-container.html-mode {
+                        height: auto;
+                        min-height: 100%;
+                        overflow: visible;
+                    }
+                    .page-container.html-mode .html-content {
+                        height: auto;
+                        min-height: 100%;
+                    }
+                    /* Override template styles for print media */
+                    .page-container.html-mode .page, .html-mode .page, .html-content .page {
+                        height: auto !important;
+                        min-height: 100% !important;
+                        overflow: visible !important;
+                    }
                     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 }
               </style>
@@ -219,7 +282,22 @@ export const printCustomTemplate = async (template: any, client: Client) => {
             </body>
           </html>
         `);
-            printWindow.document.close();
+        iframeDoc.close();
+
+        const handleAfterPrint = () => {
+            try {
+                if (document.body.contains(iframe)) {
+                    document.body.removeChild(iframe);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        };
+
+        if (iframe.contentWindow) {
+            iframe.contentWindow.addEventListener('afterprint', handleAfterPrint);
+        } else {
+            setTimeout(handleAfterPrint, 60000);
         }
     } catch (error) {
         console.error(error);

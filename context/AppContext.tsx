@@ -98,7 +98,10 @@ interface AppContextType {
     getInstallments: (caseId: string) => Promise<CaseInstallment[]>;
     generateInstallments: (caseId: string, startDate: string) => Promise<void>;
     updateInstallment: (installment: CaseInstallment, clientName: string) => Promise<void>;
-    toggleInstallmentPaid: (installment: CaseInstallment, clientName: string, paymentDetails?: any) => Promise<void>;
+    toggleInstallmentPaid: (installment: CaseInstallment, clientName: string, paymentDetails?: any, processTitle?: string) => Promise<void>;
+    generateBenefitInstallments: (caseId: string, valorTotal: number, qtdParcelas: number, startDate: string) => Promise<void>;
+    deleteBenefitInstallment: (installmentId: string, caseId: string) => Promise<void>;
+    uploadInstallmentReceipt: (instId: string, caseId: string, file: File) => Promise<void>;
 
     lastInteractedItemId: string | null;
     setLastInteractedItemId: (id: string | null) => void;
@@ -1529,7 +1532,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         }
     }, [showToast, queryClient]);
 
-    const toggleInstallmentPaid = useCallback(async (inst: CaseInstallment, clientName: string, paymentDetails?: any) => {
+    const toggleInstallmentPaid = useCallback(async (inst: CaseInstallment, clientName: string, paymentDetails?: any, processTitle?: string) => {
         try {
             const newState = !inst.pago;
             const payload: any = {
@@ -1551,7 +1554,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
                     id: crypto.randomUUID(),
                     case_id: inst.case_id,
                     client_id: (await supabase.from('cases').select('client_id').eq('id', inst.case_id).single()).data?.client_id,
-                    titulo: `${inst.parcela_numero}ª Parcela - Seguro Defeso`,
+                    titulo: `${inst.parcela_numero}ª Parcela - ${processTitle || 'Seguro Defeso'}`,
                     tipo: 'Receita',
                     tipo_movimentacao: 'Honorários',
                     valor: inst.valor,
@@ -1577,7 +1580,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             }
             // Limpeza Financeira: Se desmarcou como PAGO, remove o lançamento automático
             else if (!newState && inst.destino === 'Escritório') {
-                const targetTitulo = `${inst.parcela_numero}ª Parcela - Seguro Defeso`;
+                const targetTitulo = `${inst.parcela_numero}ª Parcela - ${processTitle || 'Seguro Defeso'}`;
                 const { error: delError } = await supabase.from('financial_records')
                     .delete()
                     .eq('case_id', inst.case_id)
@@ -1598,6 +1601,68 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
             showToast('error', 'Erro ao alterar status: ' + err.message);
         }
     }, [showToast, queryClient, setFinancial]);
+
+    const generateBenefitInstallments = useCallback(async (caseId: string, valorTotal: number, qtdParcelas: number, startDate: string) => {
+        try {
+            if (valorTotal <= 0 || qtdParcelas <= 0) {
+                showToast('error', 'Valor e quantidade de parcelas devem ser maiores que zero.');
+                return;
+            }
+
+            const valorParcela = Math.round((valorTotal / qtdParcelas) * 100) / 100;
+            const baseDate = new Date(startDate);
+            const installments: any[] = [];
+
+            for (let i = 1; i <= qtdParcelas; i++) {
+                const date = new Date(baseDate);
+                date.setMonth(baseDate.getMonth() + (i - 1));
+
+                installments.push({
+                    id: crypto.randomUUID(),
+                    case_id: caseId,
+                    parcela_numero: i,
+                    data_vencimento: date.toISOString().split('T')[0],
+                    valor: valorParcela,
+                    pago: false,
+                    destino: 'Escritório'
+                });
+            }
+
+            const { error } = await supabase.from('case_installments').insert(installments);
+            if (error) throw error;
+
+            showToast('success', `${qtdParcelas} parcelas geradas com sucesso!`);
+            queryClient.invalidateQueries({ queryKey: ['case_installments', caseId] });
+        } catch (err: any) {
+            showToast('error', 'Erro ao gerar parcelas: ' + err.message);
+        }
+    }, [showToast, queryClient]);
+
+    const deleteBenefitInstallment = useCallback(async (installmentId: string, caseId: string) => {
+        try {
+            const { error } = await supabase.from('case_installments').delete().eq('id', installmentId);
+            if (error) throw error;
+            showToast('success', 'Parcela excluída!');
+            queryClient.invalidateQueries({ queryKey: ['case_installments', caseId] });
+        } catch (err: any) {
+            showToast('error', 'Erro ao excluir parcela: ' + err.message);
+        }
+    }, [showToast, queryClient]);
+
+    const uploadInstallmentReceipt = useCallback(async (instId: string, caseId: string, file: File) => {
+        try {
+            const { url } = await uploadFileToR2(file, 'receipts/installments');
+            const { error } = await supabase.from('case_installments').update({
+                recibo_url: url,
+                recibo_assinado: true
+            }).eq('id', instId);
+            if (error) throw error;
+            queryClient.invalidateQueries({ queryKey: ['case_installments', caseId] });
+            showToast('success', 'Recibo anexado com sucesso!');
+        } catch (err: any) {
+            showToast('error', 'Erro ao anexar recibo: ' + err.message);
+        }
+    }, [showToast, queryClient]);
 
     const updateGPS = useCallback(async (caseId: string, list: GPS[]) => {
         await supabase.from('cases').update({ gps_lista: list }).eq('id', caseId);
@@ -1709,7 +1774,7 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         addFinancialRecord, addReceiver, deleteReceiver, deleteFinancialRecord, addRetirementCalculation, promoteCalculationToCase, addOfficeExpense, updateOfficeExpense, deleteOfficeExpense, toggleOfficeExpenseStatus, addOfficeBalance,
         addPersonalCredential, deletePersonalCredential, addCaptador, deleteCaptador,
         createCommissionReceipt, deleteCommissionReceipt, confirmReceiptSignature, uploadReceiptFile,
-        getInstallments, generateInstallments, updateInstallment, toggleInstallmentPaid, updateGPS,
+        getInstallments, generateInstallments, updateInstallment, toggleInstallmentPaid, generateBenefitInstallments, deleteBenefitInstallment, uploadInstallmentReceipt, updateGPS,
         addReminder, toggleReminder, deleteReminder, toasts, showToast, isLoading,
         isNewCaseModalOpen, setIsNewCaseModalOpen, isNewClientModalOpen, setIsNewClientModalOpen, newCaseParams, openNewCaseWithParams, caseToView, setCaseToView,
         chats, chatMessages, fetchChatMessages, assumeChat, sendMessage, markChatAsRead, deleteChat, finishChat, waitingChatsCount,

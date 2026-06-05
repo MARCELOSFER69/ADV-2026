@@ -27,11 +27,60 @@ const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({ isOpen, onClo
   if (!isOpen) return null;
 
   const handlePrint = () => {
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-          printWindow.document.write(content);
-          printWindow.document.close();
-          printWindow.print();
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+
+      const iframeDoc = iframe.contentWindow?.document;
+      if (iframeDoc) {
+          // Inject style overriding code before printing
+          let styledContent = content;
+          const styleOverride = `
+            <style>
+              .page, [class*="page"] {
+                  height: auto !important;
+                  min-height: 297mm !important;
+                  overflow: visible !important;
+              }
+              @media print {
+                  .page, [class*="page"] {
+                      height: auto !important;
+                      min-height: 100% !important;
+                      overflow: visible !important;
+                  }
+              }
+            </style>
+          `;
+          if (content.includes('</head>')) {
+              styledContent = content.replace('</head>', `${styleOverride}</head>`);
+          } else {
+              styledContent = styleOverride + content;
+          }
+          iframeDoc.write(styledContent);
+          iframeDoc.close();
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+
+          const handleAfterPrint = () => {
+              try {
+                  if (document.body.contains(iframe)) {
+                      document.body.removeChild(iframe);
+                  }
+              } catch (e) {
+                  console.error(e);
+              }
+          };
+
+          if (iframe.contentWindow) {
+              iframe.contentWindow.addEventListener('afterprint', handleAfterPrint);
+          } else {
+              setTimeout(handleAfterPrint, 60000);
+          }
       }
   };
 

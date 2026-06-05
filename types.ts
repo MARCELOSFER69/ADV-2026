@@ -286,6 +286,11 @@ export interface CaseInstallment {
   conta?: string;
   observacao?: string;
   emitida?: boolean;
+
+  // Recibo (para parcelamento de honorários)
+  recibo_gerado?: boolean;
+  recibo_assinado?: boolean;
+  recibo_url?: string;
 }
 
 export interface CaseHistory {

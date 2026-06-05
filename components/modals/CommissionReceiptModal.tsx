@@ -118,8 +118,18 @@ const CommissionReceiptModal: React.FC<CommissionReceiptModalProps> = ({ isOpen,
         }
 
         // 2. Print
-        const printWindow = window.open('', '_blank', 'width=900,height=800');
-        if (printWindow) {
+        // 2. Print using hidden iframe to avoid popup blocker issues
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+
+        const iframeDoc = iframe.contentWindow?.document;
+        if (iframeDoc) {
             const safeTitle = safeString(BRAND_CONFIG?.loginTitle, 'Escritório de Advocacia');
             const safeName = safeString(editableName).toUpperCase();
             const safeCpf = safeString(cpf);
@@ -141,8 +151,24 @@ const CommissionReceiptModal: React.FC<CommissionReceiptModalProps> = ({ isOpen,
               </body>
             </html>
           `;
-            printWindow.document.write(htmlContent);
-            printWindow.document.close();
+            iframeDoc.write(htmlContent);
+            iframeDoc.close();
+
+            const handleAfterPrint = () => {
+                try {
+                    if (document.body.contains(iframe)) {
+                        document.body.removeChild(iframe);
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            };
+
+            if (iframe.contentWindow) {
+                iframe.contentWindow.addEventListener('afterprint', handleAfterPrint);
+            } else {
+                setTimeout(handleAfterPrint, 60000);
+            }
         }
 
         setIsPrinting(false);

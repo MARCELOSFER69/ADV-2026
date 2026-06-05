@@ -249,6 +249,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
         showToast('success', `Iniciando impressão de ${selectedDocIds.length} documento(s)...`);
 
         const docsToPrint = allAvailableDocs.filter(d => selectedDocIds.includes(d.id));
+        const feePercentage = user?.preferences?.estimatedFeePercentage ?? 30;
 
         for (const doc of docsToPrint) {
             try {
@@ -257,7 +258,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                         printDocuments(editedClient, { declaracao: true, procuracao: false });
                     }
                 } else if (doc.type === 'custom') {
-                    await printCustomTemplate(doc.templateData, editedClient);
+                    await printCustomTemplate(doc.templateData, { ...editedClient, cases: clientCases }, feePercentage);
                 }
                 await new Promise(resolve => setTimeout(resolve, 500));
             } catch (error) {

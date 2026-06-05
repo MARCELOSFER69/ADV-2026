@@ -23,6 +23,7 @@ interface DocumentCanvasProps {
     removeField: (id: string) => void;
     setSelectedFieldId: (id: string | null) => void;
     setHtmlContent: (content: string) => void;
+    feePercentage?: number;
 }
 
 const AutoFitText = ({ text, width, style, autoFit, containerRef }: { text: string, width: number, style: any, autoFit?: boolean, containerRef: React.RefObject<HTMLDivElement> }) => {
@@ -80,7 +81,8 @@ const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
     handleMouseDown,
     removeField,
     setSelectedFieldId,
-    setHtmlContent
+    setHtmlContent,
+    feePercentage = 30
 }) => {
     const renderField = (field: FieldMark) => {
         if (field.page !== currentPage && baseType === 'pdf') return null;
@@ -89,7 +91,7 @@ const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         let displayText = field.template;
 
         if (isPreviewMode && field.type === 'text') {
-            displayText = replaceVariables(field.template, previewClient);
+            displayText = replaceVariables(field.template, previewClient, feePercentage);
             displayText = applyDateFormat(displayText, field.dateFormat);
         }
 
@@ -179,17 +181,27 @@ const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                                 </div>
                             )}
 
-                            <div ref={containerRef} className="relative shadow-2xl border border-white/10 bg-white mx-auto" style={{ lineHeight: 0, width: baseType === 'html' ? '210mm' : 'auto', minHeight: baseType === 'html' ? '297mm' : 'auto', overflow: 'hidden' }} onClick={() => setSelectedFieldId(null)}>
+                            <div ref={containerRef} className="relative shadow-2xl border border-white/10 bg-white mx-auto" style={{ lineHeight: 0, width: baseType === 'html' ? '210mm' : 'auto', minHeight: baseType === 'html' ? '297mm' : 'auto', overflow: baseType === 'html' ? 'visible' : 'hidden' }} onClick={() => setSelectedFieldId(null)}>
                                 {baseType === 'pdf' ? (
                                     <canvas ref={canvasRef} className="block max-w-full h-auto" />
-                                ) : (
-                                    <div
-                                        className="w-full h-full text-black font-serif leading-relaxed text-justify bg-white"
-                                        dangerouslySetInnerHTML={{
-                                            __html: isPreviewMode ? replaceVariables(htmlContent, previewClient) : htmlContent
-                                        }}
-                                        style={{ pointerEvents: 'none' }}
-                                    />
+                                                                ) : (
+                                    <>
+                                        <style dangerouslySetInnerHTML={{ __html: `
+                                            .html-preview-content .page, 
+                                            .html-preview-content [class*="page"] {
+                                                height: auto !important;
+                                                min-height: 297mm !important;
+                                                overflow: visible !important;
+                                            }
+                                        ` }} />
+                                        <div
+                                            className="w-full min-h-full text-black font-serif leading-relaxed text-justify bg-white html-preview-content"
+                                            dangerouslySetInnerHTML={{
+                                                __html: isPreviewMode ? replaceVariables(htmlContent, previewClient, feePercentage) : htmlContent
+                                            }}
+                                            style={{ pointerEvents: 'none' }}
+                                        />
+                                    </>
                                 )}
                                 {fields.map(renderField)}
                             </div>
