@@ -31,7 +31,15 @@ const formatDate = (dateValue: string | Date | undefined, format: string) => {
     return `${day}/${month}/${year}`;
 };
 
-const processTemplateString = (text: string, client: Client, dateFormat: string = 'default', feePercentage: number = 30): string => {
+export interface Contrato2026Options {
+    mode: 'default' | 'blank' | 'custom';
+    customBenefit?: string;
+    customValue?: number;
+    customPercentage?: number;
+    addThreeInstallments: boolean;
+}
+
+const processTemplateString = (text: string, client: Client, dateFormat: string = 'default', feePercentage: number = 30, printOptions?: Contrato2026Options): string => {
     if (!text) return '';
     let processed = text;
     const c = client as any;
@@ -48,18 +56,49 @@ const processTemplateString = (text: string, client: Client, dateFormat: string 
         ...c
     };
 
-    if (activeCase) {
-        map['beneficio_pretendido'] = activeCase.tipo || activeCase.titulo || '';
-        map['valor_demanda'] = typeof activeCase.valor_causa === 'number'
-            ? activeCase.valor_causa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-            : '';
-        map['porcentagem_adm'] = String(feePercentage);
-        map['porcentagem_jud'] = String(feePercentage);
+    if (printOptions) {
+        if (printOptions.mode === 'blank') {
+            map['beneficio_pretendido'] = '____________________';
+            map['valor_demanda'] = '____________________';
+            map['porcentagem_adm'] = '____';
+            map['porcentagem_jud'] = '____';
+        } else if (printOptions.mode === 'custom') {
+            map['beneficio_pretendido'] = printOptions.customBenefit || '';
+            map['valor_demanda'] = typeof printOptions.customValue === 'number'
+                ? printOptions.customValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : '';
+            map['porcentagem_adm'] = printOptions.customPercentage !== undefined ? String(printOptions.customPercentage) : String(feePercentage);
+            map['porcentagem_jud'] = printOptions.customPercentage !== undefined ? String(printOptions.customPercentage) : String(feePercentage);
+        } else {
+            // default mode
+            if (activeCase) {
+                map['beneficio_pretendido'] = activeCase.tipo || activeCase.titulo || '';
+                map['valor_demanda'] = typeof activeCase.valor_causa === 'number'
+                    ? activeCase.valor_causa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : '';
+                map['porcentagem_adm'] = String(feePercentage);
+                map['porcentagem_jud'] = String(feePercentage);
+            } else {
+                map['beneficio_pretendido'] = '';
+                map['valor_demanda'] = '';
+                map['porcentagem_adm'] = String(feePercentage);
+                map['porcentagem_jud'] = String(feePercentage);
+            }
+        }
     } else {
-        map['beneficio_pretendido'] = '';
-        map['valor_demanda'] = '';
-        map['porcentagem_adm'] = String(feePercentage);
-        map['porcentagem_jud'] = String(feePercentage);
+        if (activeCase) {
+            map['beneficio_pretendido'] = activeCase.tipo || activeCase.titulo || '';
+            map['valor_demanda'] = typeof activeCase.valor_causa === 'number'
+                ? activeCase.valor_causa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : '';
+            map['porcentagem_adm'] = String(feePercentage);
+            map['porcentagem_jud'] = String(feePercentage);
+        } else {
+            map['beneficio_pretendido'] = '';
+            map['valor_demanda'] = '';
+            map['porcentagem_adm'] = String(feePercentage);
+            map['porcentagem_jud'] = String(feePercentage);
+        }
     }
 
     // --- ATUALIZAÇÃO GENIAL: SUPORTE A { } E [ ] ---
@@ -92,7 +131,7 @@ const processTemplateString = (text: string, client: Client, dateFormat: string 
 };
 
 // Gera o HTML para um campo individual (Texto ou Imagem)
-const generateFieldHtml = (field: FieldMark, client: Client, feePercentage: number = 30) => {
+const generateFieldHtml = (field: FieldMark, client: Client, feePercentage: number = 30, printOptions?: Contrato2026Options) => {
     let transform = 'translate(0, -50%)';
     if (field.textAlign === 'center') transform = 'translate(-50%, -50%)';
     if (field.textAlign === 'right') transform = 'translate(-100%, -50%)';
@@ -115,7 +154,7 @@ const generateFieldHtml = (field: FieldMark, client: Client, feePercentage: numb
     }
 
     // Lógica de Texto (Campos Flutuantes)
-    const textContent = processTemplateString(field.template, client, field.dateFormat, feePercentage);
+    const textContent = processTemplateString(field.template, client, field.dateFormat, feePercentage, printOptions);
     const fontWeight = field.isBold ? 'bold' : 'normal';
     const fontSize = `${field.fontSize}px`;
 
@@ -141,17 +180,26 @@ const generateFieldHtml = (field: FieldMark, client: Client, feePercentage: numb
     `;
 };
 
-export const printCustomTemplate = async (template: any, client: Client, feePercentage: number = 30) => {
+export const printCustomTemplate = async (template: any, client: Client, feePercentage: number = 30, printOptions?: Contrato2026Options) => {
     try {
         let pagesHtml = [];
 
         // --- MODO HTML (Importado) ---
         if (template.base_type === 'html') {
+            let htmlContent = template.html_content || '';
+            if (printOptions?.addThreeInstallments) {
+                // Insere a cláusula de 3 parcelas de salário mínimo
+                htmlContent = htmlContent.replace(
+                    /<strong>c\)<\/strong>\s*Os\s+valores\s+serão\s+pagos/i,
+                    '<strong>c) Adicional de Salário Mínimo:</strong> Os honorários também serão acrescidos de 3 (três) parcelas de um salário mínimo, no valor de R$ 1.621,00 (um mil, seiscentos e vinte e um reais) cada. <strong>d)</strong> Os valores serão pagos'
+                );
+            }
+
             // 1. Processa o HTML Base (substitui variáveis no texto corrido {var} ou [var])
-            const rawHtml = processTemplateString(template.html_content || '', client, 'default', feePercentage);
+            const rawHtml = processTemplateString(htmlContent, client, 'default', feePercentage, printOptions);
 
             // 2. Gera os campos sobrepostos (caso o usuário tenha adicionado extras no editor)
-            const fieldsHtml = (template.campos_config || []).map((f: any) => generateFieldHtml(f, client, feePercentage)).join('');
+            const fieldsHtml = (template.campos_config || []).map((f: any) => generateFieldHtml(f, client, feePercentage, printOptions)).join('');
 
             pagesHtml.push(`
             <div class="page-container html-mode">
@@ -177,7 +225,7 @@ export const printCustomTemplate = async (template: any, client: Client, feePerc
                 const imgData = canvas.toDataURL('image/jpeg', 0.85);
 
                 const fieldsOnPage = (template.campos_config || []).filter((f: any) => f.page === pageNum);
-                const fieldsHtml = fieldsOnPage.map((f: any) => generateFieldHtml(f, client, feePercentage)).join('');
+                const fieldsHtml = fieldsOnPage.map((f: any) => generateFieldHtml(f, client, feePercentage, printOptions)).join('');
 
                 pagesHtml.push(`
                 <div class="page-container pdf-mode">

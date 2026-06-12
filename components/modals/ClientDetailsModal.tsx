@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import WhatsAppModal from './WhatsAppModal';
 import ConfirmModal from '../ui/ConfirmModal';
+import Contrato2026OptionsModal from './Contrato2026OptionsModal';
 import { formatCPFOrCNPJ, formatPhone, formatCurrencyInput, parseCurrencyToNumber } from '../../services/formatters';
 import { isClientIncomplete } from '../../services/importService';
 import { motion } from 'framer-motion';
@@ -161,6 +162,10 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
     // Seleção Múltipla de Docs
     const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
 
+    // Contrato 2026 Print Options State
+    const [isContratoOptionsModalOpen, setIsContratoOptionsModalOpen] = useState(false);
+    const [pendingDocsToPrint, setPendingDocsToPrint] = useState<any[]>([]);
+
 
 
     useEffect(() => {
@@ -246,19 +251,34 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
         }
 
         setShowDocMenu(false);
-        showToast('success', `Iniciando impressão de ${selectedDocIds.length} documento(s)...`);
-
         const docsToPrint = allAvailableDocs.filter(d => selectedDocIds.includes(d.id));
+
+        const hasContrato2026 = docsToPrint.some(d => d.title === 'Contrato 2026');
+        if (hasContrato2026) {
+            setPendingDocsToPrint(docsToPrint);
+            setIsContratoOptionsModalOpen(true);
+            return;
+        }
+
+        await executePrintFlow(docsToPrint);
+    };
+
+    const executePrintFlow = async (docs: any[], contratoOptions?: any) => {
+        showToast('success', `Iniciando impressão de ${docs.length} documento(s)...`);
         const feePercentage = user?.preferences?.estimatedFeePercentage ?? 30;
 
-        for (const doc of docsToPrint) {
+        for (const doc of docs) {
             try {
                 if (doc.type === 'standard') {
                     if (doc.id === 'std_declaracao') {
                         printDocuments(editedClient, { declaracao: true, procuracao: false });
                     }
                 } else if (doc.type === 'custom') {
-                    await printCustomTemplate(doc.templateData, { ...editedClient, cases: clientCases }, feePercentage);
+                    if (doc.title === 'Contrato 2026') {
+                        await printCustomTemplate(doc.templateData, { ...editedClient, cases: clientCases }, feePercentage, contratoOptions);
+                    } else {
+                        await printCustomTemplate(doc.templateData, { ...editedClient, cases: clientCases }, feePercentage);
+                    }
                 }
                 await new Promise(resolve => setTimeout(resolve, 500));
             } catch (error) {
@@ -626,6 +646,32 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                         onClose={() => setIsWhatsAppModalOpen(false)}
                         clientName={client.nome_completo}
                         phone={client.telefone}
+                    />
+                )
+            }
+
+            {
+                isContratoOptionsModalOpen && (
+                    <Contrato2026OptionsModal
+                        isOpen={isContratoOptionsModalOpen}
+                        onClose={() => setIsContratoOptionsModalOpen(false)}
+                        onConfirm={async (options) => {
+                            setIsContratoOptionsModalOpen(false);
+                            await executePrintFlow(pendingDocsToPrint, options);
+                        }}
+                        defaultBenefit={
+                            clientCases && clientCases.length > 0
+                                ? [...clientCases].sort((a, b) => new Date(b.data_abertura).getTime() - new Date(a.data_abertura).getTime())[0]?.tipo
+                                : undefined
+                        }
+                        defaultValue={
+                            clientCases && clientCases.length > 0
+                                ? [...clientCases].sort((a, b) => new Date(b.data_abertura).getTime() - new Date(a.data_abertura).getTime())[0]?.valor_causa
+                                : undefined
+                        }
+                        defaultPercentage={
+                            user?.preferences?.estimatedFeePercentage ?? 30
+                        }
                     />
                 )
             }
