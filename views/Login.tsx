@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Eye, EyeOff, AlertCircle, Scale } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, Scale, ChevronDown } from 'lucide-react';
 import { BRAND_CONFIG } from '../logoData';
 import { auditService } from '../services/auditService';
 
@@ -9,6 +9,7 @@ const Login: React.FC = () => {
   const { login } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [selectedTenant, setSelectedTenant] = useState('principal');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -19,7 +20,7 @@ const Login: React.FC = () => {
     setIsLoading(true);
     setLoginError(null);
     try {
-      await login(email, password, rememberMe);
+      await login(email, password, rememberMe, selectedTenant);
       // Log Success
       auditService.log({
         action: 'login_success',
@@ -49,9 +50,9 @@ const Login: React.FC = () => {
         <div className="flex flex-col items-center justify-center text-center">
           {BRAND_CONFIG.logoBase64 ? (
             <img
-              src={BRAND_CONFIG.logoBase64}
-              alt={BRAND_CONFIG.loginTitle}
-              className="w-auto h-24 mb-4 object-contain"
+              src={selectedTenant === 'parceiros' ? BRAND_CONFIG.hmLogoBase64 : BRAND_CONFIG.logoBase64}
+              alt={selectedTenant === 'parceiros' ? 'Marcelo' : BRAND_CONFIG.loginTitle}
+              className="w-auto h-24 mb-4 object-contain transition-all duration-300"
             />
           ) : (
             // Fallback Logo
@@ -60,9 +61,11 @@ const Login: React.FC = () => {
                 <Scale className="text-gold-500 transform -rotate-45" size={32} />
               </div>
               <h1 className="text-gold-500 font-serif font-bold text-lg tracking-widest leading-relaxed whitespace-pre-line">
-                {BRAND_CONFIG.loginTitle}
+                {selectedTenant === 'parceiros' ? 'MARCELO (HM)' : BRAND_CONFIG.loginTitle}
               </h1>
-              <p className="text-[10px] text-slate-500 tracking-[0.3em] mt-2 border-t border-slate-800 pt-2 w-full">{BRAND_CONFIG.loginSubtitle}</p>
+              <p className="text-[10px] text-slate-500 tracking-[0.3em] mt-2 border-t border-slate-800 pt-2 w-full">
+                {selectedTenant === 'parceiros' ? 'SISTEMA PARCEIROS' : BRAND_CONFIG.loginSubtitle}
+              </p>
             </div>
           )}
         </div>
@@ -82,6 +85,23 @@ const Login: React.FC = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Escritório / Sistema</label>
+              <div className="relative">
+                <select
+                  value={selectedTenant}
+                  onChange={(e) => setSelectedTenant(e.target.value)}
+                  className="w-full bg-navy-800 text-white border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="principal">Escritório JNM</option>
+                  <option value="parceiros">Marcelo</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                  <ChevronDown size={16} />
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1.5">Email</label>
               <div className="relative group">

@@ -20,6 +20,7 @@ const Permissions: React.FC = () => {
     const [isAdding, setIsAdding] = useState(false);
     const [newEmail, setNewEmail] = useState('');
     const [newName, setNewName] = useState('');
+    const [newTenant, setNewTenant] = useState('principal');
 
     useEffect(() => {
         fetchPermissions();
@@ -39,7 +40,7 @@ const Permissions: React.FC = () => {
             email: newEmail.trim(),
             nome: newName,
             role: 'colaborador',
-            tenant_id: 'principal',
+            tenant_id: newTenant,
             // Padrões iniciais
             access_dashboard: true,
             access_clients: true,
@@ -77,7 +78,7 @@ const Permissions: React.FC = () => {
             showToast('error', 'Erro ao adicionar. Verifique se o email já existe.');
         } else {
             showToast('success', 'Usuário adicionado! Ele já pode fazer login.');
-            setNewEmail(''); setNewName(''); setIsAdding(false);
+            setNewEmail(''); setNewName(''); setNewTenant('principal'); setIsAdding(false);
             fetchPermissions();
         }
     };
@@ -96,9 +97,7 @@ const Permissions: React.FC = () => {
         }
     };
 
-    const handleToggleTenant = async (id: string, currentTenant: string | undefined) => {
-        const newTenant = currentTenant === 'parceiros' ? 'principal' : 'parceiros';
-        
+    const handleToggleTenant = async (id: string, currentTenant: string | undefined, newTenant: string) => {
         // Atualização Otimista
         setUsersList(prev => prev.map(u => u.id === id ? { ...u, tenant_id: newTenant } : u));
         
@@ -163,9 +162,13 @@ const Permissions: React.FC = () => {
                     <div className="flex flex-col md:flex-row items-center gap-4 animate-in slide-in-from-top-2">
                         <input autoFocus className="flex-1 w-full bg-black border border-zinc-700 rounded-lg px-4 py-2 text-white outline-none focus:border-red-500" placeholder="Nome do Colaborador" value={newName} onChange={e => setNewName(e.target.value)} />
                         <input className="flex-1 w-full bg-black border border-zinc-700 rounded-lg px-4 py-2 text-white outline-none focus:border-red-500" placeholder="Email de Login (Gmail/Outlook)" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
+                        <select className="bg-black border border-zinc-700 rounded-lg px-4 py-2 text-white outline-none focus:border-red-500 w-full md:w-48 cursor-pointer" value={newTenant} onChange={e => setNewTenant(e.target.value)}>
+                            <option value="principal">Escritório JNM</option>
+                            <option value="parceiros">Marcelo</option>
+                        </select>
                         <div className="flex gap-2 w-full md:w-auto">
-                            <button onClick={handleAddUser} className="bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded-lg flex-1 md:flex-none"><Check size={20} /></button>
-                            <button onClick={() => setIsAdding(false)} className="bg-zinc-800 hover:bg-zinc-700 text-white p-2 rounded-lg flex-1 md:flex-none"><X size={20} /></button>
+                            <button onClick={handleAddUser} className="bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded-lg flex-1 md:flex-none" title="Confirmar"><Check size={20} /></button>
+                            <button onClick={() => { setIsAdding(false); setNewTenant('principal'); }} className="bg-zinc-800 hover:bg-zinc-700 text-white p-2 rounded-lg flex-1 md:flex-none"><X size={20} /></button>
                         </div>
                     </div>
                 ) : (
@@ -228,9 +231,16 @@ const Permissions: React.FC = () => {
                                         <ToggleSwitch checked={u.access_financial} onChange={() => handleTogglePermission(u.id, 'access_financial', !!u.access_financial)} disabled={u.role === 'admin'} colorClass="peer-checked:bg-emerald-600" />
                                     </div>
                                     <div className="w-px h-8 bg-zinc-800 mx-2 hidden md:block"></div>
-                                    <div className="flex flex-col items-center" title="Dar acesso ao sistema Secundário (HM)">
-                                        <span className="text-[9px] text-purple-400 uppercase font-bold mb-1">Acesso HM</span>
-                                        <ToggleSwitch checked={u.tenant_id === 'parceiros'} onChange={() => handleToggleTenant(u.id, u.tenant_id)} colorClass="peer-checked:bg-purple-600" />
+                                    <div className="flex flex-col items-start min-w-[130px]">
+                                        <span className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Sistema / Escritório</span>
+                                        <select
+                                            value={u.tenant_id || 'principal'}
+                                            onChange={(e) => handleToggleTenant(u.id, u.tenant_id, e.target.value)}
+                                            className="bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-red-500 cursor-pointer"
+                                        >
+                                            <option value="principal">Escritório JNM</option>
+                                            <option value="parceiros">Marcelo</option>
+                                        </select>
                                     </div>
                                 </div>
 

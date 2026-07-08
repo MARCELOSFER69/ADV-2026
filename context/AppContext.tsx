@@ -19,7 +19,7 @@ const PERMISSIONS_KEY = 'app_user_permissions';
 
 interface AppContextType {
     user: User | null;
-    login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
+    login: (email: string, password: string, rememberMe: boolean, selectedTenant: string) => Promise<void>;
     logout: () => Promise<void>;
     updateUserProfile: (updates: Partial<User>) => Promise<void>;
     saveUserPreferences: (prefs: UserPreferences) => Promise<void>;
@@ -760,9 +760,52 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
         };
     }, []);
 
-    const login = useCallback(async (email: string, pass: string, remember: boolean) => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    const login = useCallback(async (email: string, pass: string, remember: boolean, selectedTenant: string) => {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
         if (error) throw error;
+
+        // Validar se o usuário pertence a este inquilino (tenant)
+        try {
+            const { data: perm, error: permErr } = await supabase
+                .from('user_permissions')
+                .select('*')
+                .ilike('email', email.trim())
+                .single();
+
+            if (permErr && permErr.code !== 'PGRST116') { // PGRST116 é no-rows, o que pode acontecer
+                console.warn("Erro ao buscar permissões no login:", permErr.message);
+            }
+
+            const SUPER_ADMINS = ['marcelo@escritorio.com', 'marcelofernando@escritorio.com'];
+            const isSuperAdmin = SUPER_ADMINS.includes(email.trim().toLowerCase());
+            const isAdmin = isSuperAdmin || perm?.role === 'admin';
+
+            if (perm) {
+                // Se não for admin e o tenant_id for diferente, bloqueia o login
+                if (!isAdmin && perm.tenant_id !== selectedTenant) {
+                    await supabase.auth.signOut();
+                    const systemName = selectedTenant === 'parceiros' ? 'Marcelo' : 'Escritório JNM';
+                    throw new Error(`Este usuário não tem acesso ao sistema "${systemName}".`);
+                }
+            } else if (!isSuperAdmin) {
+                // Sem registro em user_permissions, mas não é super admin
+                await supabase.auth.signOut();
+                throw new Error("Seu usuário não possui permissões configuradas no sistema.");
+            }
+
+            // Atualiza preferências do admin se ele estiver acessando
+            if (isAdmin && data.user) {
+                const meta = data.user.user_metadata || {};
+                const prefs = meta.preferences || {};
+                prefs.selectedTenant = selectedTenant;
+                await supabase.auth.updateUser({
+                    data: { preferences: prefs }
+                });
+            }
+        } catch (err: any) {
+            await supabase.auth.signOut();
+            throw err;
+        }
     }, []);
 
     const logout = useCallback(async () => {
